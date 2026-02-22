@@ -16,6 +16,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   [EnhancementCategory.APPLY_ELEMENT]: '#44DDFF',
   [EnhancementCategory.ELEMENT_UPGRADE]: '#44FFDD',
   [EnhancementCategory.MALUS_TRADE]: '#FF4444',
+  [EnhancementCategory.MASTERY_SKILL]: '#FF88CC',
+  [EnhancementCategory.SYNERGY_UPGRADE]: '#DD88FF',
+  [EnhancementCategory.STAT_BOOST]: '#88DDFF',
 };
 
 export class EnhancementCardUI {
