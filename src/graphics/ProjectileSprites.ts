@@ -1,3 +1,5 @@
+import { SPRITE_SCALE } from '../constants';
+
 export function generateProjectileTextures(scene: Phaser.Scene): void {
   // ─── Hunter's Bow: Arrow 8x4 ──────────────────────────────────
   createSimpleTexture(scene, 'arrow', 8, 4, (ctx) => {
@@ -499,32 +501,54 @@ export function generateProjectileTextures(scene: Phaser.Scene): void {
     ctx.fillRect(11, 9, 2, 3);
   });
 
-  // Iron Fist punching fist 12x10
+  // Iron Fist punching fist 12x10 - side view clenched fist punching right
   createSimpleTexture(scene, 'weapon_fist', 12, 10, (ctx) => {
-    // Wrist
-    ctx.fillStyle = '#CC8844';
+    // Forearm
+    ctx.fillStyle = '#DD9955';
     ctx.fillRect(0, 3, 3, 4);
-    // Hand/palm
-    ctx.fillStyle = '#FFAA55';
-    ctx.fillRect(2, 2, 6, 6);
-    // Fingers curled
-    ctx.fillStyle = '#FFBB66';
-    ctx.fillRect(7, 2, 3, 2);
-    ctx.fillRect(7, 4, 3, 2);
-    ctx.fillRect(7, 6, 3, 2);
-    // Knuckle highlights (white dots)
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(8, 2, 1, 1);
-    ctx.fillRect(8, 4, 1, 1);
-    ctx.fillRect(8, 6, 1, 1);
-    // Thumb
-    ctx.fillStyle = '#FFBB66';
-    ctx.fillRect(3, 0, 3, 2);
-    // Impact star
+    ctx.fillStyle = '#CC8844';
+    ctx.fillRect(0, 4, 2, 2);
+
+    // Fist body (clenched block shape)
+    ctx.fillStyle = '#FFBB77';
+    ctx.fillRect(3, 1, 5, 8);
+
+    // Curled fingers - 4 rows making a fist front face
+    ctx.fillStyle = '#FFCC88';
+    ctx.fillRect(7, 1, 3, 2); // index
+    ctx.fillRect(7, 3, 3, 2); // middle
+    ctx.fillRect(7, 5, 3, 2); // ring
+    ctx.fillRect(7, 7, 3, 2); // pinky
+    // Finger separation lines (dark)
+    ctx.fillStyle = '#CC8855';
+    ctx.fillRect(7, 3, 3, 1);
+    ctx.fillRect(7, 5, 3, 1);
+    ctx.fillRect(7, 7, 3, 1);
+
+    // Knuckle ridge (bright white/yellow highlights across top of curled fingers)
+    ctx.fillStyle = '#FFEEDD';
+    ctx.fillRect(8, 1, 2, 1);
+    ctx.fillRect(8, 3, 2, 1);
+    ctx.fillRect(8, 5, 2, 1);
+
+    // Thumb curled across front
+    ctx.fillStyle = '#FFCC88';
+    ctx.fillRect(4, 0, 4, 2);
+    ctx.fillStyle = '#FFDDAA';
+    ctx.fillRect(5, 0, 2, 1);
+
+    // Fist shading (dark edge bottom)
+    ctx.fillStyle = '#CC8855';
+    ctx.fillRect(3, 8, 5, 1);
+
+    // Impact burst at knuckles
     ctx.fillStyle = '#FFEE44';
-    ctx.fillRect(10, 3, 2, 1);
-    ctx.fillRect(10, 5, 2, 1);
-    ctx.fillRect(11, 4, 1, 1);
+    ctx.fillRect(10, 2, 2, 1);
+    ctx.fillRect(10, 4, 2, 1);
+    ctx.fillRect(10, 6, 2, 1);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(11, 3, 1, 1);
+    ctx.fillRect(11, 5, 1, 1);
   });
 
   // ─── Bahamut dragon silhouette 24x20 ────────────────────────
@@ -578,7 +602,9 @@ function createSimpleTexture(
   h: number,
   draw: (ctx: CanvasRenderingContext2D) => void,
 ): void {
-  const canvas = scene.textures.createCanvas(key, w, h)!;
-  draw(canvas.context);
+  const canvas = scene.textures.createCanvas(key, w * SPRITE_SCALE, h * SPRITE_SCALE)!;
+  const ctx = canvas.context;
+  ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
+  draw(ctx);
   canvas.refresh();
 }

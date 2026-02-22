@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WeaponId, DEPTHS, EVENTS } from '../constants';
+import { WeaponId, DEPTHS, EVENTS, SPRITE_SCALE } from '../constants';
 import { BaseWeapon } from './BaseWeapon';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -21,7 +21,7 @@ export class IronFists extends BaseWeapon {
     const enchant = this.getEnchant();
     const swingCount = stats.count ?? 1;
 
-    const target = this.findNearestEnemy(enemies, hitRadius + 20);
+    const target = this.findNearestEnemy(enemies, hitRadius + 20 * SPRITE_SCALE);
     let baseAngle: number;
     if (target) {
       baseAngle = Math.atan2(target.y - this.player.y, target.x - this.player.x);
@@ -35,12 +35,13 @@ export class IronFists extends BaseWeapon {
       this.lastPunchSide = (this.lastPunchSide + 1) % 2;
       const sideOffset = (this.lastPunchSide === 0 ? -0.15 : 0.15) + s * Math.PI;
       const punchAngle = baseAngle + sideOffset;
+      const sp = this.getSpawnPoint(punchAngle);
       const visualRadius = hitRadius * meleeScale;
-      const endX = this.player.x + Math.cos(punchAngle) * visualRadius;
-      const endY = this.player.y + Math.sin(punchAngle) * visualRadius;
+      const endX = sp.x + Math.cos(punchAngle) * visualRadius;
+      const endY = sp.y + Math.sin(punchAngle) * visualRadius;
 
       // Fist sprite punching outward
-      const fist = this.scene.add.image(this.player.x, this.player.y, 'weapon_fist');
+      const fist = this.scene.add.image(sp.x, sp.y, 'weapon_fist');
       fist.setScale(1.5 * meleeScale);
       fist.setDepth(DEPTHS.EFFECTS);
       fist.setRotation(punchAngle);
@@ -59,9 +60,9 @@ export class IronFists extends BaseWeapon {
           const impact = this.scene.add.graphics();
           impact.setDepth(DEPTHS.EFFECTS);
           impact.fillStyle(0xFFDD00, 0.6);
-          impact.fillCircle(endX, endY, 6 * meleeScale);
+          impact.fillCircle(endX, endY, 6 * SPRITE_SCALE * meleeScale);
           impact.fillStyle(0xFFFFFF, 0.4);
-          impact.fillCircle(endX, endY, 3 * meleeScale);
+          impact.fillCircle(endX, endY, 3 * SPRITE_SCALE * meleeScale);
 
           this.scene.tweens.add({
             targets: impact,
@@ -75,9 +76,9 @@ export class IronFists extends BaseWeapon {
           impactGlow.setBlendMode(Phaser.BlendModes.ADD);
           impactGlow.setDepth(DEPTHS.EFFECTS - 1);
           impactGlow.fillStyle(0xFFDD00, 0.3);
-          impactGlow.fillCircle(endX, endY, 12 * meleeScale);
+          impactGlow.fillCircle(endX, endY, 8 * SPRITE_SCALE * meleeScale);
           impactGlow.fillStyle(0xFFFF88, 0.2);
-          impactGlow.fillCircle(endX, endY, 6 * meleeScale);
+          impactGlow.fillCircle(endX, endY, 4 * SPRITE_SCALE * meleeScale);
 
           this.scene.tweens.add({
             targets: impactGlow,

@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
 import { EnhancementCard as CardData } from '../types';
-import { EnhancementCategory, Rarity, JobId } from '../constants';
+import { EnhancementCategory, Rarity, JobId, WeaponId } from '../constants';
 import { RARITY_COLORS, RARITY_NAMES } from '../systems/EnhancementManager';
 import { JOB_DEFS } from '../data/jobs';
+import { WEAPON_DEFS } from '../data/weapons';
 
 const CATEGORY_COLORS: Record<string, string> = {
   [EnhancementCategory.JOB_SELECTION]: '#FFD700',
-  [EnhancementCategory.JOB_DOUBLE_DOWN]: '#FF4488',
+  [EnhancementCategory.JOB_AWAKENING]: '#FF4488',
   [EnhancementCategory.JOB_SKILL]: '#44FF88',
   [EnhancementCategory.NEW_WEAPON]: '#FFAA44',
   [EnhancementCategory.WEAPON_UPGRADE]: '#44AAFF',
@@ -27,14 +28,14 @@ export class EnhancementCardUI {
     this.card = card;
     this.container = scene.add.container(x, y);
 
-    const w = 130, h = 165;
+    const w = 260, h = 330;
     const rarityColor = RARITY_COLORS[card.rarity] ?? '#AAAAAA';
     const catColor = CATEGORY_COLORS[card.category] ?? '#FFFFFF';
     const isMalus = card.category === EnhancementCategory.MALUS_TRADE;
-    const isDoubleDown = card.category === EnhancementCategory.JOB_DOUBLE_DOWN;
+    const isAwakening = card.category === EnhancementCategory.JOB_AWAKENING;
 
     // Background with rarity-tinted color
-    const bgTint = isDoubleDown ? 0x2E1828
+    const bgTint = isAwakening ? 0x2E1828
       : isMalus ? 0x2E1818
       : card.rarity === Rarity.LEGENDARY ? 0x2A2218
       : card.rarity === Rarity.EPIC ? 0x1E1A2E
@@ -42,159 +43,194 @@ export class EnhancementCardUI {
       : 0x1A1A2E;
     this.bg = scene.add.rectangle(0, 0, w, h, bgTint);
 
-    const borderColor = isDoubleDown ? 0xFF4488
+    const borderColor = isAwakening ? 0xFF4488
       : isMalus ? 0xFF4444
       : Phaser.Display.Color.HexStringToColor(rarityColor).color;
-    this.bg.setStrokeStyle(isDoubleDown ? 3 : 2, borderColor);
+    this.bg.setStrokeStyle(isAwakening ? 6 : 3, borderColor);
     this.container.add(this.bg);
 
     // Selection border
-    this.border = scene.add.rectangle(0, 0, w + 4, h + 4);
-    this.border.setStrokeStyle(2, 0xFFFFFF);
+    this.border = scene.add.rectangle(0, 0, w + 8, h + 8);
+    this.border.setStrokeStyle(3, 0xFFFFFF);
     this.border.setAlpha(0);
     this.container.add(this.border);
 
     // Rarity label
-    const rarityLabel = scene.add.text(0, -72, RARITY_NAMES[card.rarity] ?? '', {
-      fontSize: '10px',
-      fontFamily: 'monospace',
+    const rarityLabel = scene.add.text(0, -144, RARITY_NAMES[card.rarity] ?? '', {
+      fontSize: '20px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: rarityColor,
       fontStyle: 'bold',
       stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5).setResolution(8);
+      strokeThickness: 4,
+    }).setOrigin(0.5).setResolution(16);
     this.container.add(rarityLabel);
 
     // Category-specific rendering
-    if (isDoubleDown) {
-      // Double Down card: special golden/pink styling
-      const catLabel = scene.add.text(0, -58, 'DOUBLE DOWN', {
-        fontSize: '11px',
-        fontFamily: 'monospace',
+    if (isAwakening) {
+      // Awakening card: special golden/pink styling
+      const catLabel = scene.add.text(0, -116, 'AWAKENING', {
+        fontSize: '22px',
+        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
         color: '#FF4488',
         fontStyle: 'bold',
         stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5).setResolution(8);
+        strokeThickness: 4,
+      }).setOrigin(0.5).setResolution(16);
       this.container.add(catLabel);
     } else if (isMalus) {
       // Malus card: skull warning
-      const catLabel = scene.add.text(0, -58, 'TRADE-OFF', {
-        fontSize: '11px',
-        fontFamily: 'monospace',
+      const catLabel = scene.add.text(0, -116, 'TRADE-OFF', {
+        fontSize: '22px',
+        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
         color: '#FF4444',
         fontStyle: 'bold',
         stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5).setResolution(8);
+        strokeThickness: 4,
+      }).setOrigin(0.5).setResolution(16);
       this.container.add(catLabel);
-    } else if (card.category === EnhancementCategory.JOB_SKILL && card.jobId) {
+    } else if ((card.category === EnhancementCategory.JOB_SKILL || card.category === EnhancementCategory.MASTERY_SKILL) && card.jobId) {
       const jobDef = JOB_DEFS[card.jobId];
       if (jobDef) {
         if (scene.textures.exists(jobDef.icon)) {
-          const jobIcon = scene.add.image(-30, -58, jobDef.icon);
+          const jobIcon = scene.add.image(-60, -116, jobDef.icon);
           jobIcon.setScale(0.8);
           this.container.add(jobIcon);
         }
-        const jobBadge = scene.add.text(0, -58, jobDef.name.toUpperCase(), {
-          fontSize: '10px',
-          fontFamily: 'monospace',
+        const labelPrefix = card.category === EnhancementCategory.MASTERY_SKILL ? '[M] ' : '';
+        const jobBadge = scene.add.text(0, -116, `${labelPrefix}${jobDef.name.toUpperCase()}`, {
+          fontSize: '20px',
+          fontFamily: '"Trebuchet MS", Verdana, sans-serif',
           color: jobDef.color,
           fontStyle: 'bold',
           stroke: '#000000',
-          strokeThickness: 2,
-        }).setOrigin(0.5).setResolution(8);
+          strokeThickness: 4,
+        }).setOrigin(0.5).setResolution(16);
         this.container.add(jobBadge);
       }
     } else if (card.category === EnhancementCategory.JOB_SELECTION && card.jobId) {
       const jobDef = JOB_DEFS[card.jobId];
       if (jobDef) {
-        this.bg.setStrokeStyle(3, Phaser.Display.Color.HexStringToColor(jobDef.color).color);
-        const catLabel = scene.add.text(0, -58, 'NEW JOB', {
-          fontSize: '11px',
-          fontFamily: 'monospace',
+        this.bg.setStrokeStyle(6, Phaser.Display.Color.HexStringToColor(jobDef.color).color);
+        const catLabel = scene.add.text(0, -116, 'NEW JOB', {
+          fontSize: '22px',
+          fontFamily: '"Trebuchet MS", Verdana, sans-serif',
           color: '#FFD700',
           fontStyle: 'bold',
           stroke: '#000000',
-          strokeThickness: 2,
-        }).setOrigin(0.5).setResolution(8);
+          strokeThickness: 4,
+        }).setOrigin(0.5).setResolution(16);
         this.container.add(catLabel);
       }
     } else {
-      const catLabel = scene.add.text(0, -58, this.getCategoryLabel(card.category), {
-        fontSize: '11px',
-        fontFamily: 'monospace',
+      const catLabel = scene.add.text(0, -116, this.getCategoryLabel(card.category), {
+        fontSize: '22px',
+        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
         color: catColor,
         stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5).setResolution(8);
+        strokeThickness: 4,
+      }).setOrigin(0.5).setResolution(16);
       this.container.add(catLabel);
     }
 
     // Icon (if texture exists)
     if (card.icon && scene.textures.exists(card.icon)) {
-      const icon = scene.add.image(0, -35, card.icon);
+      const icon = scene.add.image(0, -70, card.icon);
       icon.setScale(2);
       this.container.add(icon);
     }
 
     // Title
-    const title = scene.add.text(0, -14, card.title, {
-      fontSize: '12px',
-      fontFamily: 'monospace',
+    const title = scene.add.text(0, -28, card.title, {
+      fontSize: '24px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#FFFFFF',
       fontStyle: 'bold',
-      wordWrap: { width: w - 14 },
+      wordWrap: { width: w - 28 },
       align: 'center',
       stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5).setResolution(8);
+      strokeThickness: 4,
+    }).setOrigin(0.5).setResolution(16);
     this.container.add(title);
 
-    // Description - special handling for malus cards (green bonus / red malus)
-    if (isMalus && card.bonusText && card.malusText) {
-      const bonusLabel = scene.add.text(0, 10, card.bonusText, {
-        fontSize: '10px',
-        fontFamily: 'monospace',
+    // Description - special handling per category
+    if (card.bonusText && card.malusText) {
+      // Any card with bonus + malus split (trade-offs, Titan's Grip, etc.)
+      const bonusLabel = scene.add.text(0, 20, card.bonusText, {
+        fontSize: '16px',
+        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
         color: '#44FF44',
-        wordWrap: { width: w - 14 },
+        wordWrap: { width: w - 28 },
         align: 'center',
         stroke: '#000000',
-        strokeThickness: 1,
-      }).setOrigin(0.5).setResolution(8);
+        strokeThickness: 2,
+      }).setOrigin(0.5).setResolution(16);
       this.container.add(bonusLabel);
 
-      const malusLabel = scene.add.text(0, 30, card.malusText, {
-        fontSize: '10px',
-        fontFamily: 'monospace',
+      const malusLabel = scene.add.text(0, 56, card.malusText, {
+        fontSize: '16px',
+        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
         color: '#FF4444',
-        wordWrap: { width: w - 14 },
+        wordWrap: { width: w - 28 },
         align: 'center',
         stroke: '#000000',
-        strokeThickness: 1,
-      }).setOrigin(0.5).setResolution(8);
+        strokeThickness: 2,
+      }).setOrigin(0.5).setResolution(16);
       this.container.add(malusLabel);
+    } else if (card.category === EnhancementCategory.JOB_SELECTION && card.jobId) {
+      // Job card: show description, weapon, and first skill
+      const jobDef = JOB_DEFS[card.jobId];
+      if (jobDef) {
+        const desc = scene.add.text(0, 14, jobDef.description, {
+          fontSize: '14px',
+          fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+          color: '#BBBBBB',
+          wordWrap: { width: w - 24 },
+          align: 'center',
+          stroke: '#000000',
+          strokeThickness: 2,
+        }).setOrigin(0.5, 0).setResolution(16);
+        this.container.add(desc);
+
+        // Find affinity weapon
+        let weaponName = '';
+        for (const wId of Object.values(WeaponId)) {
+          const wDef = WEAPON_DEFS[wId];
+          if (wDef.affinityJob === card.jobId) { weaponName = wDef.name; break; }
+        }
+
+        const weaponLabel = scene.add.text(0, 70, `Weapon: ${weaponName}`, {
+          fontSize: '14px',
+          fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+          color: '#FFAA44',
+          wordWrap: { width: w - 24 },
+          align: 'center',
+          stroke: '#000000',
+          strokeThickness: 2,
+        }).setOrigin(0.5, 0).setResolution(16);
+        this.container.add(weaponLabel);
+      }
     } else {
-      const desc = scene.add.text(0, 16, card.description, {
-        fontSize: '10px',
-        fontFamily: 'monospace',
+      const desc = scene.add.text(0, 32, card.description, {
+        fontSize: '16px',
+        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
         color: '#BBBBBB',
-        wordWrap: { width: w - 14 },
+        wordWrap: { width: w - 28 },
         align: 'center',
         stroke: '#000000',
-        strokeThickness: 1,
-      }).setOrigin(0.5).setResolution(8);
+        strokeThickness: 2,
+      }).setOrigin(0.5).setResolution(16);
       this.container.add(desc);
     }
 
     // Key hint
-    const keyHint = scene.add.text(0, 65, `[${index + 1}]`, {
-      fontSize: '14px',
-      fontFamily: 'monospace',
+    const keyHint = scene.add.text(0, 130, `[${index + 1}]`, {
+      fontSize: '28px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#888888',
       stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5).setResolution(8);
+      strokeThickness: 4,
+    }).setOrigin(0.5).setResolution(16);
     this.container.add(keyHint);
 
     // Interactive
@@ -215,7 +251,7 @@ export class EnhancementCardUI {
   private getCategoryLabel(cat: string): string {
     switch (cat) {
       case EnhancementCategory.JOB_SELECTION: return 'NEW JOB';
-      case EnhancementCategory.JOB_DOUBLE_DOWN: return 'DOUBLE DOWN';
+      case EnhancementCategory.JOB_AWAKENING: return 'AWAKENING';
       case EnhancementCategory.JOB_SKILL: return 'JOB SKILL';
       case EnhancementCategory.NEW_WEAPON: return 'NEW WEAPON';
       case EnhancementCategory.WEAPON_UPGRADE: return 'UPGRADE';
@@ -224,6 +260,9 @@ export class EnhancementCardUI {
       case EnhancementCategory.APPLY_ELEMENT: return 'ELEMENT';
       case EnhancementCategory.ELEMENT_UPGRADE: return 'ELEM. UP';
       case EnhancementCategory.MALUS_TRADE: return 'TRADE-OFF';
+      case EnhancementCategory.MASTERY_SKILL: return 'MASTERY';
+      case EnhancementCategory.SYNERGY_UPGRADE: return 'SYNERGY';
+      case EnhancementCategory.STAT_BOOST: return 'STAT';
       default: return '';
     }
   }

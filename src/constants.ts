@@ -1,23 +1,28 @@
 // ─── Display ────────────────────────────────────────────────────────
-export const GAME_WIDTH = 480;
-export const GAME_HEIGHT = 320;
-export const GAME_ZOOM = 2;
+export const GAME_WIDTH = 1280;
+export const GAME_HEIGHT = 720;
+export const GAME_ZOOM = 1;
+
+// ─── Sprite Scale ───────────────────────────────────────────────────
+// Change this ONE value to scale all sprites, hitboxes, radii, and ranges.
+// 1 = original pixel size, 2 = FFBE/FFT style (32x40 player), 3 = even bigger
+export const SPRITE_SCALE = 2;
 
 // ─── World ──────────────────────────────────────────────────────────
 export const WORLD_WIDTH = 3000;
 export const WORLD_HEIGHT = 3000;
 
 // ─── Player ─────────────────────────────────────────────────────────
-export const PLAYER_SPEED = 90;
+export const PLAYER_SPEED = 90; // Not scaled - movement speed is independent of sprite size
 export const PLAYER_MAX_HP = 50;
-export const PLAYER_PICKUP_RADIUS = 48;
+export const PLAYER_PICKUP_RADIUS = 48 * SPRITE_SCALE;
 export const PLAYER_INVULN_MS = 500;
 export const PLAYER_REGEN_RATE = 0; // HP/s, boosted by enhancements
 export const PLAYER_MAX_WEAPONS = 6;
-export const PLAYER_MAX_JOBS = 4;
+export const PLAYER_MAX_JOBS = 3;
 
 // ─── Spawning ───────────────────────────────────────────────────────
-export const SPAWN_RING_RADIUS = 280;
+export const SPAWN_RING_RADIUS = 280 * SPRITE_SCALE;
 export const MAX_ENEMIES = 250;
 export const MAX_PROJECTILES = 200;
 
@@ -26,7 +31,7 @@ export const WAVE_COUNT = 20;
 export const INTER_WAVE_PAUSE = 1000;
 
 // ─── Combat ─────────────────────────────────────────────────────────
-export const KNOCKBACK_VELOCITY = 180;
+export const KNOCKBACK_VELOCITY = 180 * SPRITE_SCALE;
 export const KNOCKBACK_DURATION = 150;
 
 // ─── XP Gems ────────────────────────────────────────────────────────
@@ -50,7 +55,7 @@ export enum SkillFamily {
 }
 
 // ─── Jobs ───────────────────────────────────────────────────────────
-export const JOB_SELECTION_LEVELS = [2, 6, 11, 17];
+export const JOB_SELECTION_LEVELS = [5, 12, 20, 28];
 
 export enum JobId {
   PALADIN = 'paladin',
@@ -82,7 +87,7 @@ export enum JobSkillId {
   // Dragoon
   JUMP = 'jump',
   LANCE_MASTERY = 'lance_mastery',
-  HIGHWIND = 'highwind',
+  DRAGON_DIVE = 'dragon_dive',
   // Ninja
   SHADOW_STEP = 'shadow_step',
   DUAL_STRIKE = 'dual_strike',
@@ -90,19 +95,19 @@ export enum JobSkillId {
   // Monk
   IRON_FIST = 'iron_fist',
   CHI_BURST = 'chi_burst',
-  COUNTER = 'counter',
+  HADOUKEN = 'hadouken',
   // Berserker
-  RAGE = 'rage',
+  WAR_CRY = 'war_cry',
   FRENZY = 'frenzy',
-  BLOODLUST = 'bloodlust',
+  RAMPAGE = 'rampage',
   // Ranger
   MULTI_SHOT = 'multi_shot',
-  EAGLE_EYE = 'eagle_eye',
+  RAIN_OF_ARROWS = 'rain_of_arrows',
   BARRAGE = 'barrage',
   // Bard
   WAR_SONG = 'war_song',
   SWIFT_SONG = 'swift_song',
-  REQUIEM = 'requiem',
+  CRESCENDO = 'crescendo',
   // Black Mage
   FIRE = 'fire',
   BLIZZARD = 'blizzard',
@@ -129,8 +134,57 @@ export enum JobSkillId {
   QUAKE = 'quake',
   // Samurai
   BUSHIDO = 'bushido',
-  IAI_STRIKE = 'iai_strike',
+  BLADE_STORM = 'blade_storm',
   ZANTETSUKEN = 'zantetsuken',
+}
+
+export enum MasterySkillId {
+  // Paladin
+  HALLOWED_GROUND = 'hallowed_ground',
+  CLEMENCY = 'clemency',
+  // Dark Knight
+  SOUL_EATER = 'soul_eater',
+  LIVING_DEAD = 'living_dead',
+  // Dragoon
+  STARDIVER = 'stardiver',
+  NASTROND = 'nastrond',
+  // Ninja
+  KATON = 'katon',
+  RAITON = 'raiton',
+  DOTON = 'doton',
+  // Monk
+  FORBIDDEN_CHAKRA = 'forbidden_chakra',
+  PHANTOM_RUSH = 'phantom_rush',
+  // Berserker
+  INNER_BEAST = 'inner_beast',
+  FELL_CLEAVE = 'fell_cleave',
+  // Ranger
+  SIDEWINDER = 'sidewinder',
+  EMPYREAL_ARROW = 'empyreal_arrow',
+  // Bard
+  REQUIEM = 'requiem',
+  FINALE = 'finale',
+  // Black Mage
+  FLARE = 'flare',
+  FREEZE = 'freeze',
+  // White Mage
+  BENEDICTION = 'benediction',
+  ASYLUM = 'asylum',
+  // Summoner
+  PHOENIX = 'phoenix',
+  DREADWYRM = 'dreadwyrm',
+  // Time Mage
+  TIME_STOP = 'time_stop',
+  COMET = 'comet',
+  // Alchemist
+  PHILOSOPHER_STONE = 'philosopher_stone',
+  MEGA_POTION = 'mega_potion',
+  // Geomancer
+  ERUPTION = 'eruption',
+  LANDSLIDE = 'landslide',
+  // Samurai
+  MIDARE_SETSUGEKKA = 'midare_setsugekka',
+  HISSATSU = 'hissatsu',
 }
 
 // ─── Enums ──────────────────────────────────────────────────────────
@@ -213,7 +267,8 @@ export enum ElementId {
 export enum EnhancementCategory {
   JOB_SELECTION = 'job_selection',
   JOB_SKILL = 'job_skill',
-  JOB_DOUBLE_DOWN = 'job_double_down',
+  JOB_AWAKENING = 'job_awakening',
+  MASTERY_SKILL = 'mastery_skill',
   NEW_WEAPON = 'new_weapon',
   WEAPON_UPGRADE = 'weapon_upgrade',
   NEW_ENCHANT = 'new_enchant',
@@ -223,6 +278,7 @@ export enum EnhancementCategory {
   FAMILY_BOOST = 'family_boost',
   STAT_BOOST = 'stat_boost',
   MALUS_TRADE = 'malus_trade',
+  SYNERGY_UPGRADE = 'synergy_upgrade',
 }
 
 export enum Rarity {
@@ -241,6 +297,7 @@ export const SCENES = {
   HUD: 'HUDScene',
   LEVEL_UP: 'LevelUpScene',
   PAUSE: 'PauseScene',
+  PERKS: 'PerksScene',
   GAME_OVER: 'GameOverScene',
 } as const;
 
@@ -274,6 +331,8 @@ export const EVENTS = {
   JOB_CHOSEN: 'job-chosen',
   JOB_SKILL_UPGRADED: 'job-skill-upgraded',
   SWARM_INCOMING: 'swarm-incoming',
+  RESET_WEAPON_COOLDOWNS: 'reset-weapon-cooldowns',
+  SYNERGY_SKILL_UPGRADE: 'synergy-skill-upgrade',
 } as const;
 
 // ─── Depths ─────────────────────────────────────────────────────────
@@ -288,6 +347,6 @@ export const DEPTHS = {
 } as const;
 
 // ─── Difficulty Scaling ─────────────────────────────────────────────
-export const SCALE_HP_PER_WAVE = 0.12;
+export const SCALE_HP_PER_WAVE = 0.22;
 export const SCALE_SPEED_PER_WAVE = 0.03;
-export const SCALE_DAMAGE_PER_WAVE = 0.08;
+export const SCALE_DAMAGE_PER_WAVE = 0.12;

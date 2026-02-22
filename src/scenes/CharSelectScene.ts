@@ -6,10 +6,10 @@ import { WEAPON_DEFS } from '../data/weapons';
 const ALL_JOBS: JobId[] = Object.values(JobId);
 const COLS = 5;
 const ROWS = 3;
-const CARD_W = 84;
-const CARD_H = 82;
-const GAP_X = 8;
-const GAP_Y = 6;
+const CARD_W = 168;
+const CARD_H = 164;
+const GAP_X = 16;
+const GAP_Y = 12;
 
 // Map each job to its player texture key
 function getPlayerTexture(jobId: JobId): string {
@@ -31,7 +31,6 @@ export class CharSelectScene extends Phaser.Scene {
   private inputEnabled = true;
   private infoText!: Phaser.GameObjects.Text;
   private weaponText!: Phaser.GameObjects.Text;
-  private skillText!: Phaser.GameObjects.Text;
 
   constructor() {
     super(SCENES.CHAR_SELECT);
@@ -44,19 +43,19 @@ export class CharSelectScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#080818');
 
     // Title
-    this.add.text(GAME_WIDTH / 2, 8, 'CHOOSE YOUR CLASS', {
-      fontSize: '14px',
-      fontFamily: 'monospace',
+    this.add.text(GAME_WIDTH / 2, 16, 'CHOOSE YOUR CLASS', {
+      fontSize: '28px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#FFD700',
       fontStyle: 'bold',
       stroke: '#000000',
-      strokeThickness: 4,
-    }).setOrigin(0.5, 0).setResolution(8);
+      strokeThickness: 8,
+    }).setOrigin(0.5, 0).setResolution(16);
 
     // Grid layout
     const totalW = COLS * CARD_W + (COLS - 1) * GAP_X;
     const startX = (GAME_WIDTH - totalW) / 2;
-    const startY = 28;
+    const startY = 56;
 
     for (let i = 0; i < ALL_JOBS.length; i++) {
       const jobId = ALL_JOBS[i];
@@ -70,14 +69,14 @@ export class CharSelectScene extends Phaser.Scene {
       const bg = this.add.graphics();
       const jobColor = Phaser.Display.Color.HexStringToColor(job.color).color;
       bg.fillStyle(0x111133, 0.85);
-      bg.fillRoundedRect(cx - CARD_W / 2, cy - CARD_H / 2, CARD_W, CARD_H, 3);
-      bg.lineStyle(2, jobColor, 0.6);
-      bg.strokeRoundedRect(cx - CARD_W / 2, cy - CARD_H / 2, CARD_W, CARD_H, 3);
+      bg.fillRoundedRect(cx - CARD_W / 2, cy - CARD_H / 2, CARD_W, CARD_H, 6);
+      bg.lineStyle(3, jobColor, 0.6);
+      bg.strokeRoundedRect(cx - CARD_W / 2, cy - CARD_H / 2, CARD_W, CARD_H, 6);
 
       // Player sprite preview (animated)
       const textureKey = getPlayerTexture(jobId);
       const hasTexture = this.textures.exists(textureKey);
-      const sprite = this.add.sprite(cx, cy - 12, hasTexture ? textureKey : 'player', 0);
+      const sprite = this.add.sprite(cx, cy - 24, hasTexture ? textureKey : 'player', 0);
       sprite.setScale(2);
 
       // Animate walk
@@ -92,24 +91,24 @@ export class CharSelectScene extends Phaser.Scene {
       });
 
       // Job name
-      this.add.text(cx, cy + 22, job.name, {
-        fontSize: '9px',
-        fontFamily: 'monospace',
+      this.add.text(cx, cy + 44, job.name, {
+        fontSize: '18px',
+        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
         color: job.color,
         fontStyle: 'bold',
         stroke: '#000000',
-        strokeThickness: 3,
-      }).setOrigin(0.5).setResolution(8);
+        strokeThickness: 6,
+      }).setOrigin(0.5).setResolution(16);
 
-      // First skill name (small)
-      const firstSkillName = job.skills[0] ? job.skills[0].replace(/_/g, ' ') : '';
-      this.add.text(cx, cy + 33, firstSkillName, {
-        fontSize: '7px',
-        fontFamily: 'monospace',
-        color: '#666688',
+      // Starting weapon name (small)
+      const weaponName = getAffinityWeaponName(jobId);
+      this.add.text(cx, cy + 66, weaponName, {
+        fontSize: '14px',
+        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+        color: '#FFAA44',
         stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5).setResolution(8);
+        strokeThickness: 4,
+      }).setOrigin(0.5).setResolution(16);
     }
 
     // Selection highlight
@@ -117,39 +116,32 @@ export class CharSelectScene extends Phaser.Scene {
     this.selectorGfx.setDepth(100);
 
     // Info bar at bottom
-    this.infoText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 36, '', {
-      fontSize: '10px',
-      fontFamily: 'monospace',
+    this.infoText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 72, '', {
+      fontSize: '20px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#AAAACC',
       stroke: '#000000',
-      strokeThickness: 3,
+      strokeThickness: 6,
       align: 'center',
-    }).setOrigin(0.5).setResolution(8);
+    }).setOrigin(0.5).setResolution(16);
 
-    this.weaponText = this.add.text(GAME_WIDTH / 2 - 100, GAME_HEIGHT - 22, '', {
-      fontSize: '9px',
-      fontFamily: 'monospace',
+    this.weaponText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 44, '', {
+      fontSize: '20px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#FFAA44',
+      fontStyle: 'bold',
       stroke: '#000000',
-      strokeThickness: 3,
-    }).setOrigin(0, 0.5).setResolution(8);
-
-    this.skillText = this.add.text(GAME_WIDTH / 2 + 100, GAME_HEIGHT - 22, '', {
-      fontSize: '9px',
-      fontFamily: 'monospace',
-      color: '#44AAFF',
-      stroke: '#000000',
-      strokeThickness: 3,
-    }).setOrigin(1, 0.5).setResolution(8);
+      strokeThickness: 6,
+    }).setOrigin(0.5).setResolution(16);
 
     // Controls hint
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 8, 'Arrows to select  |  ENTER to confirm', {
-      fontSize: '8px',
-      fontFamily: 'monospace',
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 16, 'Arrows to select  |  ENTER to confirm', {
+      fontSize: '16px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#333355',
       stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5).setResolution(8);
+      strokeThickness: 4,
+    }).setOrigin(0.5).setResolution(16);
 
     this.drawSelector();
     this.updateInfo();
@@ -193,7 +185,7 @@ export class CharSelectScene extends Phaser.Scene {
     this.selectorGfx.clear();
     const totalW = COLS * CARD_W + (COLS - 1) * GAP_X;
     const startX = (GAME_WIDTH - totalW) / 2;
-    const startY = 28;
+    const startY = 56;
 
     const col = this.selectedIndex % COLS;
     const row = Math.floor(this.selectedIndex / COLS);
@@ -201,17 +193,17 @@ export class CharSelectScene extends Phaser.Scene {
     const cy = startY + row * (CARD_H + GAP_Y) + CARD_H / 2;
 
     // Gold selector border
-    this.selectorGfx.lineStyle(2, 0xFFD700, 1);
+    this.selectorGfx.lineStyle(3, 0xFFD700, 1);
     this.selectorGfx.strokeRoundedRect(
-      cx - CARD_W / 2 - 2, cy - CARD_H / 2 - 2,
-      CARD_W + 4, CARD_H + 4, 5,
+      cx - CARD_W / 2 - 4, cy - CARD_H / 2 - 4,
+      CARD_W + 8, CARD_H + 8, 10,
     );
 
     // Subtle glow
     this.selectorGfx.lineStyle(1, 0xFFD700, 0.3);
     this.selectorGfx.strokeRoundedRect(
-      cx - CARD_W / 2 - 4, cy - CARD_H / 2 - 4,
-      CARD_W + 8, CARD_H + 8, 7,
+      cx - CARD_W / 2 - 8, cy - CARD_H / 2 - 8,
+      CARD_W + 16, CARD_H + 16, 14,
     );
   }
 
@@ -219,11 +211,7 @@ export class CharSelectScene extends Phaser.Scene {
     const jobId = ALL_JOBS[this.selectedIndex];
     const job = JOB_DEFS[jobId];
     this.infoText.setText(job.description);
-    this.weaponText.setText('Weapon: ' + getAffinityWeaponName(jobId));
-
-    const firstSkillId = job.skills[0];
-    const skillName = firstSkillId ? firstSkillId.replace(/_/g, ' ') : '';
-    this.skillText.setText('Skill: ' + skillName);
+    this.weaponText.setText('Starting Weapon: ' + getAffinityWeaponName(jobId));
   }
 
   private confirmSelection(): void {

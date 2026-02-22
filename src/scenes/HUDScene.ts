@@ -66,11 +66,11 @@ export class HUDScene extends Phaser.Scene {
     this.enhancements = new Map();
 
     const textStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontSize: '12px',
-      fontFamily: 'monospace',
+      fontSize: '24px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#FFFFFF',
       stroke: '#000000',
-      strokeThickness: 3,
+      strokeThickness: 6,
       fontStyle: 'bold',
     };
 
@@ -78,11 +78,11 @@ export class HUDScene extends Phaser.Scene {
     this.hpBar = this.add.graphics();
 
     // HP number
-    this.hpText = this.add.text(66, GAME_HEIGHT - 13, '', {
+    this.hpText = this.add.text(132, GAME_HEIGHT - 26, '', {
       ...textStyle,
-      fontSize: '10px',
+      fontSize: '20px',
       color: '#CCCCCC',
-    }).setResolution(8);
+    }).setResolution(16);
 
     // XP bar
     this.xpBar = this.add.graphics();
@@ -90,53 +90,53 @@ export class HUDScene extends Phaser.Scene {
     // XP text
     this.xpText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 5, '', {
       ...textStyle,
-      fontSize: '9px',
+      fontSize: '18px',
       color: '#88AAFF',
-    }).setOrigin(0.5).setResolution(8);
+    }).setOrigin(0.5).setResolution(16);
 
     // Level text
-    this.levelText = this.add.text(GAME_WIDTH / 2, 2, 'Lv 1', {
+    this.levelText = this.add.text(GAME_WIDTH / 2, 4, 'Lv 1', {
       ...textStyle,
-      fontSize: '13px',
+      fontSize: '26px',
       color: '#FFDD44',
-    }).setOrigin(0.5, 0).setResolution(8);
+    }).setOrigin(0.5, 0).setResolution(16);
 
     // Wave text
-    this.waveText = this.add.text(4, 2, 'Wave 0', {
+    this.waveText = this.add.text(8, 4, 'Wave 0', {
       ...textStyle,
-      fontSize: '13px',
+      fontSize: '26px',
       color: '#88CCFF',
-    }).setResolution(8);
+    }).setResolution(16);
 
     // Timer
-    this.timerText = this.add.text(GAME_WIDTH - 4, 2, '0:00', {
+    this.timerText = this.add.text(GAME_WIDTH - 8, 4, '0:00', {
       ...textStyle,
-      fontSize: '13px',
+      fontSize: '26px',
       color: '#CCCCCC',
-    }).setOrigin(1, 0).setResolution(8);
+    }).setOrigin(1, 0).setResolution(16);
 
     // Kill count
-    this.killText = this.add.text(GAME_WIDTH - 4, 16, 'Kills: 0', {
+    this.killText = this.add.text(GAME_WIDTH - 8, 32, 'Kills: 0', {
       ...textStyle,
-      fontSize: '10px',
+      fontSize: '20px',
       color: '#AAAAAA',
-    }).setOrigin(1, 0).setResolution(8);
+    }).setOrigin(1, 0).setResolution(16);
 
     // Stats display (bottom right)
-    this.statsText = this.add.text(GAME_WIDTH - 4, GAME_HEIGHT - 34, '', {
+    this.statsText = this.add.text(GAME_WIDTH - 8, GAME_HEIGHT - 68, '', {
       ...textStyle,
-      fontSize: '9px',
+      fontSize: '18px',
       color: '#88CC88',
       align: 'right',
-    }).setOrigin(1, 0).setResolution(8);
+    }).setOrigin(1, 0).setResolution(16);
 
     // Dash charges display (near the HP bar)
     this.dashGfx = this.add.graphics();
-    this.dashText = this.add.text(4, GAME_HEIGHT - 20, 'Dash', {
+    this.dashText = this.add.text(8, GAME_HEIGHT - 40, 'Dash', {
       ...textStyle,
-      fontSize: '9px',
+      fontSize: '18px',
       color: '#66CCFF',
-    }).setResolution(8);
+    }).setResolution(16);
     this.drawDashCharges();
 
     // Enhancement icon container (top-right, below kill count)
@@ -271,9 +271,9 @@ export class HUDScene extends Phaser.Scene {
     // Clear previous
     this.enhancementContainer.removeAll(true);
 
-    const iconSize = 14;
-    const gap = 3;
-    const labelH = 7;
+    const iconSize = 28;
+    const gap = 6;
+    const labelH = 14;
     const cellW = iconSize + gap;
     const cellH = iconSize + labelH + 2;
 
@@ -284,8 +284,8 @@ export class HUDScene extends Phaser.Scene {
     });
 
     // Layout from right to left, below kill count
-    const startX = GAME_WIDTH - 4;
-    const startY = 28;
+    const startX = GAME_WIDTH - 8;
+    const startY = 56;
 
     for (let i = 0; i < sorted.length; i++) {
       const enh = sorted[i];
@@ -304,12 +304,12 @@ export class HUDScene extends Phaser.Scene {
       // "x3" label below the icon
       if (enh.level > 1) {
         const lvText = this.add.text(x, y + iconSize / 2 + 1, `x${enh.level}`, {
-          fontSize: '9px',
-          fontFamily: 'monospace',
+          fontSize: '18px',
+          fontFamily: '"Trebuchet MS", Verdana, sans-serif',
           color: '#FFFFFF',
           stroke: '#000000',
-          strokeThickness: 2,
-        }).setOrigin(0.5, 0).setResolution(8);
+          strokeThickness: 4,
+        }).setOrigin(0.5, 0).setResolution(16);
         this.enhancementContainer.add(lvText);
       }
     }
@@ -323,7 +323,7 @@ export class HUDScene extends Phaser.Scene {
     // Draw family summary dots with counts (only if multiple families)
     const activeFamilies = Object.keys(familyCounts) as HUDFamily[];
     if (activeFamilies.length > 0) {
-      let dotX = GAME_WIDTH - 4;
+      let dotX = GAME_WIDTH - 8;
       const dotY = startY + cellH + 2;
       for (const fam of familyOrder) {
         const count = familyCounts[fam];
@@ -333,25 +333,25 @@ export class HUDScene extends Phaser.Scene {
         const colorHex = '#' + colorNum.toString(16).padStart(6, '0');
 
         const badge = this.add.text(dotX, dotY, `${count}`, {
-          fontSize: '9px',
-          fontFamily: 'monospace',
+          fontSize: '18px',
+          fontFamily: '"Trebuchet MS", Verdana, sans-serif',
           color: colorHex,
           stroke: '#000000',
-          strokeThickness: 2,
+          strokeThickness: 4,
           fontStyle: 'bold',
-        }).setOrigin(1, 0).setResolution(8);
+        }).setOrigin(1, 0).setResolution(16);
         this.enhancementContainer.add(badge);
-        dotX -= badge.width + 6;
+        dotX -= badge.width + 12;
       }
     }
   }
 
   private drawDashCharges(): void {
     this.dashGfx.clear();
-    const startX = 28;
-    const y = GAME_HEIGHT - 18;
-    const circleRadius = 3;
-    const gap = 9;
+    const startX = 56;
+    const y = GAME_HEIGHT - 36;
+    const circleRadius = 6;
+    const gap = 18;
 
     for (let i = 0; i < this.maxDashCharges; i++) {
       const cx = startX + i * gap;
@@ -369,9 +369,9 @@ export class HUDScene extends Phaser.Scene {
 
   private drawHP(): void {
     this.hpBar.clear();
-    const barWidth = 60;
-    const barHeight = 5;
-    const x = 4, y = GAME_HEIGHT - 10;
+    const barWidth = 120;
+    const barHeight = 10;
+    const x = 8, y = GAME_HEIGHT - 20;
 
     // Background
     this.hpBar.fillStyle(0x333333);
@@ -384,7 +384,7 @@ export class HUDScene extends Phaser.Scene {
     this.hpBar.fillRect(x, y, barWidth * ratio, barHeight);
 
     // Border
-    this.hpBar.lineStyle(1, 0x666666);
+    this.hpBar.lineStyle(2, 0x666666);
     this.hpBar.strokeRect(x, y, barWidth, barHeight);
 
     // HP text
@@ -393,9 +393,9 @@ export class HUDScene extends Phaser.Scene {
 
   private drawXP(): void {
     this.xpBar.clear();
-    const barWidth = GAME_WIDTH - 8;
-    const barHeight = 4;
-    const x = 4, y = GAME_HEIGHT - 4;
+    const barWidth = GAME_WIDTH - 16;
+    const barHeight = 8;
+    const x = 8, y = GAME_HEIGHT - 8;
 
     // Background
     this.xpBar.fillStyle(0x222233);

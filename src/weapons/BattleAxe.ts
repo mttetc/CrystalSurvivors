@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WeaponId, DEPTHS, EVENTS } from '../constants';
+import { WeaponId, DEPTHS, EVENTS, SPRITE_SCALE } from '../constants';
 import { BaseWeapon } from './BaseWeapon';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -21,7 +21,7 @@ export class BattleAxe extends BaseWeapon {
     const enchant = this.getEnchant();
     const swingCount = stats.count ?? 1;
 
-    const target = this.findNearestEnemy(enemies, hitRadius + 20);
+    const target = this.findNearestEnemy(enemies, hitRadius + 20 * SPRITE_SCALE);
     let baseAngle: number;
     if (target) {
       baseAngle = Math.atan2(target.y - this.player.y, target.x - this.player.x);
@@ -36,8 +36,10 @@ export class BattleAxe extends BaseWeapon {
       const endAngle = baseAngle + swingOffset + 0.6;
       const arcSpan = endAngle - startAngle;
 
+      const sp = this.getSpawnPoint(baseAngle + swingOffset);
+
       // Heavy axe swinging through wide arc
-      const axe = this.scene.add.image(this.player.x, this.player.y, 'weapon_axe');
+      const axe = this.scene.add.image(sp.x, sp.y, 'weapon_axe');
       axe.setOrigin(0, 0.5);
       axe.setRotation(startAngle);
       axe.setScale(2 * meleeScale);
@@ -62,10 +64,10 @@ export class BattleAxe extends BaseWeapon {
       const trail = this.scene.add.graphics();
       trail.setDepth(DEPTHS.EFFECTS - 1);
       trail.fillStyle(0xFF4400, 0.35);
-      trail.slice(this.player.x, this.player.y, visualRadius, startAngle, endAngle, false);
+      trail.slice(sp.x, sp.y, visualRadius, startAngle, endAngle, false);
       trail.fillPath();
       trail.fillStyle(0xFF8844, 0.15);
-      trail.slice(this.player.x, this.player.y, visualRadius * 0.5, startAngle, endAngle, false);
+      trail.slice(sp.x, sp.y, visualRadius * 0.5, startAngle, endAngle, false);
       trail.fillPath();
 
       this.scene.tweens.add({
@@ -81,10 +83,10 @@ export class BattleAxe extends BaseWeapon {
       trailGlow.setBlendMode(Phaser.BlendModes.ADD);
       trailGlow.setDepth(DEPTHS.EFFECTS - 2);
       trailGlow.fillStyle(0xFF4400, 0.25);
-      trailGlow.slice(this.player.x, this.player.y, visualRadius * 1.1, startAngle, endAngle, false);
+      trailGlow.slice(sp.x, sp.y, visualRadius * 0.95, startAngle, endAngle, false);
       trailGlow.fillPath();
       trailGlow.fillStyle(0xFF8844, 0.15);
-      trailGlow.slice(this.player.x, this.player.y, visualRadius * 0.5, startAngle, endAngle, false);
+      trailGlow.slice(sp.x, sp.y, visualRadius * 0.5, startAngle, endAngle, false);
       trailGlow.fillPath();
 
       this.scene.tweens.add({

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WeaponId, DEPTHS, EVENTS, KNOCKBACK_VELOCITY } from '../constants';
+import { WeaponId, DEPTHS, EVENTS, KNOCKBACK_VELOCITY, SPRITE_SCALE } from '../constants';
 import { BaseWeapon } from './BaseWeapon';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -20,7 +20,7 @@ export class SacredShield extends BaseWeapon {
     const enchant = this.getEnchant();
     const bashCount = stats.count ?? 1;
 
-    const target = this.findNearestEnemy(enemies, hitRadius + 20);
+    const target = this.findNearestEnemy(enemies, hitRadius + 20 * SPRITE_SCALE);
     let baseAngle: number;
     if (target) {
       baseAngle = Math.atan2(target.y - this.player.y, target.x - this.player.x);
@@ -62,7 +62,7 @@ export class SacredShield extends BaseWeapon {
             spark.setDepth(DEPTHS.EFFECTS + 1);
             spark.setScale(0.8);
             const spreadAngle = bashAngle + (Math.random() - 0.5) * 1.2;
-            const spreadDist = 8 + Math.random() * 12;
+            const spreadDist = (8 + Math.random() * 12) * SPRITE_SCALE;
 
             this.scene.tweens.add({
               targets: spark,
@@ -82,9 +82,9 @@ export class SacredShield extends BaseWeapon {
           impactGlow.setBlendMode(Phaser.BlendModes.ADD);
           impactGlow.setDepth(DEPTHS.EFFECTS - 1);
           impactGlow.fillStyle(0xFFDD00, 0.35);
-          impactGlow.fillCircle(endX, endY, 14 * meleeScale);
+          impactGlow.fillCircle(endX, endY, 9 * SPRITE_SCALE * meleeScale);
           impactGlow.fillStyle(0xFFFFFF, 0.2);
-          impactGlow.fillCircle(endX, endY, 7 * meleeScale);
+          impactGlow.fillCircle(endX, endY, 5 * SPRITE_SCALE * meleeScale);
 
           this.scene.tweens.add({
             targets: impactGlow,

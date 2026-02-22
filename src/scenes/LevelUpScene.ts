@@ -28,23 +28,23 @@ export class LevelUpScene extends Phaser.Scene {
     // Title
     const titleText = isJobSelection ? 'CHOOSE YOUR JOB' : isChest ? 'CHEST OPENED!' : 'LEVEL UP!';
     const titleColor = isJobSelection ? '#FFD700' : isChest ? (RARITY_COLORS[data?.chestRarity ?? Rarity.COMMON]) : '#FFDD44';
-    this.add.text(GAME_WIDTH / 2, 12, titleText, {
-      fontSize: isJobSelection ? '18px' : '16px',
-      fontFamily: 'monospace',
+    this.add.text(GAME_WIDTH / 2, 24, titleText, {
+      fontSize: isJobSelection ? '36px' : '32px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: titleColor,
       fontStyle: 'bold',
       stroke: '#000000',
-      strokeThickness: 4,
-    }).setOrigin(0.5).setResolution(8);
+      strokeThickness: 8,
+    }).setOrigin(0.5).setResolution(16);
 
     const subtitleText = isJobSelection ? 'Select a job to specialize in' : 'Choose an Enhancement';
-    this.add.text(GAME_WIDTH / 2, 30, subtitleText, {
-      fontSize: '11px',
-      fontFamily: 'monospace',
+    this.add.text(GAME_WIDTH / 2, 60, subtitleText, {
+      fontSize: '22px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#AAAAAA',
       stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5).setResolution(8);
+      strokeThickness: 4,
+    }).setOrigin(0.5).setResolution(16);
 
     // Get game scene's enhancement manager
     const gameScene = this.scene.get(SCENES.GAME) as any;
@@ -74,14 +74,14 @@ export class LevelUpScene extends Phaser.Scene {
     }
 
     // Create card UIs - bigger spacing for bigger cards
-    const cardSpacing = isJobSelection ? 155 : 145;
+    const cardSpacing = isJobSelection ? 310 : 290;
     const startX = GAME_WIDTH / 2 - (cardData.length - 1) * cardSpacing / 2;
 
     for (let i = 0; i < cardData.length; i++) {
       const card = new EnhancementCardUI(
         this,
         startX + i * cardSpacing,
-        GAME_HEIGHT / 2 + 18,
+        GAME_HEIGHT / 2 + 36,
         cardData[i],
         i,
       );

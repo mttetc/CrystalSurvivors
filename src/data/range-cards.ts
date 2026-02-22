@@ -4,55 +4,65 @@ export interface RangeCardDef {
   id: string;
   name: string;
   description: string;
-  apply: (mods: PlayerStatModifiers) => void;
+  descriptionFn?: (mult: number) => string;
+  malusFn?: (mult: number) => string;  // negative part shown in red
+  apply: (mods: PlayerStatModifiers, mult?: number) => void;
 }
+
+const pct = (base: number, mult: number) => `${Math.round(base * mult * 100)}%`;
 
 export const RANGE_CARD_DEFS: RangeCardDef[] = [
   {
     id: 'extended_reach',
     name: 'Extended Reach',
-    description: '+15% radius/range, +10% melee scale',
-    apply: (mods) => {
-      mods.rangeMultiplier *= 1.15;
-      mods.meleeScaleMultiplier *= 1.10;
+    description: '+10% radius/range, +8% melee scale',
+    descriptionFn: (m) => `+${pct(0.10, m)} radius/range, +${pct(0.08, m)} melee scale`,
+    apply: (mods, mult = 1) => {
+      mods.rangeMultiplier *= 1 + 0.10 * mult;
+      mods.meleeScaleMultiplier *= 1 + 0.08 * mult;
     },
   },
   {
     id: 'giant_weapons',
     name: 'Giant Weapons',
-    description: '+25% radius/range, +20% melee scale',
-    apply: (mods) => {
-      mods.rangeMultiplier *= 1.25;
-      mods.meleeScaleMultiplier *= 1.20;
+    description: '+15% radius/range, +12% melee scale',
+    descriptionFn: (m) => `+${pct(0.15, m)} radius/range, +${pct(0.12, m)} melee scale`,
+    apply: (mods, mult = 1) => {
+      mods.rangeMultiplier *= 1 + 0.15 * mult;
+      mods.meleeScaleMultiplier *= 1 + 0.12 * mult;
     },
   },
   {
     id: 'long_shot',
     name: 'Long Shot',
-    description: '+20% projectile range, +15% projectile scale',
-    apply: (mods) => {
-      mods.projectileRangeMultiplier += 0.20;
-      mods.rangeMultiplier *= 1.10;
-      mods.projectileScaleMultiplier *= 1.15;
+    description: '+12% projectile range, +10% proj scale',
+    descriptionFn: (m) => `+${pct(0.12, m)} proj range, +${pct(0.10, m)} proj scale`,
+    apply: (mods, mult = 1) => {
+      mods.projectileRangeMultiplier += 0.12 * mult;
+      mods.rangeMultiplier *= 1 + 0.06 * mult;
+      mods.projectileScaleMultiplier *= 1 + 0.10 * mult;
     },
   },
   {
     id: 'massive_impact',
     name: 'Massive Impact',
-    description: '+30% AoE radius, +25% AoE scale',
-    apply: (mods) => {
-      mods.rangeMultiplier *= 1.15;
-      mods.aoeScaleMultiplier *= 1.25;
+    description: '+10% AoE radius, +15% AoE scale',
+    descriptionFn: (m) => `+${pct(0.10, m)} AoE radius, +${pct(0.15, m)} AoE scale`,
+    apply: (mods, mult = 1) => {
+      mods.rangeMultiplier *= 1 + 0.10 * mult;
+      mods.aoeScaleMultiplier *= 1 + 0.15 * mult;
     },
   },
   {
     id: 'titans_grip',
     name: "Titan's Grip",
-    description: '+40% melee radius, +35% melee scale, -10% AS',
-    apply: (mods) => {
-      mods.rangeMultiplier *= 1.20;
-      mods.meleeScaleMultiplier *= 1.35;
-      mods.cooldownMultiplier *= 1.10;
+    description: '+12% melee radius, +18% melee scale',
+    descriptionFn: (m) => `+${pct(0.12, m)} melee radius, +${pct(0.18, m)} melee scale`,
+    malusFn: (m) => `-${pct(0.08, m)} attack speed`,
+    apply: (mods, mult = 1) => {
+      mods.rangeMultiplier *= 1 + 0.12 * mult;
+      mods.meleeScaleMultiplier *= 1 + 0.18 * mult;
+      mods.cooldownMultiplier *= 1 + 0.08 * mult;
     },
   },
 ];

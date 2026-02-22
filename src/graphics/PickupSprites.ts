@@ -1,3 +1,5 @@
+import { SPRITE_SCALE } from '../constants';
+
 export function generatePickupTextures(scene: Phaser.Scene): void {
   // XP Gem Small - green 5px diamond with sparkle
   createPickup(scene, 'gem_small', 5, 5, (ctx) => {
@@ -118,6 +120,33 @@ export function generatePickupTextures(scene: Phaser.Scene): void {
     ctx.fillRect(4, 7, 1, 1);
   });
 
+  // Magnet pickup - horseshoe magnet shape, red/blue
+  createPickup(scene, 'magnet_pickup', 9, 9, (ctx) => {
+    // Left arm (red)
+    ctx.fillStyle = '#CC2222';
+    ctx.fillRect(0, 0, 3, 7);
+    ctx.fillStyle = '#EE3333';
+    ctx.fillRect(0.5, 0.5, 2, 6);
+    // Right arm (blue)
+    ctx.fillStyle = '#2222CC';
+    ctx.fillRect(6, 0, 3, 7);
+    ctx.fillStyle = '#3333EE';
+    ctx.fillRect(6.5, 0.5, 2, 6);
+    // Bottom curve connecting arms (silver)
+    ctx.fillStyle = '#888899';
+    ctx.fillRect(0, 7, 9, 2);
+    ctx.fillStyle = '#AAAABB';
+    ctx.fillRect(1, 7, 7, 1);
+    // Tips (silver)
+    ctx.fillStyle = '#CCCCDD';
+    ctx.fillRect(0, 0, 3, 1);
+    ctx.fillRect(6, 0, 3, 1);
+    // Sparkle
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(1, 0, 1, 1);
+    ctx.fillRect(7, 0, 1, 1);
+  });
+
   // Health heart - red 9x8 with detailed shading
   createPickup(scene, 'health_heart', 9, 8, (ctx) => {
     // Dark outline / shadow layer
@@ -192,7 +221,9 @@ function createPickup(
   h: number,
   draw: (ctx: CanvasRenderingContext2D) => void,
 ): void {
-  const canvas = scene.textures.createCanvas(key, w, h)!;
-  draw(canvas.context);
+  const canvas = scene.textures.createCanvas(key, w * SPRITE_SCALE, h * SPRITE_SCALE)!;
+  const ctx = canvas.context;
+  ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
+  draw(ctx);
   canvas.refresh();
 }

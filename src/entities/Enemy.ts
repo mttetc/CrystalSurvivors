@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import {
   EnemyType, EnemyBehavior, DEPTHS, EVENTS, SPAWN_RING_RADIUS,
-  KNOCKBACK_VELOCITY, KNOCKBACK_DURATION,
+  KNOCKBACK_VELOCITY, KNOCKBACK_DURATION, SPRITE_SCALE,
 } from '../constants';
 import { EnemyDef } from '../types';
 import { ENEMY_DEFS } from '../data/enemies';
@@ -50,6 +50,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   public isPoisoned = false;
   public poisonTimer = 0;
 
+  // Fear (shadow arrow)
+  public fearSourceX = 0;
+  public fearSourceY = 0;
+  public fearedUntil = 0;
+
   // Visual effect timers
   private effectParticleTimer = 0;
 
@@ -92,8 +97,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.setScale(1);
     }
 
-    this.body!.setSize(this.def.size - 2, this.def.size - 2);
-    this.body!.setOffset(1, 1);
+    this.body!.setSize(this.def.size - SPRITE_SCALE, this.def.size - SPRITE_SCALE);
+    this.body!.setOffset(SPRITE_SCALE / 2, SPRITE_SCALE / 2);
 
     // Reset state
     this.behaviorTimer = 0;
@@ -116,6 +121,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.isBurning = false;
     this.isPoisoned = false;
     this.poisonTimer = 0;
+    this.fearedUntil = 0;
+    this.fearSourceX = 0;
+    this.fearSourceY = 0;
     this.effectParticleTimer = 0;
     this.animTimer = 0;
     this.animFrame = 0;
@@ -161,6 +169,25 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
         this.refreshStatusTint();
       }
       return;
+    }
+
+    // Fear (flee from source)
+    if (this.fearedUntil > 0) {
+      this.fearedUntil -= delta;
+      if (this.fearedUntil > 0) {
+        const dx = this.x - this.fearSourceX;
+        const dy = this.y - this.fearSourceY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 1) {
+          const fleeSpeed = this.scaledSpeed * 1.5;
+          this.setVelocity((dx / dist) * fleeSpeed, (dy / dist) * fleeSpeed);
+        }
+        this.setTint(0x660033);
+        return;
+      } else {
+        this.fearedUntil = 0;
+        this.refreshStatusTint();
+      }
     }
 
     // Slow
@@ -217,15 +244,15 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private updateStatusVisuals(delta: number): void {
     this.effectParticleTimer += delta;
 
-    // Spawn flame particles when burning
-    if (this.isBurning && this.effectParticleTimer > 200) {
+    // Spawn flame particles when burning (reduced frequency)
+    if (this.isBurning && this.effectParticleTimer > 500) {
       this.effectParticleTimer = 0;
       this.spawnFlameParticle();
       this.setTint(0xFF6644);
     }
     // Green tint + drip for poison
     else if (this.isPoisoned && !this.isBurning) {
-      if (this.effectParticleTimer > 300) {
+      if (this.effectParticleTimer > 700) {
         this.effectParticleTimer = 0;
         this.spawnPoisonDrip();
       }
@@ -282,7 +309,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   private refreshStatusTint(): void {
-    if (this.isBurning) {
+    if (this.fearedUntil > 0) {
+      this.setTint(0x660033);
+    } else if (this.isBurning) {
       this.setTint(0xFF6644);
     } else if (this.isFrozen) {
       this.setTint(0x88CCFF);
@@ -463,6 +492,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   public applyPoison(duration: number): void {
     this.isPoisoned = true;
     this.poisonTimer = duration;
+  }
+
+  public applyFear(sourceX: number, sourceY: number, duration: number): void {
+    this.fearSourceX = sourceX;
+    this.fearSourceY = sourceY;
+    this.fearedUntil = duration;
   }
 
   public applyBurn(damagePerSecond: number, duration: number): void {

@@ -6,6 +6,7 @@ export enum PickupType {
   GEM_MEDIUM = 'gem_medium',
   GEM_LARGE = 'gem_large',
   HEALTH = 'health_heart',
+  MAGNET = 'magnet_pickup',
 }
 
 const PICKUP_VALUES: Record<PickupType, number> = {
@@ -13,6 +14,7 @@ const PICKUP_VALUES: Record<PickupType, number> = {
   [PickupType.GEM_MEDIUM]: GEM_MEDIUM_XP,
   [PickupType.GEM_LARGE]: GEM_LARGE_XP,
   [PickupType.HEALTH]: HEALTH_DROP_AMOUNT,
+  [PickupType.MAGNET]: 0, // no direct value, triggers collect-all
 };
 
 export class Pickup extends Phaser.Physics.Arcade.Sprite {

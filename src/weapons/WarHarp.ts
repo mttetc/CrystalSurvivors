@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WeaponId, DEPTHS, EVENTS } from '../constants';
+import { WeaponId, DEPTHS, EVENTS, SPRITE_SCALE } from '../constants';
 import { BaseWeapon } from './BaseWeapon';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -18,7 +18,7 @@ export class WarHarp extends BaseWeapon {
     const enchant = this.getEnchant();
     const level = this.player.getWeapon(this.id)?.level ?? 1;
 
-    const target = this.findNearestEnemy(enemies, 300);
+    const target = this.findNearestEnemy(enemies, 300 * SPRITE_SCALE);
     if (!target) return;
 
     const hit: Set<Enemy> = new Set();
@@ -43,7 +43,7 @@ export class WarHarp extends BaseWeapon {
 
       // Find next target
       let nearest: Enemy | null = null;
-      let nearestDist = 120; // chain range
+      let nearestDist = 120 * SPRITE_SCALE; // chain range
       const children = enemies.getChildren() as Enemy[];
       for (const enemy of children) {
         if (!enemy.active || hit.has(enemy)) continue;
@@ -89,11 +89,11 @@ export class WarHarp extends BaseWeapon {
     const ny = dx / dist;
 
     const segments = 16;
-    const amplitude = 10;
+    const amplitude = 10 * SPRITE_SCALE;
     const frequency = 3; // number of wave cycles
 
     // Outer glow
-    gfx.lineStyle(4, 0xFFDD88, 0.4);
+    gfx.lineStyle(4 * SPRITE_SCALE, 0xFFDD88, 0.4);
     gfx.beginPath();
     gfx.moveTo(x1, y1);
     for (let i = 1; i <= segments; i++) {
@@ -106,7 +106,7 @@ export class WarHarp extends BaseWeapon {
     gfx.stroke();
 
     // Primary wave
-    gfx.lineStyle(2, 0xFFCC44, 0.9);
+    gfx.lineStyle(2 * SPRITE_SCALE, 0xFFCC44, 0.9);
     gfx.beginPath();
     gfx.moveTo(x1, y1);
     for (let i = 1; i <= segments; i++) {
@@ -119,7 +119,7 @@ export class WarHarp extends BaseWeapon {
     gfx.stroke();
 
     // Bright center line
-    gfx.lineStyle(1, 0xFFFFFF, 0.6);
+    gfx.lineStyle(1 * SPRITE_SCALE, 0xFFFFFF, 0.6);
     gfx.beginPath();
     gfx.moveTo(x1, y1);
     for (let i = 1; i <= segments; i++) {

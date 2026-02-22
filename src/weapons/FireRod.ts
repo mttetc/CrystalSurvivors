@@ -37,8 +37,9 @@ export class FireRod extends BaseWeapon {
       }
 
       const speed = stats.projectileSpeed ?? 300;
+      const sp = this.getSpawnPoint(angle);
       proj.fire(
-        this.player.x, this.player.y,
+        sp.x, sp.y,
         Math.cos(angle) * speed,
         Math.sin(angle) * speed,
         'fireball',

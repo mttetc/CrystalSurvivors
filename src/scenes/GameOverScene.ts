@@ -21,23 +21,23 @@ export class GameOverScene extends Phaser.Scene {
     const title = data.victory ? 'VICTORY!' : 'GAME OVER';
     const titleColor = data.victory ? '#44FF44' : '#FF4444';
 
-    this.add.text(GAME_WIDTH / 2, 30, title, {
-      fontSize: '20px',
-      fontFamily: 'monospace',
+    this.add.text(GAME_WIDTH / 2, 60, title, {
+      fontSize: '40px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: titleColor,
       fontStyle: 'bold',
       stroke: '#000000',
-      strokeThickness: 4,
-    }).setOrigin(0.5).setResolution(8);
+      strokeThickness: 8,
+    }).setOrigin(0.5).setResolution(16);
 
     if (data.victory) {
-      this.add.text(GAME_WIDTH / 2, 52, 'You survived the horde!', {
-        fontSize: '11px',
-        fontFamily: 'monospace',
+      this.add.text(GAME_WIDTH / 2, 104, 'You survived the horde!', {
+        fontSize: '22px',
+        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
         color: '#88CC88',
         stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5).setResolution(8);
+        strokeThickness: 4,
+      }).setOrigin(0.5).setResolution(16);
     }
 
     // Stats
@@ -60,23 +60,23 @@ export class GameOverScene extends Phaser.Scene {
     ];
 
     statsLines.forEach((line, i) => {
-      this.add.text(GAME_WIDTH / 2, 80 + i * 18, line, {
-        fontSize: '11px',
-        fontFamily: 'monospace',
+      this.add.text(GAME_WIDTH / 2, 160 + i * 36, line, {
+        fontSize: '22px',
+        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
         color: '#CCCCCC',
         stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5).setResolution(8);
+        strokeThickness: 4,
+      }).setOrigin(0.5).setResolution(16);
     });
 
     // Play again
-    const playAgain = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 40, 'Press ENTER to Play Again', {
-      fontSize: '12px',
-      fontFamily: 'monospace',
+    const playAgain = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 80, 'Press ENTER to Play Again', {
+      fontSize: '24px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#AAAAAA',
       stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5).setResolution(8);
+      strokeThickness: 4,
+    }).setOrigin(0.5).setResolution(16);
 
     this.tweens.add({
       targets: playAgain,

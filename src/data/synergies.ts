@@ -1,5 +1,17 @@
-import { JobId } from '../constants';
+import { JobId, JobSkillId, MasterySkillId, SPRITE_SCALE } from '../constants';
 import { PlayerStatModifiers } from '../types/enhancements';
+
+const SS = SPRITE_SCALE;
+
+export interface ComboSkillDef {
+  name: string;
+  description: string;
+  cooldown: number;    // ms between activations
+  damage: number;      // base damage
+  radius: number;      // effect radius
+  color: number;       // visual color
+  visualType?: 'ring' | 'rain' | 'nova' | 'field' | 'slash' | 'clones' | 'bolts' | 'heal_burst' | 'summon' | 'toxic_cloud' | 'shadow_arrow';  // default: 'ring'
+}
 
 export interface JobSynergy {
   id: string;
@@ -7,108 +19,465 @@ export interface JobSynergy {
   jobs: [JobId, JobId];
   description: string;
   apply: (mods: PlayerStatModifiers) => void;
+  comboSkill: ComboSkillDef;
 }
 
+export interface SkillSynergy {
+  id: string;
+  name: string;
+  skills: [string, string];  // JobSkillId | MasterySkillId
+  description: string;
+  hidden: boolean;
+  apply: (mods: PlayerStatModifiers) => void;
+  comboSkill?: ComboSkillDef;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// JOB SYNERGIES - All 105 class combinations (C(15,2))
+// ═══════════════════════════════════════════════════════════════════════════
+
 export const JOB_SYNERGIES: JobSynergy[] = [
-  {
-    id: 'holy_knight',
-    name: 'Holy Knight',
-    jobs: [JobId.PALADIN, JobId.WHITE_MAGE],
-    description: 'Heals also deal 30% as AoE holy damage',
-    apply: (mods) => {
-      mods.supportEffectiveness += 0.30;
-      mods.armor += 3;
-    },
-  },
-  {
-    id: 'blood_warrior',
-    name: 'Blood Warrior',
-    jobs: [JobId.DARK_KNIGHT, JobId.BERSERKER],
-    description: 'Lifesteal doubled below 30% HP',
-    apply: (mods) => {
-      mods.lifeStealPercent += 0.05;
-      mods.damageMultiplier *= 1.20;
-    },
-  },
-  {
-    id: 'shadow_blade',
-    name: 'Shadow Blade',
-    jobs: [JobId.NINJA, JobId.SAMURAI],
-    description: 'Crits create shadow slashes',
-    apply: (mods) => {
-      mods.critChance += 0.15;
-      mods.critDamageBonus += 0.50;
-    },
-  },
-  {
-    id: 'arcane_master',
-    name: 'Arcane Master',
-    jobs: [JobId.BLACK_MAGE, JobId.SUMMONER],
-    description: 'Summons gain elemental AoE',
-    apply: (mods) => {
-      mods.summonFamilyDamage += 0.25;
-      mods.magicFamilyDamage += 0.20;
-    },
-  },
-  {
-    id: 'sky_hunter',
-    name: 'Sky Hunter',
-    jobs: [JobId.RANGER, JobId.DRAGOON],
-    description: 'Projectiles pierce +2, enhanced jump',
-    apply: (mods) => {
-      mods.bonusPierce += 2;
-      mods.bonusProjectiles += 2;
-    },
-  },
-  {
-    id: 'tempo_master',
-    name: 'Tempo Master',
-    jobs: [JobId.BARD, JobId.TIME_MAGE],
-    description: 'All allies +20% attack speed',
-    apply: (mods) => {
-      mods.cooldownMultiplier -= 0.20;
-      mods.speedMultiplier += 0.15;
-    },
-  },
-  {
-    id: 'earth_fist',
-    name: 'Earth Fist',
-    jobs: [JobId.MONK, JobId.GEOMANCER],
-    description: 'Punches leave trail zones, +30% melee AoE',
-    apply: (mods) => {
-      mods.meleeFamilyDamage += 0.30;
-      mods.meleeFamilyRange += 0.25;
-      mods.maxHpBonus += 20;
-    },
-  },
-  {
-    id: 'apothecary',
-    name: 'Apothecary',
-    jobs: [JobId.ALCHEMIST, JobId.WHITE_MAGE],
-    description: 'Potions heal 3x, heal drops +50%',
-    apply: (mods) => {
-      mods.healthDropMultiplier += 1.50;
-      mods.regenPerSecond += 2;
-    },
-  },
-  {
-    id: 'chrono_assassin',
-    name: 'Chrono Assassin',
-    jobs: [JobId.NINJA, JobId.TIME_MAGE],
-    description: 'Dash resets cooldowns',
-    apply: (mods) => {
-      mods.bonusDashCharges += 2;
-      mods.cooldownMultiplier -= 0.15;
-    },
-  },
-  {
-    id: 'iron_berserker',
-    name: 'Iron Berserker',
-    jobs: [JobId.BERSERKER, JobId.MONK],
-    description: '+50 max HP, kills heal 2 HP',
-    apply: (mods) => {
-      mods.maxHpBonus += 50;
-      mods.killHealAmount += 2;
-    },
-  },
+  // ─── Paladin combos ──────────────────────────────────────────────────
+  { id: 'holy_knight', name: 'Holy Knight', jobs: [JobId.PALADIN, JobId.WHITE_MAGE],
+    description: 'Heals also deal 30% as AoE holy damage', apply: (m) => { m.supportEffectiveness += 0.30; m.armor += 3; },
+    comboSkill: { name: 'Judgement Light', description: 'Holy burst that heals and damages', cooldown: 8000, damage: 40, radius: 120 * SS, color: 0xFFDD44, visualType: 'heal_burst' } },
+  { id: 'twilight_knight', name: 'Twilight Knight', jobs: [JobId.PALADIN, JobId.DARK_KNIGHT],
+    description: 'Balance of light and dark: +15% dmg, +3 armor', apply: (m) => { m.damageMultiplier *= 1.15; m.armor += 3; },
+    comboSkill: { name: 'Eclipse', description: 'Light and dark collide', cooldown: 8000, damage: 50, radius: 120 * SS, color: 0xAA77FF, visualType: 'nova' } },
+  { id: 'holy_lancer', name: 'Holy Lancer', jobs: [JobId.PALADIN, JobId.DRAGOON],
+    description: 'Piercing divine strikes: +2 pierce, +15% proj dmg', apply: (m) => { m.bonusPierce += 2; m.projectileDamageMultiplier *= 1.15; },
+    comboSkill: { name: 'Divine Spear', description: 'Holy lance from the sky', cooldown: 8000, damage: 55, radius: 100 * SS, color: 0xFFEE66, visualType: 'rain' } },
+  { id: 'sacred_shadow', name: 'Sacred Shadow', jobs: [JobId.PALADIN, JobId.NINJA],
+    description: 'Holy stealth: +10% dodge, +3 armor', apply: (m) => { m.dodgeChance += 0.10; m.armor += 3; },
+    comboSkill: { name: 'Flash Step', description: 'Blinding holy dash', cooldown: 7000, damage: 40, radius: 90 * SS, color: 0xFFFFAA, visualType: 'clones' } },
+  { id: 'sacred_fist', name: 'Sacred Fist', jobs: [JobId.PALADIN, JobId.MONK],
+    description: 'Holy punches: +20% melee dmg, +2 armor', apply: (m) => { m.meleeDamageMultiplier *= 1.20; m.armor += 2; },
+    comboSkill: { name: 'Holy Strike', description: 'Sacred fist shockwave', cooldown: 7000, damage: 45, radius: 100 * SS, color: 0xFFDD88, visualType: 'nova' } },
+  { id: 'crusader', name: 'Crusader', jobs: [JobId.PALADIN, JobId.BERSERKER],
+    description: 'Righteous fury: +15% dmg, +30 HP', apply: (m) => { m.damageMultiplier *= 1.15; m.maxHpBonus += 30; },
+    comboSkill: { name: 'Holy Charge', description: 'Charging radiant burst', cooldown: 8000, damage: 55, radius: 110 * SS, color: 0xFFCC44, visualType: 'nova' } },
+  { id: 'guardian_arrow', name: 'Guardian Arrow', jobs: [JobId.PALADIN, JobId.RANGER],
+    description: 'Protective shots: +1 projectile, +2 armor', apply: (m) => { m.bonusProjectiles += 1; m.armor += 2; },
+    comboSkill: { name: 'Light Arrow', description: 'Homing holy arrows', cooldown: 7000, damage: 35, radius: 140 * SS, color: 0xFFEE88, visualType: 'rain' } },
+  { id: 'hymn_of_valor', name: 'Hymn of Valor', jobs: [JobId.PALADIN, JobId.BARD],
+    description: 'Inspiring protection: +15% support, +3 armor', apply: (m) => { m.supportEffectiveness += 0.15; m.armor += 3; },
+    comboSkill: { name: 'Valor Anthem', description: 'Protective aura burst', cooldown: 9000, damage: 30, radius: 150 * SS, color: 0xFFDD77, visualType: 'heal_burst' } },
+  { id: 'spellblade', name: 'Spellblade', jobs: [JobId.PALADIN, JobId.BLACK_MAGE],
+    description: 'Magic sword: +15% magic dmg, +2 armor', apply: (m) => { m.magicFamilyDamage += 0.15; m.armor += 2; },
+    comboSkill: { name: 'Enchanted Blade', description: 'Magic-infused radial slash', cooldown: 7000, damage: 50, radius: 110 * SS, color: 0xBB88FF, visualType: 'slash' } },
+  { id: 'eidolon_guard', name: 'Eidolon Guard', jobs: [JobId.PALADIN, JobId.SUMMONER],
+    description: 'Summon shield: +20% summon dmg, +2 armor', apply: (m) => { m.summonFamilyDamage += 0.20; m.armor += 2; },
+    comboSkill: { name: 'Guardian Spirit', description: 'Protective spirit blast', cooldown: 9000, damage: 45, radius: 120 * SS, color: 0xFFAA44, visualType: 'summon' } },
+  { id: 'eternal_vanguard', name: 'Eternal Vanguard', jobs: [JobId.PALADIN, JobId.TIME_MAGE],
+    description: 'Time defense: -15% cooldowns, +3 armor', apply: (m) => { m.cooldownMultiplier -= 0.15; m.armor += 3; },
+    comboSkill: { name: 'Temporal Shield', description: 'Time-slowing barrier', cooldown: 10000, damage: 30, radius: 130 * SS, color: 0x88DDFF, visualType: 'field' } },
+  { id: 'elixir_shield', name: 'Elixir Shield', jobs: [JobId.PALADIN, JobId.ALCHEMIST],
+    description: 'Healing shield: +25% healing, +2 armor', apply: (m) => { m.healingMultiplier += 0.25; m.armor += 2; },
+    comboSkill: { name: 'Blessed Flask', description: 'Healing potion burst', cooldown: 9000, damage: 30, radius: 120 * SS, color: 0x88FF88, visualType: 'heal_burst' } },
+  { id: 'stone_wall', name: 'Stone Wall', jobs: [JobId.PALADIN, JobId.GEOMANCER],
+    description: 'Earth defense: +5 armor, +20 HP', apply: (m) => { m.armor += 5; m.maxHpBonus += 20; },
+    comboSkill: { name: 'Rampart', description: 'Stone barrier shockwave', cooldown: 8000, damage: 40, radius: 100 * SS, color: 0xAA8844, visualType: 'field' } },
+  { id: 'honor_guard', name: 'Honor Guard', jobs: [JobId.PALADIN, JobId.SAMURAI],
+    description: 'Honor defense: +10% crit, +3 armor', apply: (m) => { m.critChance += 0.10; m.armor += 3; },
+    comboSkill: { name: 'Sacred Slash', description: 'Honorable radiant cut', cooldown: 7000, damage: 55, radius: 110 * SS, color: 0xFFDD44, visualType: 'slash' } },
+
+  // ─── Dark Knight combos ──────────────────────────────────────────────
+  { id: 'blood_warrior', name: 'Blood Warrior', jobs: [JobId.DARK_KNIGHT, JobId.BERSERKER],
+    description: 'Lifesteal doubled below 30% HP', apply: (m) => { m.lifeStealPercent += 0.05; m.damageMultiplier *= 1.20; },
+    comboSkill: { name: 'Blood Storm', description: 'Sacrifice HP for a dark explosion', cooldown: 10000, damage: 80, radius: 100 * SS, color: 0x880022, visualType: 'nova' } },
+  { id: 'blood_dragon', name: 'Blood Dragon', jobs: [JobId.DARK_KNIGHT, JobId.DRAGOON],
+    description: 'Dark aerial: +20% low HP dmg, +2 pierce', apply: (m) => { m.lowHpDamageBonus += 0.20; m.bonusPierce += 2; },
+    comboSkill: { name: 'Dark Dive', description: 'Plunging dark lance', cooldown: 8000, damage: 60, radius: 110 * SS, color: 0x660044, visualType: 'nova' } },
+  { id: 'abyssal_assassin', name: 'Abyssal Assassin', jobs: [JobId.DARK_KNIGHT, JobId.NINJA],
+    description: 'Dark stealth: +3% lifesteal, +10% crit', apply: (m) => { m.lifeStealPercent += 0.03; m.critChance += 0.10; },
+    comboSkill: { name: 'Void Strike', description: 'Shadowy death blow', cooldown: 7000, damage: 65, radius: 90 * SS, color: 0x7700AA, visualType: 'clones' } },
+  { id: 'dark_fist', name: 'Dark Fist', jobs: [JobId.DARK_KNIGHT, JobId.MONK],
+    description: 'Shadow punches: +20% melee dmg, +3% lifesteal', apply: (m) => { m.meleeDamageMultiplier *= 1.20; m.lifeStealPercent += 0.03; },
+    comboSkill: { name: 'Abyssal Punch', description: 'Dark-infused fist wave', cooldown: 7000, damage: 50, radius: 100 * SS, color: 0x550033, visualType: 'nova' } },
+  { id: 'reapers_bow', name: "Reaper's Bow", jobs: [JobId.DARK_KNIGHT, JobId.RANGER],
+    description: 'Dark arrows: +1 projectile, +10% dmg', apply: (m) => { m.bonusProjectiles += 1; m.damageMultiplier *= 1.10; },
+    comboSkill: { name: 'Death Arrow', description: 'Giant shadow arrow that fears enemies', cooldown: 7500, damage: 55, radius: 150 * SS, color: 0x880044, visualType: 'shadow_arrow' } },
+  { id: 'dirge_singer', name: 'Dirge Singer', jobs: [JobId.DARK_KNIGHT, JobId.BARD],
+    description: 'Death song: +15% aura dmg, +3% lifesteal', apply: (m) => { m.auraFamilyDamage += 0.15; m.lifeStealPercent += 0.03; },
+    comboSkill: { name: 'Death Hymn', description: 'Soul-draining melody', cooldown: 9000, damage: 40, radius: 140 * SS, color: 0x884466, visualType: 'field' } },
+  { id: 'void_knight', name: 'Void Knight', jobs: [JobId.DARK_KNIGHT, JobId.BLACK_MAGE],
+    description: 'Dark magic: +20% magic dmg, +10% dmg', apply: (m) => { m.magicFamilyDamage += 0.20; m.damageMultiplier *= 1.10; },
+    comboSkill: { name: 'Void Blast', description: 'Dark magical explosion', cooldown: 8000, damage: 65, radius: 120 * SS, color: 0x6600AA, visualType: 'nova' } },
+  { id: 'gray_mage', name: 'Gray Mage', jobs: [JobId.DARK_KNIGHT, JobId.WHITE_MAGE],
+    description: 'Balance of dark and light: +2 regen/s, +10% dmg', apply: (m) => { m.regenPerSecond += 2; m.damageMultiplier *= 1.10; },
+    comboSkill: { name: 'Twilight Pulse', description: 'Wave of balanced energy', cooldown: 8000, damage: 45, radius: 130 * SS, color: 0x9977AA, visualType: 'nova' } },
+  { id: 'demonologist', name: 'Demonologist', jobs: [JobId.DARK_KNIGHT, JobId.SUMMONER],
+    description: 'Dark summon: +25% summon dmg, +5% lifesteal', apply: (m) => { m.summonFamilyDamage += 0.25; m.lifeStealPercent += 0.05; },
+    comboSkill: { name: 'Demon Call', description: 'Dark summon explosion', cooldown: 9000, damage: 60, radius: 120 * SS, color: 0x990033, visualType: 'nova' } },
+  { id: 'chrono_reaper', name: 'Chrono Reaper', jobs: [JobId.DARK_KNIGHT, JobId.TIME_MAGE],
+    description: 'Time death: -15% cooldowns, +10% dmg', apply: (m) => { m.cooldownMultiplier -= 0.15; m.damageMultiplier *= 1.10; },
+    comboSkill: { name: 'Time Scythe', description: 'Temporal death wave', cooldown: 8000, damage: 55, radius: 130 * SS, color: 0x8844AA, visualType: 'slash' } },
+  { id: 'plague_doctor', name: 'Plague Doctor', jobs: [JobId.DARK_KNIGHT, JobId.ALCHEMIST],
+    description: 'Dark potions: +3% lifesteal, +25% healing', apply: (m) => { m.lifeStealPercent += 0.03; m.healingMultiplier += 0.25; },
+    comboSkill: { name: 'Plague Cloud', description: 'Toxic dark mist', cooldown: 9000, damage: 40, radius: 140 * SS, color: 0x667733, visualType: 'toxic_cloud' } },
+  { id: 'grave_keeper', name: 'Grave Keeper', jobs: [JobId.DARK_KNIGHT, JobId.GEOMANCER],
+    description: 'Earth dark: +20% aura dmg, +3% lifesteal', apply: (m) => { m.auraFamilyDamage += 0.20; m.lifeStealPercent += 0.03; },
+    comboSkill: { name: 'Grave Rise', description: 'Dark earth eruption', cooldown: 8000, damage: 50, radius: 110 * SS, color: 0x554422, visualType: 'field' } },
+  { id: 'dark_ronin', name: 'Dark Ronin', jobs: [JobId.DARK_KNIGHT, JobId.SAMURAI],
+    description: 'Dark blade: +20% crit dmg, +10% dmg', apply: (m) => { m.critDamageBonus += 0.20; m.damageMultiplier *= 1.10; },
+    comboSkill: { name: 'Shadow Cut', description: 'Dark iaijutsu slash', cooldown: 7000, damage: 60, radius: 120 * SS, color: 0x770055, visualType: 'slash' } },
+
+  // ─── Dragoon combos ──────────────────────────────────────────────────
+  { id: 'sky_hunter', name: 'Sky Hunter', jobs: [JobId.RANGER, JobId.DRAGOON],
+    description: 'Projectiles pierce +2, enhanced jump', apply: (m) => { m.bonusPierce += 2; m.bonusProjectiles += 2; },
+    comboSkill: { name: 'Rain of Arrows', description: 'Arrow rain from above', cooldown: 8000, damage: 35, radius: 160 * SS, color: 0x88CCFF, visualType: 'rain' } },
+  { id: 'wind_walker', name: 'Wind Walker', jobs: [JobId.DRAGOON, JobId.NINJA],
+    description: 'Aerial ninja: +15% speed, +1 dash charge', apply: (m) => { m.speedMultiplier += 0.15; m.bonusDashCharges += 1; },
+    comboSkill: { name: 'Gale Strike', description: 'Wind-boosted aerial slash', cooldown: 7000, damage: 50, radius: 110 * SS, color: 0x88FFCC, visualType: 'clones' } },
+  { id: 'sky_fist', name: 'Sky Fist', jobs: [JobId.DRAGOON, JobId.MONK],
+    description: 'Aerial punches: +20% melee dmg, +15% melee range', apply: (m) => { m.meleeFamilyDamage += 0.20; m.meleeFamilyRange += 0.15; },
+    comboSkill: { name: 'Meteor Fist', description: 'Diving punch impact', cooldown: 7000, damage: 55, radius: 100 * SS, color: 0xFFAA44, visualType: 'nova' } },
+  { id: 'raging_dragon', name: 'Raging Dragon', jobs: [JobId.DRAGOON, JobId.BERSERKER],
+    description: 'Fierce dragon: +20% dmg, +20 HP', apply: (m) => { m.damageMultiplier *= 1.20; m.maxHpBonus += 20; },
+    comboSkill: { name: 'Dragon Rage', description: 'Berserking dragon dive', cooldown: 8000, damage: 65, radius: 110 * SS, color: 0xFF6644, visualType: 'nova' } },
+  { id: 'wyvern_song', name: 'Wyvern Song', jobs: [JobId.DRAGOON, JobId.BARD],
+    description: 'Dragon melody: +15% aura dmg, -10% cooldowns', apply: (m) => { m.auraFamilyDamage += 0.15; m.cooldownMultiplier -= 0.10; },
+    comboSkill: { name: 'Sky Chorus', description: 'Aerial sound wave', cooldown: 8000, damage: 40, radius: 140 * SS, color: 0xAABBFF, visualType: 'nova' } },
+  { id: 'dragon_mage', name: 'Dragon Mage', jobs: [JobId.DRAGOON, JobId.BLACK_MAGE],
+    description: 'Dragon fire: +20% magic dmg, +15% magic radius', apply: (m) => { m.magicFamilyDamage += 0.20; m.magicFamilyRadius += 0.15; },
+    comboSkill: { name: 'Dragon Breath', description: 'Elemental dragon breath', cooldown: 8000, damage: 55, radius: 130 * SS, color: 0xFF5533, visualType: 'nova' } },
+  { id: 'holy_dragoon', name: 'Holy Dragoon', jobs: [JobId.DRAGOON, JobId.WHITE_MAGE],
+    description: 'Divine dragon: +2 regen/s, +15% dmg', apply: (m) => { m.regenPerSecond += 2; m.damageMultiplier *= 1.15; },
+    comboSkill: { name: 'Radiant Dive', description: 'Healing light from above', cooldown: 9000, damage: 40, radius: 120 * SS, color: 0xFFFFAA, visualType: 'rain' } },
+  { id: 'dragon_caller', name: 'Dragon Caller', jobs: [JobId.DRAGOON, JobId.SUMMONER],
+    description: 'Summon dragon: +25% summon dmg, -10% summon cd', apply: (m) => { m.summonFamilyDamage += 0.25; m.summonFamilyCooldown += 0.10; },
+    comboSkill: { name: 'Wyrm Summon', description: 'Dragon spirit blast', cooldown: 9000, damage: 60, radius: 130 * SS, color: 0xFF7744, visualType: 'nova' } },
+  { id: 'time_dragon', name: 'Time Dragon', jobs: [JobId.DRAGOON, JobId.TIME_MAGE],
+    description: 'Temporal flight: +15% speed, -15% cooldowns', apply: (m) => { m.speedMultiplier += 0.15; m.cooldownMultiplier -= 0.15; },
+    comboSkill: { name: 'Chrono Dive', description: 'Time-warping aerial strike', cooldown: 8000, damage: 50, radius: 120 * SS, color: 0x66CCFF, visualType: 'nova' } },
+  { id: 'dragon_blood', name: 'Dragon Blood', jobs: [JobId.DRAGOON, JobId.ALCHEMIST],
+    description: 'Alchemy dragon: +30 HP, +25% healing', apply: (m) => { m.maxHpBonus += 30; m.healingMultiplier += 0.25; },
+    comboSkill: { name: 'Vitality Surge', description: 'Dragon blood healing wave', cooldown: 9000, damage: 35, radius: 120 * SS, color: 0x44FF66, visualType: 'heal_burst' } },
+  { id: 'earth_dragon', name: 'Earth Dragon', jobs: [JobId.DRAGOON, JobId.GEOMANCER],
+    description: 'Earth flight: +25% aura radius, +20% aura dmg', apply: (m) => { m.auraFamilyRadius += 0.25; m.auraFamilyDamage += 0.20; },
+    comboSkill: { name: 'Landfall', description: 'Earth-shattering impact', cooldown: 8000, damage: 55, radius: 130 * SS, color: 0xAA7733, visualType: 'field' } },
+  { id: 'dragon_blade', name: 'Dragon Blade', jobs: [JobId.DRAGOON, JobId.SAMURAI],
+    description: 'Dragon slash: +15% crit, +15% melee dmg', apply: (m) => { m.critChance += 0.15; m.meleeFamilyDamage += 0.15; },
+    comboSkill: { name: 'Ryuken', description: 'Dragon-blade spiral', cooldown: 7000, damage: 55, radius: 110 * SS, color: 0xFF8855, visualType: 'slash' } },
+
+  // ─── Ninja combos ────────────────────────────────────────────────────
+  { id: 'shadow_blade', name: 'Shadow Blade', jobs: [JobId.NINJA, JobId.SAMURAI],
+    description: 'Crits create shadow slashes', apply: (m) => { m.critChance += 0.15; m.critDamageBonus += 0.50; },
+    comboSkill: { name: 'Phantom Slash', description: 'Shadow clone dashes through enemies', cooldown: 7000, damage: 55, radius: 150 * SS, color: 0x9933FF, visualType: 'clones' } },
+  { id: 'chrono_assassin', name: 'Chrono Assassin', jobs: [JobId.NINJA, JobId.TIME_MAGE],
+    description: 'Dash resets cooldowns', apply: (m) => { m.bonusDashCharges += 2; m.cooldownMultiplier -= 0.15; },
+    comboSkill: { name: 'Blink Strike', description: 'Teleport slash to distant enemy', cooldown: 6000, damage: 70, radius: 80 * SS, color: 0x44DDFF, visualType: 'clones' } },
+  { id: 'shadow_monk', name: 'Shadow Monk', jobs: [JobId.NINJA, JobId.MONK],
+    description: 'Stealth fist: +10% dodge, +20% melee dmg', apply: (m) => { m.dodgeChance += 0.10; m.meleeFamilyDamage += 0.20; },
+    comboSkill: { name: 'Shadow Palm', description: 'Invisible force palm strike', cooldown: 6000, damage: 50, radius: 90 * SS, color: 0x7744AA, visualType: 'clones' } },
+  { id: 'wild_ninja', name: 'Wild Ninja', jobs: [JobId.NINJA, JobId.BERSERKER],
+    description: 'Feral stealth: +15% dmg, +1 dash charge', apply: (m) => { m.damageMultiplier *= 1.15; m.bonusDashCharges += 1; },
+    comboSkill: { name: 'Frenzy Slash', description: 'Rapid wild slashes', cooldown: 6000, damage: 55, radius: 100 * SS, color: 0xCC4488, visualType: 'nova' } },
+  { id: 'shadow_sniper', name: 'Shadow Sniper', jobs: [JobId.NINJA, JobId.RANGER],
+    description: 'Stealth range: +2 pierce, +10% dodge', apply: (m) => { m.bonusPierce += 2; m.dodgeChance += 0.10; },
+    comboSkill: { name: 'Phantom Arrow', description: 'Invisible arrow volley', cooldown: 7000, damage: 40, radius: 140 * SS, color: 0x8866CC, visualType: 'rain' } },
+  { id: 'silent_song', name: 'Silent Song', jobs: [JobId.NINJA, JobId.BARD],
+    description: 'Muted melody: +10% dodge, -10% cooldowns', apply: (m) => { m.dodgeChance += 0.10; m.cooldownMultiplier -= 0.10; },
+    comboSkill: { name: 'Lullaby', description: 'Silencing sound wave', cooldown: 8000, damage: 35, radius: 130 * SS, color: 0xAA88CC, visualType: 'field' } },
+  { id: 'shadow_caster', name: 'Shadow Caster', jobs: [JobId.NINJA, JobId.BLACK_MAGE],
+    description: 'Dark magic: +15% magic dmg, +10% dodge', apply: (m) => { m.magicFamilyDamage += 0.15; m.dodgeChance += 0.10; },
+    comboSkill: { name: 'Dark Pulse', description: 'Shadow magic burst', cooldown: 7000, damage: 50, radius: 110 * SS, color: 0x6633AA, visualType: 'nova' } },
+  { id: 'ghost_healer', name: 'Ghost Healer', jobs: [JobId.NINJA, JobId.WHITE_MAGE],
+    description: 'Phantom heal: +2 regen/s, +10% dodge', apply: (m) => { m.regenPerSecond += 2; m.dodgeChance += 0.10; },
+    comboSkill: { name: 'Spirit Mend', description: 'Ghost healing wave', cooldown: 8000, damage: 30, radius: 120 * SS, color: 0xBBAAFF, visualType: 'heal_burst' } },
+  { id: 'phantom_caller', name: 'Phantom Caller', jobs: [JobId.NINJA, JobId.SUMMONER],
+    description: 'Shadow summon: +20% summon dmg, +10% dodge', apply: (m) => { m.summonFamilyDamage += 0.20; m.dodgeChance += 0.10; },
+    comboSkill: { name: 'Shadow Familiar', description: 'Dark spirit attack', cooldown: 8000, damage: 45, radius: 120 * SS, color: 0x8844BB, visualType: 'summon' } },
+  { id: 'poison_master', name: 'Poison Master', jobs: [JobId.NINJA, JobId.ALCHEMIST],
+    description: 'Toxic ninja: +15% dmg, +10% burn chance', apply: (m) => { m.damageMultiplier *= 1.15; m.burnChance += 0.10; },
+    comboSkill: { name: 'Venom Cloud', description: 'Toxic smoke bomb', cooldown: 8000, damage: 40, radius: 130 * SS, color: 0x88AA33, visualType: 'toxic_cloud' } },
+  { id: 'earth_ninja', name: 'Earth Ninja', jobs: [JobId.NINJA, JobId.GEOMANCER],
+    description: 'Terra shadow: +15% aura dmg, +1 dash charge', apply: (m) => { m.auraFamilyDamage += 0.15; m.bonusDashCharges += 1; },
+    comboSkill: { name: 'Mud Trap', description: 'Earth concealment blast', cooldown: 7000, damage: 45, radius: 110 * SS, color: 0x887744, visualType: 'field' } },
+
+  // ─── Monk combos ─────────────────────────────────────────────────────
+  { id: 'earth_fist', name: 'Earth Fist', jobs: [JobId.MONK, JobId.GEOMANCER],
+    description: 'Punches leave trail zones, +30% melee AoE', apply: (m) => { m.meleeFamilyDamage += 0.30; m.meleeFamilyRange += 0.25; m.maxHpBonus += 20; },
+    comboSkill: { name: 'Tectonic Punch', description: 'Ground slam shockwave', cooldown: 7000, damage: 65, radius: 110 * SS, color: 0xBB8833, visualType: 'nova' } },
+  { id: 'iron_berserker', name: 'Iron Berserker', jobs: [JobId.BERSERKER, JobId.MONK],
+    description: '+50 max HP, kills heal 2 HP', apply: (m) => { m.maxHpBonus += 50; m.killHealAmount += 2; },
+    comboSkill: { name: 'War Cry', description: 'Stunning AoE shockwave', cooldown: 9000, damage: 50, radius: 150 * SS, color: 0xFF8844, visualType: 'nova' } },
+  { id: 'iron_arrow', name: 'Iron Arrow', jobs: [JobId.MONK, JobId.RANGER],
+    description: 'Fist+bow: +1 projectile, +15% melee dmg', apply: (m) => { m.bonusProjectiles += 1; m.meleeFamilyDamage += 0.15; },
+    comboSkill: { name: 'Fist Shot', description: 'Chi-powered arrow volley', cooldown: 7000, damage: 40, radius: 130 * SS, color: 0xFFBB66, visualType: 'rain' } },
+  { id: 'battle_hymn', name: 'Battle Hymn', jobs: [JobId.MONK, JobId.BARD],
+    description: 'Song+fist: +15% melee dmg, +15% support', apply: (m) => { m.meleeFamilyDamage += 0.15; m.supportEffectiveness += 0.15; },
+    comboSkill: { name: 'War Dance', description: 'Rhythmic combat burst', cooldown: 7000, damage: 45, radius: 110 * SS, color: 0xFFAA88, visualType: 'nova' } },
+  { id: 'spell_fist', name: 'Spell Fist', jobs: [JobId.MONK, JobId.BLACK_MAGE],
+    description: 'Magic punch: +20% melee dmg, +15% magic dmg', apply: (m) => { m.meleeDamageMultiplier *= 1.20; m.magicFamilyDamage += 0.15; },
+    comboSkill: { name: 'Arcane Strike', description: 'Magic-infused fist wave', cooldown: 7000, damage: 55, radius: 100 * SS, color: 0xBB66FF, visualType: 'nova' } },
+  { id: 'holy_fist', name: 'Holy Fist', jobs: [JobId.MONK, JobId.WHITE_MAGE],
+    description: 'Sacred punch: +20% melee dmg, +2 regen/s', apply: (m) => { m.meleeFamilyDamage += 0.20; m.regenPerSecond += 2; },
+    comboSkill: { name: 'Palm of Light', description: 'Holy palm strike wave', cooldown: 7000, damage: 45, radius: 100 * SS, color: 0xFFEEAA, visualType: 'heal_burst' } },
+  { id: 'spirit_fighter', name: 'Spirit Fighter', jobs: [JobId.MONK, JobId.SUMMONER],
+    description: 'Summon fighter: +20% summon dmg, +15% melee dmg', apply: (m) => { m.summonFamilyDamage += 0.20; m.meleeFamilyDamage += 0.15; },
+    comboSkill: { name: 'Spirit Rush', description: 'Chi spirit dash', cooldown: 7000, damage: 50, radius: 110 * SS, color: 0xFFAA55, visualType: 'summon' } },
+  { id: 'time_fist', name: 'Time Fist', jobs: [JobId.MONK, JobId.TIME_MAGE],
+    description: 'Temporal punch: -15% cooldowns, +15% melee dmg', apply: (m) => { m.cooldownMultiplier -= 0.15; m.meleeFamilyDamage += 0.15; },
+    comboSkill: { name: 'Flash Fist', description: 'Time-accelerated punches', cooldown: 6000, damage: 45, radius: 90 * SS, color: 0x66CCFF, visualType: 'nova' } },
+  { id: 'potion_fighter', name: 'Potion Fighter', jobs: [JobId.MONK, JobId.ALCHEMIST],
+    description: 'Alch fist: +20% melee dmg, +25% healing', apply: (m) => { m.meleeFamilyDamage += 0.20; m.healingMultiplier += 0.25; },
+    comboSkill: { name: 'Elixir Palm', description: 'Healing palm strike', cooldown: 8000, damage: 40, radius: 100 * SS, color: 0x88FF66, visualType: 'heal_burst' } },
+  { id: 'kensei', name: 'Kensei', jobs: [JobId.MONK, JobId.SAMURAI],
+    description: 'Sword master: +15% crit, +20% melee range', apply: (m) => { m.critChance += 0.15; m.meleeFamilyRange += 0.20; },
+    comboSkill: { name: 'Perfect Strike', description: 'Flawless critical blow', cooldown: 6000, damage: 60, radius: 100 * SS, color: 0xFFCC44, visualType: 'slash' } },
+
+  // ─── Berserker combos ────────────────────────────────────────────────
+  { id: 'wild_shot', name: 'Wild Shot', jobs: [JobId.BERSERKER, JobId.RANGER],
+    description: 'Feral arrows: +15% dmg, +1 projectile', apply: (m) => { m.damageMultiplier *= 1.15; m.bonusProjectiles += 1; },
+    comboSkill: { name: 'Fury Volley', description: 'Wild arrow barrage', cooldown: 7000, damage: 40, radius: 140 * SS, color: 0xFF7744, visualType: 'rain' } },
+  { id: 'battle_roar', name: 'Battle Roar', jobs: [JobId.BERSERKER, JobId.BARD],
+    description: 'War song: +15% dmg, +15% aura dmg', apply: (m) => { m.damageMultiplier *= 1.15; m.auraFamilyDamage += 0.15; },
+    comboSkill: { name: 'Roar Wave', description: 'Devastating war shout', cooldown: 8000, damage: 50, radius: 140 * SS, color: 0xFF8866, visualType: 'nova' } },
+  { id: 'spell_rage', name: 'Spell Rage', jobs: [JobId.BERSERKER, JobId.BLACK_MAGE],
+    description: 'Magic rage: +20% dmg, +15% magic dmg', apply: (m) => { m.damageMultiplier *= 1.20; m.magicFamilyDamage += 0.15; },
+    comboSkill: { name: 'Arcane Fury', description: 'Explosive magic rage', cooldown: 8000, damage: 65, radius: 120 * SS, color: 0xCC44FF, visualType: 'nova' } },
+  { id: 'war_medic', name: 'War Medic', jobs: [JobId.BERSERKER, JobId.WHITE_MAGE],
+    description: 'Battle healer: +2 regen/s, +20 HP', apply: (m) => { m.regenPerSecond += 2; m.maxHpBonus += 20; },
+    comboSkill: { name: 'Battle Mend', description: 'Aggressive healing burst', cooldown: 9000, damage: 35, radius: 130 * SS, color: 0xFFAA88, visualType: 'heal_burst' } },
+  { id: 'beast_master', name: 'Beast Master', jobs: [JobId.BERSERKER, JobId.SUMMONER],
+    description: 'Feral summon: +25% summon dmg, +15% dmg', apply: (m) => { m.summonFamilyDamage += 0.25; m.damageMultiplier *= 1.15; },
+    comboSkill: { name: 'Beast Call', description: 'Feral spirit eruption', cooldown: 9000, damage: 55, radius: 130 * SS, color: 0xFF6633, visualType: 'nova' } },
+  { id: 'chrono_rage', name: 'Chrono Rage', jobs: [JobId.BERSERKER, JobId.TIME_MAGE],
+    description: 'Time rage: -15% cooldowns, +20% dmg', apply: (m) => { m.cooldownMultiplier -= 0.15; m.damageMultiplier *= 1.20; },
+    comboSkill: { name: 'Time Smash', description: 'Time-warped berserker blow', cooldown: 7000, damage: 60, radius: 110 * SS, color: 0xCC88FF, visualType: 'nova' } },
+  { id: 'berserker_brew', name: 'Berserker Brew', jobs: [JobId.BERSERKER, JobId.ALCHEMIST],
+    description: 'War potion: +20% dmg, +25% healing', apply: (m) => { m.damageMultiplier *= 1.20; m.healingMultiplier += 0.25; },
+    comboSkill: { name: 'Rage Brew', description: 'Explosive potion fury', cooldown: 8000, damage: 50, radius: 120 * SS, color: 0xBBFF44, visualType: 'nova' } },
+  { id: 'earthquake', name: 'Earthquake', jobs: [JobId.BERSERKER, JobId.GEOMANCER],
+    description: 'Earth rage: +25% aura radius, +15% dmg', apply: (m) => { m.auraFamilyRadius += 0.25; m.damageMultiplier *= 1.15; },
+    comboSkill: { name: 'Ground Slam', description: 'Earth-shattering slam', cooldown: 8000, damage: 60, radius: 140 * SS, color: 0xAA7733, visualType: 'field' } },
+  { id: 'war_blade', name: 'War Blade', jobs: [JobId.BERSERKER, JobId.SAMURAI],
+    description: 'War slash: +20% crit dmg, +15% dmg', apply: (m) => { m.critDamageBonus += 0.20; m.damageMultiplier *= 1.15; },
+    comboSkill: { name: 'Fury Slash', description: 'Berserking blade storm', cooldown: 7000, damage: 60, radius: 120 * SS, color: 0xFF6644, visualType: 'slash' } },
+
+  // ─── Ranger combos ───────────────────────────────────────────────────
+  { id: 'minstrel', name: 'Minstrel', jobs: [JobId.RANGER, JobId.BARD],
+    description: 'Bow song: +1 projectile, +15% support', apply: (m) => { m.bonusProjectiles += 1; m.supportEffectiveness += 0.15; },
+    comboSkill: { name: 'Melody Arrow', description: 'Musical arrow volley', cooldown: 7000, damage: 35, radius: 140 * SS, color: 0xFF99BB, visualType: 'rain' } },
+  { id: 'arcane_archer', name: 'Arcane Archer', jobs: [JobId.RANGER, JobId.BLACK_MAGE],
+    description: 'Magic arrows: +2 pierce, +15% magic dmg', apply: (m) => { m.bonusPierce += 2; m.magicFamilyDamage += 0.15; },
+    comboSkill: { name: 'Arcane Volley', description: 'Magic-infused arrow storm', cooldown: 7000, damage: 45, radius: 140 * SS, color: 0xAA44FF, visualType: 'rain' } },
+  { id: 'sacred_archer', name: 'Sacred Archer', jobs: [JobId.RANGER, JobId.WHITE_MAGE],
+    description: 'Holy arrows: +1 projectile, +2 regen/s', apply: (m) => { m.bonusProjectiles += 1; m.regenPerSecond += 2; },
+    comboSkill: { name: 'Light Arrows', description: 'Healing arrow rain', cooldown: 8000, damage: 35, radius: 140 * SS, color: 0xFFEEAA, visualType: 'rain' } },
+  { id: 'beast_caller', name: 'Beast Caller', jobs: [JobId.RANGER, JobId.SUMMONER],
+    description: 'Nature summon: +20% summon dmg, +1 projectile', apply: (m) => { m.summonFamilyDamage += 0.20; m.bonusProjectiles += 1; },
+    comboSkill: { name: 'Nature Call', description: 'Beast spirit arrows', cooldown: 8000, damage: 40, radius: 130 * SS, color: 0x66CC44, visualType: 'rain' } },
+  { id: 'time_arrow', name: 'Time Arrow', jobs: [JobId.RANGER, JobId.TIME_MAGE],
+    description: 'Temporal shots: -15% cooldowns, +2 pierce', apply: (m) => { m.cooldownMultiplier -= 0.15; m.bonusPierce += 2; },
+    comboSkill: { name: 'Chrono Shot', description: 'Time-warped arrow burst', cooldown: 7000, damage: 40, radius: 140 * SS, color: 0x88CCFF, visualType: 'rain' } },
+  { id: 'poison_arrow', name: 'Poison Arrow', jobs: [JobId.RANGER, JobId.ALCHEMIST],
+    description: 'Toxic shots: +10% burn chance, +1 projectile', apply: (m) => { m.burnChance += 0.10; m.bonusProjectiles += 1; },
+    comboSkill: { name: 'Acid Rain', description: 'Toxic arrow volley', cooldown: 8000, damage: 35, radius: 140 * SS, color: 0xAACC33, visualType: 'rain' } },
+  { id: 'natures_warden', name: "Nature's Warden", jobs: [JobId.RANGER, JobId.GEOMANCER],
+    description: 'Earth archer: +20% aura radius, +1 projectile', apply: (m) => { m.auraFamilyRadius += 0.20; m.bonusProjectiles += 1; },
+    comboSkill: { name: 'Vine Arrow', description: 'Nature-infused arrow shower', cooldown: 8000, damage: 40, radius: 140 * SS, color: 0x66AA33, visualType: 'rain' } },
+  { id: 'yabusame', name: 'Yabusame', jobs: [JobId.RANGER, JobId.SAMURAI],
+    description: 'Mounted archery: +15% proj dmg, +15% crit', apply: (m) => { m.projectileFamilyDamage += 0.15; m.critChance += 0.15; },
+    comboSkill: { name: 'Zen Arrow', description: 'Precision focused shot', cooldown: 6000, damage: 55, radius: 100 * SS, color: 0xFFCC88, visualType: 'slash' } },
+
+  // ─── Bard combos ─────────────────────────────────────────────────────
+  { id: 'tempo_master', name: 'Tempo Master', jobs: [JobId.BARD, JobId.TIME_MAGE],
+    description: 'Time sync: -20% cooldowns, +15% speed', apply: (m) => { m.cooldownMultiplier -= 0.20; m.speedMultiplier += 0.15; },
+    comboSkill: { name: 'Tempo Shift', description: 'Time zone that slows enemies', cooldown: 12000, damage: 20, radius: 180 * SS, color: 0x44FFAA, visualType: 'field' } },
+  { id: 'war_chanter', name: 'War Chanter', jobs: [JobId.BARD, JobId.BLACK_MAGE],
+    description: 'Battle magic: +15% magic dmg, +15% aura dmg', apply: (m) => { m.magicFamilyDamage += 0.15; m.auraFamilyDamage += 0.15; },
+    comboSkill: { name: 'Thunder Song', description: 'Electric melody burst', cooldown: 8000, damage: 45, radius: 130 * SS, color: 0xBB88FF, visualType: 'bolts' } },
+  { id: 'chorus_healer', name: 'Chorus Healer', jobs: [JobId.BARD, JobId.WHITE_MAGE],
+    description: 'Healing song: +3 regen/s, +20% support', apply: (m) => { m.regenPerSecond += 3; m.supportEffectiveness += 0.20; },
+    comboSkill: { name: 'Healing Melody', description: 'Restorative song wave', cooldown: 9000, damage: 25, radius: 150 * SS, color: 0xAAFFAA, visualType: 'heal_burst' } },
+  { id: 'eidolon_song', name: 'Eidolon Song', jobs: [JobId.BARD, JobId.SUMMONER],
+    description: 'Summon melody: +25% summon dmg, +15% support', apply: (m) => { m.summonFamilyDamage += 0.25; m.supportEffectiveness += 0.15; },
+    comboSkill: { name: 'Spirit Song', description: 'Summoning melody burst', cooldown: 9000, damage: 40, radius: 140 * SS, color: 0xFFBB88, visualType: 'summon' } },
+  { id: 'elixir_song', name: 'Elixir Song', jobs: [JobId.BARD, JobId.ALCHEMIST],
+    description: 'Potion melody: +25% healing, +15% support', apply: (m) => { m.healingMultiplier += 0.25; m.supportEffectiveness += 0.15; },
+    comboSkill: { name: 'Rejuvenation', description: 'Healing potion melody', cooldown: 9000, damage: 30, radius: 140 * SS, color: 0x88FFAA, visualType: 'heal_burst' } },
+  { id: 'natures_melody', name: "Nature's Melody", jobs: [JobId.BARD, JobId.GEOMANCER],
+    description: 'Earth song: +20% aura dmg, +15% aura radius', apply: (m) => { m.auraFamilyDamage += 0.20; m.auraFamilyRadius += 0.15; },
+    comboSkill: { name: 'Earth Song', description: 'Natural harmony burst', cooldown: 8000, damage: 40, radius: 140 * SS, color: 0x88AA44, visualType: 'field' } },
+  { id: 'blade_song', name: 'Blade Song', jobs: [JobId.BARD, JobId.SAMURAI],
+    description: 'Sword melody: +10% crit, +15% melee dmg', apply: (m) => { m.critChance += 0.10; m.meleeFamilyDamage += 0.15; },
+    comboSkill: { name: 'Resonant Blade', description: 'Vibrating blade wave', cooldown: 7000, damage: 50, radius: 110 * SS, color: 0xFFAACCCC, visualType: 'slash' } },
+
+  // ─── Black Mage combos ──────────────────────────────────────────────
+  { id: 'arcane_master', name: 'Arcane Master', jobs: [JobId.BLACK_MAGE, JobId.SUMMONER],
+    description: 'Summons gain elemental AoE', apply: (m) => { m.summonFamilyDamage += 0.25; m.magicFamilyDamage += 0.20; },
+    comboSkill: { name: 'Elemental Surge', description: 'Random elemental AoE burst', cooldown: 9000, damage: 60, radius: 130 * SS, color: 0xFF4400, visualType: 'nova' } },
+  { id: 'sage', name: 'Sage', jobs: [JobId.BLACK_MAGE, JobId.WHITE_MAGE],
+    description: 'All magic mastery: +20% magic dmg, +2 regen/s', apply: (m) => { m.magicFamilyDamage += 0.20; m.regenPerSecond += 2; },
+    comboSkill: { name: 'Sagacity', description: 'Balanced magical blast', cooldown: 8000, damage: 55, radius: 130 * SS, color: 0xBBAAFF, visualType: 'nova' } },
+  { id: 'void_mage', name: 'Void Mage', jobs: [JobId.BLACK_MAGE, JobId.TIME_MAGE],
+    description: 'Time/space magic: +20% magic dmg, -15% cooldowns', apply: (m) => { m.magicFamilyDamage += 0.20; m.cooldownMultiplier -= 0.15; },
+    comboSkill: { name: 'Void Rift', description: 'Space-time tear explosion', cooldown: 8000, damage: 60, radius: 120 * SS, color: 0x7744CC, visualType: 'nova' } },
+  { id: 'mad_scientist', name: 'Mad Scientist', jobs: [JobId.BLACK_MAGE, JobId.ALCHEMIST],
+    description: 'Explosive potions: +15% magic dmg, +15% magic radius', apply: (m) => { m.magicFamilyDamage += 0.15; m.magicFamilyRadius += 0.15; },
+    comboSkill: { name: 'Volatile Mix', description: 'Unstable magical explosion', cooldown: 8000, damage: 55, radius: 130 * SS, color: 0xCC66FF, visualType: 'nova' } },
+  { id: 'elementalist', name: 'Elementalist', jobs: [JobId.BLACK_MAGE, JobId.GEOMANCER],
+    description: 'Element mastery: +25% magic dmg, +20% aura dmg', apply: (m) => { m.magicFamilyDamage += 0.25; m.auraFamilyDamage += 0.20; },
+    comboSkill: { name: 'Elemental Storm', description: 'All-element eruption', cooldown: 9000, damage: 65, radius: 140 * SS, color: 0xFF6633, visualType: 'nova' } },
+  { id: 'mystic_blade', name: 'Mystic Blade', jobs: [JobId.BLACK_MAGE, JobId.SAMURAI],
+    description: 'Magic sword: +15% magic dmg, +15% crit', apply: (m) => { m.magicFamilyDamage += 0.15; m.critChance += 0.15; },
+    comboSkill: { name: 'Arcane Slash', description: 'Magic-infused blade arc', cooldown: 7000, damage: 55, radius: 110 * SS, color: 0xAA55FF, visualType: 'slash' } },
+
+  // ─── White Mage combos ──────────────────────────────────────────────
+  { id: 'apothecary', name: 'Apothecary', jobs: [JobId.ALCHEMIST, JobId.WHITE_MAGE],
+    description: 'Potions heal 3x, heal drops +50%', apply: (m) => { m.healthDropMultiplier += 1.50; m.regenPerSecond += 2; },
+    comboSkill: { name: 'Elixir Rain', description: 'Heal zone that also damages enemies', cooldown: 10000, damage: 30, radius: 140 * SS, color: 0x44FF88, visualType: 'heal_burst' } },
+  { id: 'aetherial_healer', name: 'Aetherial Healer', jobs: [JobId.WHITE_MAGE, JobId.SUMMONER],
+    description: 'Heal summons: +20% summon dmg, +3 regen/s', apply: (m) => { m.summonFamilyDamage += 0.20; m.regenPerSecond += 3; },
+    comboSkill: { name: 'Aetherial Pulse', description: 'Healing summon wave', cooldown: 9000, damage: 35, radius: 130 * SS, color: 0x88FFCC, visualType: 'heal_burst' } },
+  { id: 'oracle', name: 'Oracle', jobs: [JobId.WHITE_MAGE, JobId.TIME_MAGE],
+    description: 'Time heal: -15% cooldowns, +3 regen/s', apply: (m) => { m.cooldownMultiplier -= 0.15; m.regenPerSecond += 3; },
+    comboSkill: { name: 'Foresight', description: 'Predictive healing wave', cooldown: 9000, damage: 30, radius: 140 * SS, color: 0xAADDFF, visualType: 'heal_burst' } },
+  { id: 'nature_healer', name: 'Nature Healer', jobs: [JobId.WHITE_MAGE, JobId.GEOMANCER],
+    description: 'Earth heal: +3 regen/s, +20% aura radius', apply: (m) => { m.regenPerSecond += 3; m.auraFamilyRadius += 0.20; },
+    comboSkill: { name: 'Bloom', description: 'Nature healing zone', cooldown: 9000, damage: 30, radius: 140 * SS, color: 0x66FF88, visualType: 'field' } },
+  { id: 'holy_blade', name: 'Holy Blade', jobs: [JobId.WHITE_MAGE, JobId.SAMURAI],
+    description: 'Sacred sword: +15% crit, +2 regen/s', apply: (m) => { m.critChance += 0.15; m.regenPerSecond += 2; },
+    comboSkill: { name: 'Sanctified Cut', description: 'Holy blade arc', cooldown: 7000, damage: 50, radius: 110 * SS, color: 0xFFEE88, visualType: 'slash' } },
+
+  // ─── Summoner combos ─────────────────────────────────────────────────
+  { id: 'chrono_summoner', name: 'Chrono Summoner', jobs: [JobId.SUMMONER, JobId.TIME_MAGE],
+    description: 'Time summon: -20% summon cd, +20% summon dmg', apply: (m) => { m.summonFamilyCooldown += 0.20; m.summonFamilyDamage += 0.20; },
+    comboSkill: { name: 'Time Warp Summon', description: 'Accelerated spirit burst', cooldown: 8000, damage: 50, radius: 130 * SS, color: 0x88AAFF, visualType: 'summon' } },
+  { id: 'homunculus', name: 'Homunculus', jobs: [JobId.SUMMONER, JobId.ALCHEMIST],
+    description: 'Artificial summon: +25% summon dmg, +25% healing', apply: (m) => { m.summonFamilyDamage += 0.25; m.healingMultiplier += 0.25; },
+    comboSkill: { name: 'Alchemic Creation', description: 'Summoned potion golem blast', cooldown: 9000, damage: 45, radius: 120 * SS, color: 0xAACC44, visualType: 'summon' } },
+  { id: 'elemental_summoner', name: 'Elemental Summoner', jobs: [JobId.SUMMONER, JobId.GEOMANCER],
+    description: 'Earth summon: +25% summon dmg, +20% aura dmg', apply: (m) => { m.summonFamilyDamage += 0.25; m.auraFamilyDamage += 0.20; },
+    comboSkill: { name: 'Earth Spirit', description: 'Elemental spirit eruption', cooldown: 9000, damage: 55, radius: 130 * SS, color: 0xBB9944, visualType: 'field' } },
+  { id: 'spirit_blade', name: 'Spirit Blade', jobs: [JobId.SUMMONER, JobId.SAMURAI],
+    description: 'Spirit sword: +20% summon dmg, +15% crit', apply: (m) => { m.summonFamilyDamage += 0.20; m.critChance += 0.15; },
+    comboSkill: { name: 'Phantom Blade', description: 'Spirit-infused blade', cooldown: 7000, damage: 55, radius: 110 * SS, color: 0xBB88FF, visualType: 'slash' } },
+
+  // ─── Time Mage combos ───────────────────────────────────────────────
+  { id: 'time_brewer', name: 'Time Brewer', jobs: [JobId.TIME_MAGE, JobId.ALCHEMIST],
+    description: 'Time potions: -20% cooldowns, +25% healing', apply: (m) => { m.cooldownMultiplier -= 0.20; m.healingMultiplier += 0.25; },
+    comboSkill: { name: 'Chrono Elixir', description: 'Time-infused potion burst', cooldown: 9000, damage: 35, radius: 130 * SS, color: 0x66CCAA, visualType: 'heal_burst' } },
+  { id: 'chrono_shifter', name: 'Chrono Shifter', jobs: [JobId.TIME_MAGE, JobId.GEOMANCER],
+    description: 'Time earth: -15% cooldowns, +20% aura dmg', apply: (m) => { m.cooldownMultiplier -= 0.15; m.auraFamilyDamage += 0.20; },
+    comboSkill: { name: 'Time Quake', description: 'Temporal earth rupture', cooldown: 8000, damage: 50, radius: 130 * SS, color: 0x88AA88, visualType: 'field' } },
+  { id: 'time_slash', name: 'Time Slash', jobs: [JobId.TIME_MAGE, JobId.SAMURAI],
+    description: 'Temporal blade: -15% cooldowns, +20% crit dmg', apply: (m) => { m.cooldownMultiplier -= 0.15; m.critDamageBonus += 0.20; },
+    comboSkill: { name: 'Chrono Cut', description: 'Time-split blade arc', cooldown: 6000, damage: 55, radius: 100 * SS, color: 0x88BBFF, visualType: 'slash' } },
+
+  // ─── Alchemist combos ───────────────────────────────────────────────
+  { id: 'terraformer', name: 'Terraformer', jobs: [JobId.ALCHEMIST, JobId.GEOMANCER],
+    description: 'Earth alchemy: +20% aura radius, +25% healing', apply: (m) => { m.auraFamilyRadius += 0.20; m.healingMultiplier += 0.25; },
+    comboSkill: { name: 'Terra Mix', description: 'Alchemic earth burst', cooldown: 9000, damage: 40, radius: 130 * SS, color: 0x99AA44, visualType: 'field' } },
+  { id: 'blade_alchemist', name: 'Blade Alchemist', jobs: [JobId.ALCHEMIST, JobId.SAMURAI],
+    description: 'Sword potions: +15% crit, +25% healing', apply: (m) => { m.critChance += 0.15; m.healingMultiplier += 0.25; },
+    comboSkill: { name: 'Alchemic Blade', description: 'Potion-coated blade wave', cooldown: 7000, damage: 50, radius: 110 * SS, color: 0xBBCC44, visualType: 'slash' } },
+
+  // ─── Geomancer combos ───────────────────────────────────────────────
+  { id: 'earth_blade', name: 'Earth Blade', jobs: [JobId.GEOMANCER, JobId.SAMURAI],
+    description: 'Earth sword: +20% melee dmg, +20% aura dmg', apply: (m) => { m.meleeFamilyDamage += 0.20; m.auraFamilyDamage += 0.20; },
+    comboSkill: { name: 'Stone Edge', description: 'Earth-infused blade slash', cooldown: 7000, damage: 55, radius: 110 * SS, color: 0xAA8833, visualType: 'slash' } },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SKILL SYNERGIES - Hidden, triggered by having specific skill combinations
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const SKILL_SYNERGIES: SkillSynergy[] = [
+  // ─── Elemental combos ────────────────────────────────────────────────
+  { id: 'temperature_shock', name: 'Temperature Shock',
+    skills: [JobSkillId.FIRE, JobSkillId.BLIZZARD], hidden: true,
+    description: 'Fire + Ice: enemies take 25% more damage',
+    apply: (m) => { m.damageMultiplier *= 1.25; },
+    comboSkill: { name: 'Thermal Blast', description: 'Hot and cold collide', cooldown: 10000, damage: 60, radius: 130 * SS, color: 0xFF88AA, visualType: 'nova' } },
+  { id: 'inferno', name: 'Inferno',
+    skills: [MasterySkillId.KATON, JobSkillId.FIRE], hidden: true,
+    description: 'Double fire: burn damage doubled, +15% burn chance',
+    apply: (m) => { m.burnChance += 0.15; m.magicFamilyDamage += 0.20; },
+    comboSkill: { name: 'Hellfire', description: 'All-consuming flames', cooldown: 10000, damage: 70, radius: 140 * SS, color: 0xFF3300, visualType: 'nova' } },
+  { id: 'thunderstorm', name: 'Thunderstorm',
+    skills: [MasterySkillId.RAITON, JobSkillId.THUNDER], hidden: true,
+    description: 'Chain lightning: +2 projectiles, +15% magic dmg',
+    apply: (m) => { m.bonusProjectiles += 2; m.magicFamilyDamage += 0.15; },
+    comboSkill: { name: 'Tempest', description: 'Lightning storm eruption', cooldown: 10000, damage: 65, radius: 150 * SS, color: 0xFFFF44, visualType: 'nova' } },
+  { id: 'tectonic_fury', name: 'Tectonic Fury',
+    skills: [MasterySkillId.DOTON, JobSkillId.QUAKE], hidden: true,
+    description: 'Earth mastery: ground zones 30% larger, +20% aura dmg',
+    apply: (m) => { m.auraFamilyRadius += 0.30; m.auraFamilyDamage += 0.20; },
+    comboSkill: { name: 'World Shaker', description: 'Massive earth eruption', cooldown: 12000, damage: 70, radius: 160 * SS, color: 0x886622, visualType: 'field' } },
+  { id: 'absolute_zero', name: 'Absolute Zero',
+    skills: [MasterySkillId.FREEZE, JobSkillId.BLIZZARD], hidden: true,
+    description: 'Deep freeze: +20% slow, enemies shatter on kill',
+    apply: (m) => { m.slowPercent += 0.20; m.magicFamilyDamage += 0.15; },
+    comboSkill: { name: 'Permafrost', description: 'Freezing everything solid', cooldown: 12000, damage: 55, radius: 150 * SS, color: 0x44AAFF, visualType: 'field' } },
+
+  // ─── Holy / Dark combos ──────────────────────────────────────────────
+  { id: 'twilight', name: 'Twilight',
+    skills: [JobSkillId.HOLY, JobSkillId.DARKNESS], hidden: true,
+    description: 'Light meets dark: +30% all damage',
+    apply: (m) => { m.damageMultiplier *= 1.30; },
+    comboSkill: { name: 'Eclipse Nova', description: 'Light and dark annihilation', cooldown: 12000, damage: 80, radius: 140 * SS, color: 0xAA66FF, visualType: 'nova' } },
+  { id: 'life_cycle', name: 'Life Cycle',
+    skills: [JobSkillId.REGEN_WM, JobSkillId.ABYSSAL_DRAIN], hidden: true,
+    description: 'Drain + Regen: lifesteal doubled, +3 regen/s',
+    apply: (m) => { m.lifeStealPercent += 0.05; m.regenPerSecond += 3; } },
+
+  // ─── Combat combos ───────────────────────────────────────────────────
+  { id: 'spinning_death', name: 'Spinning Death',
+    skills: [JobSkillId.SACRED_ORBIT, JobSkillId.BLADE_STORM], hidden: true,
+    description: 'Orbit + Blades: +3 projectiles, +20% proj dmg',
+    apply: (m) => { m.bonusProjectiles += 3; m.projectileFamilyDamage += 0.20; },
+    comboSkill: { name: 'Blade Vortex', description: 'Spinning blade tornado', cooldown: 8000, damage: 50, radius: 120 * SS, color: 0xCCCCFF, visualType: 'slash' } },
+  { id: 'hyperdrive', name: 'Hyperdrive',
+    skills: [JobSkillId.HASTE, JobSkillId.FRENZY], hidden: true,
+    description: 'Haste + Frenzy: -25% cooldowns, +15% speed',
+    apply: (m) => { m.cooldownMultiplier -= 0.25; m.speedMultiplier += 0.15; } },
+  { id: 'iaido_master', name: 'Iaido Master',
+    skills: [JobSkillId.BUSHIDO, JobSkillId.DUAL_STRIKE], hidden: true,
+    description: 'Bushido + Dual Strike: +25% crit dmg, +10% crit',
+    apply: (m) => { m.critDamageBonus += 0.25; m.critChance += 0.10; },
+    comboSkill: { name: 'Perfect Iai', description: 'Flawless blade draw', cooldown: 6000, damage: 70, radius: 100 * SS, color: 0xFFDD66, visualType: 'slash' } },
+  { id: 'fortress', name: 'Fortress',
+    skills: [JobSkillId.PROTECT, JobSkillId.DIVINE_GUARD], hidden: true,
+    description: 'Double defense: +8 armor, +30 HP',
+    apply: (m) => { m.armor += 8; m.maxHpBonus += 30; } },
+  { id: 'tornado_dive', name: 'Tornado Dive',
+    skills: [JobSkillId.JUMP, JobSkillId.GUST], hidden: true,
+    description: 'Jump + Wind: +20% AoE scale, +15% dmg',
+    apply: (m) => { m.aoeScaleMultiplier += 0.20; m.damageMultiplier *= 1.15; },
+    comboSkill: { name: 'Cyclone Impact', description: 'Tornado from above', cooldown: 8000, damage: 55, radius: 130 * SS, color: 0x88FFDD, visualType: 'nova' } },
+  { id: 'war_march', name: 'War March',
+    skills: [JobSkillId.WAR_SONG, JobSkillId.WAR_CRY], hidden: true,
+    description: 'Song + Cry: +20% dmg, +15% support',
+    apply: (m) => { m.damageMultiplier *= 1.20; m.supportEffectiveness += 0.15; } },
+  { id: 'bullet_storm', name: 'Bullet Storm',
+    skills: [JobSkillId.MULTI_SHOT, JobSkillId.BARRAGE], hidden: true,
+    description: 'Double arrow skills: +3 projectiles',
+    apply: (m) => { m.bonusProjectiles += 3; m.projectileFamilyDamage += 0.15; },
+    comboSkill: { name: 'Arrow Hell', description: 'Overwhelming arrow storm', cooldown: 7000, damage: 30, radius: 160 * SS, color: 0xFFBB88, visualType: 'rain' } },
+  { id: 'phantom_speed', name: 'Phantom Speed',
+    skills: [JobSkillId.SHADOW_STEP, JobSkillId.HASTE], hidden: true,
+    description: 'Shadow + Time: +2 dash charges, +15% speed',
+    apply: (m) => { m.bonusDashCharges += 2; m.speedMultiplier += 0.15; } },
+  { id: 'holy_punch', name: 'Holy Punch',
+    skills: [JobSkillId.IRON_FIST, JobSkillId.CONSECRATE], hidden: true,
+    description: 'Sacred fists: +25% melee dmg, +1 regen/s',
+    apply: (m) => { m.meleeFamilyDamage += 0.25; m.regenPerSecond += 1; } },
+  { id: 'quicksand', name: 'Quicksand',
+    skills: [JobSkillId.SLOW_FIELD, JobSkillId.PITFALL], hidden: true,
+    description: 'Slow + Trap: slow strength doubled, +20% aura radius',
+    apply: (m) => { m.slowPercent += 0.15; m.auraFamilyRadius += 0.20; },
+    comboSkill: { name: 'Mire', description: 'Inescapable ground trap', cooldown: 10000, damage: 35, radius: 150 * SS, color: 0x887744, visualType: 'field' } },
+  { id: 'spirit_bomb', name: 'Spirit Bomb',
+    skills: [JobSkillId.CHI_BURST, JobSkillId.HADOUKEN], hidden: true,
+    description: 'Chi mastery: +30% melee dmg, +20% melee range',
+    apply: (m) => { m.meleeFamilyDamage += 0.30; m.meleeFamilyRange += 0.20; },
+    comboSkill: { name: 'Ultimate Chi', description: 'Massive energy sphere', cooldown: 10000, damage: 75, radius: 130 * SS, color: 0x44BBFF, visualType: 'nova' } },
+  { id: 'fire_god', name: 'Fire God',
+    skills: [JobSkillId.IFRIT, MasterySkillId.KATON], hidden: true,
+    description: 'Ifrit + Katon: +30% summon dmg, +15% burn chance',
+    apply: (m) => { m.summonFamilyDamage += 0.30; m.burnChance += 0.15; },
+    comboSkill: { name: 'Ifrit Blaze', description: 'Infernal summon explosion', cooldown: 10000, damage: 70, radius: 140 * SS, color: 0xFF4400, visualType: 'nova' } },
 ];

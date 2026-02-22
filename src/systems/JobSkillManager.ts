@@ -1,24 +1,46 @@
 import Phaser from 'phaser';
-import { EVENTS, DEPTHS, JobSkillId } from '../constants';
+import { EVENTS, DEPTHS, JobSkillId, MasterySkillId, SPRITE_SCALE } from '../constants';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
-import { JOB_SKILL_DEFS } from '../data/jobs';
+import { JOB_SKILL_DEFS, MASTERY_SKILL_DEFS } from '../data/jobs';
 import { EventBus } from './EventBus';
 
 // ─── Skill category classification ──────────────────────────────────────────
 
-const AURA_SKILLS = new Set<string>([JobSkillId.CONSECRATE, JobSkillId.REQUIEM]);
+const AURA_SKILLS = new Set<string>([JobSkillId.CONSECRATE, MasterySkillId.REQUIEM]);
 const PERIODIC_AOE_SKILLS = new Set<string>([
   JobSkillId.CHI_BURST, JobSkillId.HOLY, JobSkillId.BAHAMUT,
   JobSkillId.METEOR, JobSkillId.GUST, JobSkillId.QUAKE,
+  // Mastery AoE skills
+  MasterySkillId.SOUL_EATER, MasterySkillId.INNER_BEAST, MasterySkillId.FELL_CLEAVE,
+  MasterySkillId.FLARE, MasterySkillId.DREADWYRM, MasterySkillId.ERUPTION,
+  MasterySkillId.LANDSLIDE, MasterySkillId.STARDIVER, MasterySkillId.FINALE,
+  MasterySkillId.COMET, MasterySkillId.MIDARE_SETSUGEKKA,
 ]);
 const JUMP_SKILLS = new Set<string>([JobSkillId.JUMP]);
 const BARRAGE_SKILLS = new Set<string>([JobSkillId.BARRAGE]);
-const FAMILIAR_SKILLS = new Set<string>([JobSkillId.IFRIT, JobSkillId.SHIVA]);
+const FAMILIAR_SKILLS = new Set<string>([JobSkillId.IFRIT, JobSkillId.SHIVA, MasterySkillId.PHOENIX]);
 const TRAIL_SKILLS = new Set<string>([JobSkillId.PITFALL]);
-const ELIXIR_SKILLS = new Set<string>([JobSkillId.ELIXIR]);
-const ZANTETSUKEN_SKILLS = new Set<string>([JobSkillId.ZANTETSUKEN]);
+const ELIXIR_SKILLS = new Set<string>([JobSkillId.ELIXIR, MasterySkillId.CLEMENCY, MasterySkillId.BENEDICTION, MasterySkillId.MEGA_POTION]);
+const ZANTETSUKEN_SKILLS = new Set<string>([JobSkillId.ZANTETSUKEN, MasterySkillId.HISSATSU]);
 const ORBITAL_SKILLS = new Set<string>([JobSkillId.SACRED_ORBIT]);
+
+// ─── Ninja / mastery active skill categories ──────────────────────────────
+const FIREBALL_SKILLS = new Set<string>([MasterySkillId.KATON]);
+const LIGHTNING_STRIKE_SKILLS = new Set<string>([MasterySkillId.RAITON]);
+const GROUND_ZONE_SKILLS = new Set<string>([MasterySkillId.DOTON]);
+const WAR_CRY_SKILLS = new Set<string>([JobSkillId.WAR_CRY]);
+const CHARGE_SKILLS = new Set<string>([JobSkillId.RAMPAGE]);
+const ARROW_RAIN_SKILLS = new Set<string>([JobSkillId.RAIN_OF_ARROWS]);
+const PIERCING_PROJECTILE_SKILLS = new Set<string>([JobSkillId.CRESCENDO, JobSkillId.HADOUKEN]);
+const DRAGON_DIVE_SKILLS = new Set<string>([JobSkillId.DRAGON_DIVE]);
+const BLADE_STORM_SKILLS = new Set<string>([JobSkillId.BLADE_STORM]);
+const SMOKE_BOMB_SKILLS = new Set<string>([JobSkillId.SMOKE_BOMB]);
+const DUAL_STRIKE_SKILLS = new Set<string>([JobSkillId.DUAL_STRIKE]);
+const HALLOWED_GROUND_SKILLS = new Set<string>([MasterySkillId.HALLOWED_GROUND]);
+const TIME_STOP_SKILLS = new Set<string>([MasterySkillId.TIME_STOP]);
+const FREEZE_SKILLS = new Set<string>([MasterySkillId.FREEZE]);
+const ASYLUM_SKILLS = new Set<string>([MasterySkillId.ASYLUM]);
 
 // DARKNESS and THUNDER are event-driven, not updated in the loop
 
@@ -55,8 +77,12 @@ export class JobSkillManager {
 
   // Jump state
   private isJumping = false;
+  private isChargingJump = false;
+  private jumpChargeTimer = 0;
+  private jumpChargeDuration = 1000; // 1s charge before jump
+  private jumpChargeGfx: Phaser.GameObjects.Graphics | null = null;
   private jumpTimer = 0;
-  private jumpDuration = 600; // ms in the air
+  private jumpDuration = 900; // ms in the air
   private jumpSkillId: string = '';
   private jumpParams: Record<string, number> = {};
   private jumpOriginX = 0;
@@ -67,6 +93,48 @@ export class JobSkillManager {
   private trailZones: Array<{
     x: number; y: number; damage: number; remaining: number;
     tickTimer: number; graphics: Phaser.GameObjects.Graphics;
+  }> = [];
+
+  // Lock cooldown: minimum free-movement gap between position-locking skills
+  private lockCooldown = 0;
+  private static LOCK_GAP = 2500; // 2.5s minimum free movement between locks
+
+  // Dragon Dive state (separate from Jump)
+  private isDragonDiving = false;
+  private isDragonDiveAiming = false;
+  private dragonDiveAimTimer = 0;
+  private dragonDiveTargetX = 0;
+  private dragonDiveTargetY = 0;
+  private dragonDiveAimGfx: Phaser.GameObjects.Graphics | null = null;
+  private dragonDiveTimer = 0;
+  private dragonDiveDuration = 700; // ms in the air
+  private dragonDiveSkillId = '';
+  private dragonDiveParams: Record<string, number> = {};
+  private dragonDiveOriginX = 0;
+  private dragonDiveOriginY = 0;
+  private dragonDiveShadowGfx: Phaser.GameObjects.Graphics | null = null;
+
+  // Rampage charge state
+  private isCharging = false;
+  private chargeTimer = 0;
+  private chargeDuration = 400; // ms of charge
+  private chargeSkillId = '';
+  private chargeParams: Record<string, number> = {};
+  private chargeAngle = 0;
+  private chargeHitEnemies = new Set<Enemy>();
+
+  // Blade Storm state
+  private bladeStormActive = false;
+  private bladeStormTimer = 0;
+  private bladeStormSkillId = '';
+  private bladeStormParams: Record<string, number> = {};
+  private bladeStormGfx: Phaser.GameObjects.Graphics | null = null;
+  private bladeStormHitTimer = 0;
+
+  // Ground zone state (Doton - persistent zones)
+  private groundZones: Array<{
+    x: number; y: number; damage: number; slowPercent: number;
+    remaining: number; tickTimer: number; graphics: Phaser.GameObjects.Graphics;
   }> = [];
 
   // Darkness internal cooldown to avoid spam
@@ -124,21 +192,55 @@ export class JobSkillManager {
       this.darknessCooldownTimer -= delta;
     }
 
-    // Update jump if active
+    // Update lock cooldown (minimum gap between position-locking skills)
+    if (this.lockCooldown > 0) {
+      this.lockCooldown -= delta;
+    }
+
+    // Update Dragon Dive aim phase
+    if (this.isDragonDiveAiming) {
+      this.updateDragonDiveAim(delta);
+      return;
+    }
+
+    // Update jump charge or active jump
+    if (this.isChargingJump) {
+      this.updateJumpCharge(delta);
+      return;
+    }
     if (this.isJumping) {
       this.updateJumpInProgress(delta);
-      // While jumping, skip other skill updates
       return;
+    }
+
+    // Update Dragon Dive if active
+    if (this.isDragonDiving) {
+      this.updateDragonDiveInProgress(delta);
+      return;
+    }
+
+    // Update charge if active
+    if (this.isCharging) {
+      this.updateChargeInProgress(delta);
+      return;
+    }
+
+    // Update Blade Storm if active
+    if (this.bladeStormActive) {
+      this.updateBladeStormInProgress(delta);
     }
 
     // Update trail zones
     this.updateTrailZones(delta);
 
+    // Update ground zones (Doton)
+    this.updateGroundZones(delta);
+
     // Iterate active skills
     for (const [skillId, level] of Object.entries(skillLevels)) {
       if (level <= 0) continue;
 
-      const def = JOB_SKILL_DEFS[skillId as JobSkillId];
+      const def = JOB_SKILL_DEFS[skillId as JobSkillId] ?? MASTERY_SKILL_DEFS[skillId as MasterySkillId];
       if (!def || def.type !== 'active') continue;
 
       const params = def.levels[level - 1]?.params;
@@ -162,6 +264,36 @@ export class JobSkillManager {
         this.updateZantetsuken(skillId, params, delta);
       } else if (ORBITAL_SKILLS.has(skillId)) {
         this.updateOrbital(skillId, params, delta);
+      } else if (FIREBALL_SKILLS.has(skillId)) {
+        this.updateFireball(skillId, params, delta);
+      } else if (LIGHTNING_STRIKE_SKILLS.has(skillId)) {
+        this.updateLightningStrike(skillId, params, delta);
+      } else if (GROUND_ZONE_SKILLS.has(skillId)) {
+        this.updateGroundZone(skillId, params, delta);
+      } else if (WAR_CRY_SKILLS.has(skillId)) {
+        this.updateWarCry(skillId, params, delta);
+      } else if (CHARGE_SKILLS.has(skillId)) {
+        this.updateCharge(skillId, params, delta);
+      } else if (ARROW_RAIN_SKILLS.has(skillId)) {
+        this.updateArrowRain(skillId, params, delta);
+      } else if (PIERCING_PROJECTILE_SKILLS.has(skillId)) {
+        this.updatePiercingProjectile(skillId, params, delta);
+      } else if (DRAGON_DIVE_SKILLS.has(skillId)) {
+        this.updateDragonDive(skillId, params, delta);
+      } else if (BLADE_STORM_SKILLS.has(skillId)) {
+        this.updateBladeStorm(skillId, params, delta);
+      } else if (SMOKE_BOMB_SKILLS.has(skillId)) {
+        this.updateSmokeBomb(skillId, params, delta);
+      } else if (DUAL_STRIKE_SKILLS.has(skillId)) {
+        this.updateDualStrike(skillId, params, delta);
+      } else if (HALLOWED_GROUND_SKILLS.has(skillId)) {
+        this.updateHallowedGround(skillId, params, delta);
+      } else if (TIME_STOP_SKILLS.has(skillId)) {
+        this.updateTimeStop(skillId, params, delta);
+      } else if (FREEZE_SKILLS.has(skillId)) {
+        this.updateFreeze(skillId, params, delta);
+      } else if (ASYLUM_SKILLS.has(skillId)) {
+        this.updateAsylum(skillId, params, delta);
       }
       // DARKNESS and THUNDER are event-driven, handled separately
     }
@@ -196,7 +328,7 @@ export class JobSkillManager {
   // ─── Helper: get effective cooldown (respects Haste) ────────────────────
 
   private getEffectiveCooldown(baseCooldown: number): number {
-    const cdMult = this.player.playerState.modifiers.cooldownMultiplier;
+    const cdMult = this.player.getEffectiveCooldownMultiplier();
     return Math.max(100, baseCooldown * cdMult);
   }
 
@@ -609,35 +741,101 @@ export class JobSkillManager {
   // ═══════════════════════════════════════════════════════════════════════════
 
   private updateJump(skillId: string, params: Record<string, number>, delta: number): void {
-    if (this.isJumping) return;
+    if (this.isJumping || this.isChargingJump) return;
+    if (this.lockCooldown > 0) return; // wait for free-movement gap
 
-    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 8000);
+    const cooldown = Math.max(4000, this.getEffectiveCooldown(params.cooldown ?? 8000));
     const elapsed = this.addTimer(skillId, delta);
     if (elapsed < cooldown) return;
     this.setTimer(skillId, elapsed - cooldown);
 
-    // Start jump
-    this.isJumping = true;
-    this.jumpTimer = 0;
+    // Start charge phase
+    this.isChargingJump = true;
+    this.jumpChargeTimer = 0;
     this.jumpSkillId = skillId;
     this.jumpParams = { ...params };
     this.jumpOriginX = this.player.x;
     this.jumpOriginY = this.player.y;
 
-    // Player becomes invulnerable during jump
-    this.player.playerState.isInvulnerable = true;
+    // Player slows during charge (can still move a bit)
+    this.player.playerState.modifiers.speedMultiplier *= 0.55;
 
-    // Disable player body during jump so they can't be pushed
-    if (this.player.body) {
-      (this.player.body as Phaser.Physics.Arcade.Body).enable = false;
+    // Create charge visual
+    if (!this.jumpChargeGfx) {
+      this.jumpChargeGfx = this.scene.add.graphics();
+    }
+    this.jumpChargeGfx.setDepth(DEPTHS.EFFECTS);
+    this.jumpChargeGfx.setAlpha(1);
+  }
+
+  private updateJumpCharge(delta: number): void {
+    this.jumpChargeTimer += delta;
+    const progress = Math.min(this.jumpChargeTimer / this.jumpChargeDuration, 1);
+
+    // Update origin to current player position (they can still drift)
+    this.jumpOriginX = this.player.x;
+    this.jumpOriginY = this.player.y;
+
+    // Draw charge-up rings converging on player
+    if (this.jumpChargeGfx) {
+      this.jumpChargeGfx.clear();
+      const px = this.player.x;
+      const py = this.player.y;
+
+      // Converging ring
+      const ringRadius = (1 - progress) * 40 * SPRITE_SCALE + 6 * SPRITE_SCALE;
+      this.jumpChargeGfx.lineStyle(2, 0x4169E1, 0.5 + progress * 0.5);
+      this.jumpChargeGfx.strokeCircle(px, py, ringRadius);
+
+      // Inner glow growing
+      const innerRadius = progress * 8 * SPRITE_SCALE;
+      this.jumpChargeGfx.fillStyle(0x6699FF, progress * 0.4);
+      this.jumpChargeGfx.fillCircle(px, py, innerRadius);
+
+      // Dust particles rising from ground
+      for (let i = 0; i < 4; i++) {
+        const angle = (Math.PI * 2 / 4) * i + this.jumpChargeTimer * 0.005;
+        const dist = ringRadius * 0.8;
+        const px2 = px + Math.cos(angle) * dist;
+        const py2 = py + Math.sin(angle) * dist - progress * 10 * SPRITE_SCALE;
+        this.jumpChargeGfx.fillStyle(0x8899AA, 0.5 * (1 - progress * 0.5));
+        this.jumpChargeGfx.fillRect(px2, py2, 2, 2);
+      }
+
+      // Player squishes down (crouching to jump)
+      this.player.setScale(1 + progress * 0.1, 1 - progress * 0.2);
     }
 
-    // Create shadow sprite on the ground
-    if (!this.jumpShadowGfx) {
-      this.jumpShadowGfx = this.scene.add.graphics();
+    // Charge complete -> launch jump
+    if (progress >= 1) {
+      this.isChargingJump = false;
+
+      // Restore speed multiplier
+      this.player.playerState.modifiers.speedMultiplier /= 0.55;
+
+      // Clean up charge gfx
+      if (this.jumpChargeGfx) {
+        this.jumpChargeGfx.clear();
+      }
+
+      // Reset scale
+      this.player.setScale(1);
+
+      // Now start the actual jump
+      this.isJumping = true;
+      this.jumpTimer = 0;
+
+      this.player.playerState.isInvulnerable = true;
+      if (this.player.body) {
+        (this.player.body as Phaser.Physics.Arcade.Body).enable = false;
+      }
+
+      if (!this.jumpShadowGfx) {
+        this.jumpShadowGfx = this.scene.add.graphics();
+      }
+      this.jumpShadowGfx.setDepth(DEPTHS.GROUND + 1);
+      this.jumpShadowGfx.setAlpha(1);
     }
-    this.jumpShadowGfx.setDepth(DEPTHS.GROUND + 1);
-    this.jumpShadowGfx.setAlpha(1);
   }
 
   private updateJumpInProgress(delta: number): void {
@@ -664,7 +862,7 @@ export class JobSkillManager {
       heightFactor = 1 - t * t;
     }
 
-    const maxHeight = 80; // pixels above ground (high jump!)
+    const maxHeight = 200 * SPRITE_SCALE; // very high jump
     const yOffset = -heightFactor * maxHeight;
 
     // Move the player sprite visually upward (keep x the same)
@@ -690,8 +888,8 @@ export class JobSkillManager {
       const shadowAlpha = 0.4 * (1 - heightFactor * 0.3);
       this.jumpShadowGfx.fillStyle(0x000000, shadowAlpha);
       this.jumpShadowGfx.fillEllipse(
-        this.jumpOriginX, this.jumpOriginY + 2,
-        12 * shadowScale, 4 * shadowScale,
+        this.jumpOriginX, this.jumpOriginY + 2 * SPRITE_SCALE,
+        12 * SPRITE_SCALE * shadowScale, 4 * SPRITE_SCALE * shadowScale,
       );
     }
 
@@ -769,6 +967,9 @@ export class JobSkillManager {
 
       // Strong camera shake on impact
       this.scene.cameras.main.shake(200, 0.01);
+
+      // Set lock cooldown to ensure free-movement gap
+      this.lockCooldown = JobSkillManager.LOCK_GAP;
     }
   }
 
@@ -1227,6 +1428,994 @@ export class JobSkillManager {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // KATON (Ninja) - fireball projectile that explodes on impact
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateFireball(skillId: string, params: Record<string, number>, delta: number): void {
+    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 5000);
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    const radius = params.radius ?? 60;
+    const damage = params.damage ?? 12;
+    const burnDamage = params.burnDamage ?? 3;
+    const burnDuration = params.burnDuration ?? 2000;
+    const px = this.player.x;
+    const py = this.player.y;
+
+    // Find nearest enemy as target
+    let target: Enemy | null = null;
+    let nearestDist = Infinity;
+    const children = this.enemyGroup.getChildren() as Enemy[];
+    for (const enemy of children) {
+      if (!enemy.active) continue;
+      const d = Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y);
+      if (d < nearestDist && d <= radius * 3) { nearestDist = d; target = enemy; }
+    }
+    if (!target) return;
+
+    const tx = target.x;
+    const ty = target.y;
+    const dist = Phaser.Math.Distance.Between(px, py, tx, ty);
+    const travelDuration = Math.max(150, dist * 1.5);
+
+    // Scale visual with damage (higher level = bigger fireball)
+    const fbScale = 0.7 + damage / 25; // 12→1.18, 20→1.5, 30→1.9
+
+    // Create fireball visual
+    const fireball = this.scene.add.graphics();
+    fireball.setDepth(DEPTHS.EFFECTS + 1);
+    fireball.x = px;
+    fireball.y = py;
+
+    // Draw fireball shape (orange core + red glow) - scales with level
+    fireball.fillStyle(0xFFAA00, 0.9);
+    fireball.fillCircle(0, 0, 5 * fbScale);
+    fireball.fillStyle(0xFF4400, 0.5);
+    fireball.fillCircle(0, 0, 8 * fbScale);
+
+    // Muzzle flash at player (scales with level)
+    const flash = this.scene.add.graphics();
+    flash.setDepth(DEPTHS.EFFECTS);
+    flash.fillStyle(0xFF6600, 0.6);
+    flash.fillCircle(px, py, 10 * fbScale);
+    this.scene.tweens.add({
+      targets: flash, alpha: 0, duration: 150,
+      onComplete: () => flash.destroy(),
+    });
+
+    // Tween fireball to target position
+    this.scene.tweens.add({
+      targets: fireball,
+      x: tx,
+      y: ty,
+      duration: travelDuration,
+      ease: 'Quad.easeIn',
+      onUpdate: () => {
+        // Spawn trailing fire particles (reduced frequency for perf)
+        if (Math.random() < 0.08) {
+          const trail = this.scene.add.graphics();
+          trail.setDepth(DEPTHS.EFFECTS);
+          trail.fillStyle(0xFF6600, 0.6);
+          trail.fillCircle(fireball.x + (Math.random() - 0.5) * 4 * fbScale, fireball.y + (Math.random() - 0.5) * 4 * fbScale, (2 + Math.random() * 2) * fbScale);
+          this.scene.tweens.add({
+            targets: trail, alpha: 0, duration: 200,
+            onComplete: () => trail.destroy(),
+          });
+        }
+      },
+      onComplete: () => {
+        fireball.destroy();
+        // Explode at impact point
+        this.fireballExplode(fireball.x, fireball.y, radius, damage, burnDamage, burnDuration);
+      },
+    });
+  }
+
+  private fireballExplode(
+    x: number, y: number, radius: number,
+    damage: number, burnDamage: number, burnDuration: number,
+  ): void {
+    // Damage + burn enemies in radius
+    const children = this.enemyGroup.getChildren() as Enemy[];
+    for (const enemy of children) {
+      if (!enemy.active) continue;
+      const d = Phaser.Math.Distance.Between(x, y, enemy.x, enemy.y);
+      if (d <= radius) {
+        enemy.takeDamage(damage, false);
+        EventBus.emit(EVENTS.ENEMY_HIT, enemy, damage);
+        if (burnDamage > 0) {
+          enemy.applyBurn(burnDamage, burnDuration);
+        }
+      }
+    }
+
+    // Explosion visual
+    this.drawExpandingRing(x, y, 5, radius, 0xFF4400, 400);
+    this.drawExpandingRing(x, y, 3, radius * 0.6, 0xFF8800, 300);
+    this.drawPulse(x, y, radius * 0.7, 0xFF6600, 0.8, 300);
+    this.drawImpactParticles(x, y, 0xFF4400, 10, 70, 350);
+    this.drawAdditiveGlow(x, y, radius * 0.6, 0xFF4400, 0.4, 400);
+    this.scene.cameras.main.shake(80, 0.003);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RAITON (Ninja) - random lightning strikes from above
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateLightningStrike(skillId: string, params: Record<string, number>, delta: number): void {
+    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 6000);
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    const strikeCount = params.chainTargets ?? 3;
+    const damage = params.damage ?? 15;
+    const range = params.chainRange ?? 80;
+    const px = this.player.x;
+    const py = this.player.y;
+
+    // Collect all enemies in range
+    const candidates: Enemy[] = [];
+    const children = this.enemyGroup.getChildren() as Enemy[];
+    for (const enemy of children) {
+      if (!enemy.active) continue;
+      const d = Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y);
+      if (d <= range * 2) candidates.push(enemy);
+    }
+    if (candidates.length === 0) return;
+
+    // Pick random enemies (up to strikeCount)
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+    const targets = candidates.slice(0, strikeCount);
+
+    // Strike each target with a staggered delay
+    for (let i = 0; i < targets.length; i++) {
+      const enemy = targets[i];
+      const delay = i * 100; // stagger strikes by 100ms
+      this.scene.time.delayedCall(delay, () => {
+        if (!enemy.active) return;
+        enemy.takeDamage(damage, false);
+        EventBus.emit(EVENTS.ENEMY_HIT, enemy, damage);
+        this.drawLightningStrike(enemy.x, enemy.y, damage);
+      });
+    }
+  }
+
+  private drawLightningStrike(x: number, y: number, power: number): void {
+    const scale = 0.6 + power / 25; // 15→1.2, 22→1.48, 30→1.8
+    const boltHeight = 80 * scale;
+    const topY = y - boltHeight;
+
+    // Draw bolt from above (thicker at higher levels)
+    this.drawLightningBolt(x + (Math.random() - 0.5) * 10 * scale, topY, x, y, scale);
+
+    // Second branch bolt at higher power
+    if (power >= 22) {
+      this.drawLightningBolt(x + (Math.random() - 0.5) * 16 * scale, topY - 10, x, y, scale * 0.6);
+    }
+
+    // Impact flash at ground (scales with power)
+    const flash = this.scene.add.graphics();
+    flash.setDepth(DEPTHS.EFFECTS + 1);
+    flash.fillStyle(0xFFFF44, 0.8);
+    flash.fillCircle(x, y, 8 * scale);
+    flash.fillStyle(0x4488FF, 0.4);
+    flash.fillCircle(x, y, 14 * scale);
+    this.scene.tweens.add({
+      targets: flash, alpha: 0, duration: 250,
+      onComplete: () => flash.destroy(),
+    });
+
+    // Ground scorch (scales with power)
+    this.drawPulse(x, y, 10 * scale, 0x4444FF, 0.6, 200);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DOTON (Ninja) - ground zone (slow + damage)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateGroundZone(skillId: string, params: Record<string, number>, delta: number): void {
+    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 8000);
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    const radius = params.radius ?? 50;
+    const damage = params.damage ?? 8;
+    const duration = params.duration ?? 3000;
+    const px = this.player.x;
+    const py = this.player.y;
+
+    // Place zone at nearest enemy cluster
+    let cx = px, cy = py;
+    let nearestDist = Infinity;
+    const children = this.enemyGroup.getChildren() as Enemy[];
+    for (const enemy of children) {
+      if (!enemy.active) continue;
+      const d = Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y);
+      if (d < nearestDist && d <= radius * 3) { nearestDist = d; cx = enemy.x; cy = enemy.y; }
+    }
+
+    const gfx = this.scene.add.graphics();
+    gfx.setDepth(DEPTHS.EFFECTS - 2);
+
+    this.groundZones.push({
+      x: cx, y: cy, damage, slowPercent: 0.5,
+      remaining: duration, tickTimer: 0, graphics: gfx,
+    });
+
+    // Initial impact visual
+    this.drawExpandingRing(cx, cy, 5, radius, 0x8B4513, 400);
+    this.drawImpactParticles(cx, cy, 0xAA6633, 8, 50, 300);
+  }
+
+  private updateGroundZones(delta: number): void {
+    for (let i = this.groundZones.length - 1; i >= 0; i--) {
+      const zone = this.groundZones[i];
+      zone.remaining -= delta;
+      zone.tickTimer += delta;
+
+      if (zone.remaining <= 0) {
+        zone.graphics.destroy();
+        this.groundZones.splice(i, 1);
+        continue;
+      }
+
+      // Redraw zone visual
+      const alpha = Math.min(1, zone.remaining / 500) * 0.6;
+      zone.graphics.clear();
+      // Look up radius from the skill level
+      const skillLevels = this.player.playerState.jobSkillLevels;
+      const level = skillLevels[MasterySkillId.DOTON] ?? 1;
+      const def = MASTERY_SKILL_DEFS[MasterySkillId.DOTON];
+      const zoneRadius = def?.levels[level - 1]?.params?.radius ?? 50;
+
+      const time = this.scene.time.now;
+      const pulse = 0.5 + 0.15 * Math.sin(time * 0.004);
+
+      // Base zone - darker earth fill
+      zone.graphics.fillStyle(0x554422, alpha * 0.5);
+      zone.graphics.fillCircle(zone.x, zone.y, zoneRadius);
+
+      // Inner swirl pattern (rotating cracks)
+      const crackAlpha = alpha * pulse;
+      zone.graphics.lineStyle(2, 0x8B6914, crackAlpha);
+      for (let c = 0; c < 6; c++) {
+        const angle = (Math.PI * 2 / 6) * c + time * 0.001;
+        const innerR = zoneRadius * 0.3;
+        const outerR = zoneRadius * 0.85;
+        zone.graphics.beginPath();
+        zone.graphics.moveTo(zone.x + Math.cos(angle) * innerR, zone.y + Math.sin(angle) * innerR);
+        zone.graphics.lineTo(zone.x + Math.cos(angle) * outerR, zone.y + Math.sin(angle) * outerR);
+        zone.graphics.strokePath();
+      }
+
+      // Edge ring pulsing
+      zone.graphics.lineStyle(2, 0xAA8833, alpha * pulse);
+      zone.graphics.strokeCircle(zone.x, zone.y, zoneRadius);
+
+      // Dust particles rising (small squares drifting upward)
+      for (let p = 0; p < 5; p++) {
+        const seed = (time * 0.002 + p * 1.3) % 1;
+        const pAngle = (p / 5) * Math.PI * 2 + time * 0.001;
+        const dist = zoneRadius * (0.2 + seed * 0.6);
+        const px = zone.x + Math.cos(pAngle) * dist;
+        const py = zone.y + Math.sin(pAngle) * dist - seed * 12;
+        const pAlpha = alpha * (1 - seed) * 0.8;
+        zone.graphics.fillStyle(0xBB9955, pAlpha);
+        zone.graphics.fillRect(px, py, 2, 2);
+      }
+
+      // Damage + slow every 500ms
+      if (zone.tickTimer >= 500) {
+        zone.tickTimer -= 500;
+        const enemies = this.getEnemiesInRadius(zone.x, zone.y, zoneRadius);
+        for (const enemy of enemies) {
+          enemy.takeDamage(zone.damage, false);
+          EventBus.emit(EVENTS.ENEMY_HIT, enemy, zone.damage);
+          enemy.applySlow(zone.slowPercent, 600);
+        }
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WAR CRY (Berserker) - AoE stun + damage buff
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateWarCry(skillId: string, params: Record<string, number>, delta: number): void {
+    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 10000);
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    const radius = params.radius ?? 80;
+    const stunDuration = params.stunDuration ?? 1000;
+    const buffDamage = params.buffDamage ?? 0.20;
+    const buffDuration = params.buffDuration ?? 5000;
+    const px = this.player.x;
+    const py = this.player.y;
+
+    // AoE stun enemies
+    const enemies = this.getEnemiesInRadius(px, py, radius);
+    for (const enemy of enemies) {
+      enemy.applyStun(stunDuration);
+    }
+
+    // Apply temporary damage buff to player
+    this.player.playerState.modifiers.damageMultiplier += buffDamage;
+    this.scene.time.delayedCall(buffDuration, () => {
+      this.player.playerState.modifiers.damageMultiplier -= buffDamage;
+    });
+
+    // Visual: red/orange shockwave
+    this.drawExpandingRing(px, py, 10, radius, 0xDC143C, 500);
+    this.drawExpandingRing(px, py, 5, radius * 0.7, 0xFF4444, 350);
+    this.drawAdditiveGlow(px, py, radius * 0.5, 0xFF4400, 0.35, 400);
+    this.scene.cameras.main.shake(150, 0.006);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RAMPAGE (Berserker) - charge dash with damage
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateCharge(skillId: string, params: Record<string, number>, delta: number): void {
+    if (this.isCharging) return;
+    if (this.lockCooldown > 0) return; // wait for free-movement gap
+
+    const cooldown = Math.max(4000, this.getEffectiveCooldown(params.cooldown ?? 8000));
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    // Find nearest enemy for charge direction
+    const px = this.player.x;
+    const py = this.player.y;
+    let aimAngle = 0;
+    let nearestDist = Infinity;
+    const children = this.enemyGroup.getChildren() as Enemy[];
+    for (const enemy of children) {
+      if (!enemy.active) continue;
+      const d = Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y);
+      if (d < nearestDist) { nearestDist = d; aimAngle = Math.atan2(enemy.y - py, enemy.x - px); }
+    }
+
+    this.isCharging = true;
+    this.chargeTimer = 0;
+    this.chargeSkillId = skillId;
+    this.chargeParams = { ...params };
+    this.chargeAngle = aimAngle;
+    this.chargeHitEnemies.clear();
+    this.player.playerState.isInvulnerable = true;
+  }
+
+  private updateChargeInProgress(delta: number): void {
+    this.chargeTimer += delta;
+    const progress = Math.min(this.chargeTimer / this.chargeDuration, 1);
+    const range = this.chargeParams.range ?? 120;
+    const damage = this.chargeParams.damage ?? 20;
+    const speed = range / (this.chargeDuration / 1000);
+
+    // Move player in charge direction
+    const dx = Math.cos(this.chargeAngle) * speed * (delta / 1000);
+    const dy = Math.sin(this.chargeAngle) * speed * (delta / 1000);
+    this.player.x += dx;
+    this.player.y += dy;
+
+    // Hit enemies along the way
+    const hitRadius = 20;
+    const children = this.enemyGroup.getChildren() as Enemy[];
+    for (const enemy of children) {
+      if (!enemy.active || this.chargeHitEnemies.has(enemy)) continue;
+      const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
+      if (d <= hitRadius) {
+        enemy.takeDamage(damage, true);
+        EventBus.emit(EVENTS.ENEMY_HIT, enemy, damage);
+        this.chargeHitEnemies.add(enemy);
+      }
+    }
+
+    // Trail visual
+    if (Math.random() < 0.5) {
+      this.drawPulse(this.player.x, this.player.y, 8, 0xDC143C, 0.5, 200);
+    }
+
+    if (progress >= 1) {
+      this.isCharging = false;
+      this.player.playerState.isInvulnerable = false;
+      this.chargeHitEnemies.clear();
+      // Impact at end
+      this.drawExpandingRing(this.player.x, this.player.y, 5, 30, 0xFF4444, 300);
+      this.lockCooldown = JobSkillManager.LOCK_GAP;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RAIN OF ARROWS (Ranger) - arrow rain in area
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateArrowRain(skillId: string, params: Record<string, number>, delta: number): void {
+    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 7000);
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    const radius = params.radius ?? 70;
+    const impacts = params.count ?? 8;
+    const damage = params.damage ?? 6;
+    const px = this.player.x;
+    const py = this.player.y;
+
+    // Target area: nearest enemy position
+    let cx = px, cy = py;
+    let nearestDist = Infinity;
+    const children = this.enemyGroup.getChildren() as Enemy[];
+    for (const enemy of children) {
+      if (!enemy.active) continue;
+      const d = Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y);
+      if (d < nearestDist && d <= 300) { nearestDist = d; cx = enemy.x; cy = enemy.y; }
+    }
+
+    // Spawn impact arrows over time (staggered)
+    for (let i = 0; i < impacts; i++) {
+      const delay = i * 80; // stagger each arrow
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * radius;
+      const impactX = cx + Math.cos(angle) * dist;
+      const impactY = cy + Math.sin(angle) * dist;
+
+      this.scene.time.delayedCall(delay, () => {
+        // Damage enemies at impact
+        const enemies = this.getEnemiesInRadius(impactX, impactY, 12);
+        for (const enemy of enemies) {
+          enemy.takeDamage(damage, false);
+          EventBus.emit(EVENTS.ENEMY_HIT, enemy, damage);
+        }
+
+        // Arrow impact visual
+        const gfx = this.scene.add.graphics();
+        gfx.setDepth(DEPTHS.EFFECTS);
+        // Arrow falling line
+        gfx.lineStyle(1, 0x228B22, 0.8);
+        gfx.lineBetween(impactX, impactY - 20, impactX, impactY);
+        // Impact spark
+        gfx.fillStyle(0x44AA44, 0.7);
+        gfx.fillCircle(impactX, impactY, 3);
+
+        this.scene.tweens.add({
+          targets: gfx, alpha: 0, duration: 300,
+          onComplete: () => gfx.destroy(),
+        });
+      });
+    }
+
+    // Zone indicator
+    this.drawPulse(cx, cy, radius, 0x228B22, 0.3, 600);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CRESCENDO / HADOUKEN - piercing projectile
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updatePiercingProjectile(skillId: string, params: Record<string, number>, delta: number): void {
+    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 6000);
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    const damage = params.damage ?? 15;
+    const speed = params.speed ?? 200;
+    const px = this.player.x;
+    const py = this.player.y;
+
+    // Aim at nearest enemy
+    let aimAngle = 0;
+    let nearestDist = Infinity;
+    const children = this.enemyGroup.getChildren() as Enemy[];
+    for (const enemy of children) {
+      if (!enemy.active) continue;
+      const d = Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y);
+      if (d < nearestDist) { nearestDist = d; aimAngle = Math.atan2(enemy.y - py, enemy.x - px); }
+    }
+
+    const isHadouken = skillId === JobSkillId.HADOUKEN;
+    const color = isHadouken ? 0xFF8C00 : 0xDAA520;
+    const glowColor = isHadouken ? 0xFFDD44 : 0xFFDD88;
+    const projScale = 0.7 + damage / 25; // scales with level: 15→1.3, 25→1.7, 35→2.1
+    const projSize = (isHadouken ? 10 : 10) * projScale;
+
+    // Use a tween to move a position tracker, and update graphics from scene update
+    const projState = {
+      x: px, y: py,
+      vx: Math.cos(aimAngle) * speed,
+      vy: Math.sin(aimAngle) * speed,
+      alive: true,
+      age: 0,
+      hitEnemies: new Set<Enemy>(),
+    };
+    const maxLifetime = 2500;
+
+    const projGfx = this.scene.add.graphics();
+    projGfx.setDepth(DEPTHS.EFFECTS);
+
+    // Trail graphics (additive blend)
+    const trailGfx = this.scene.add.graphics();
+    trailGfx.setBlendMode(Phaser.BlendModes.ADD);
+    trailGfx.setDepth(DEPTHS.EFFECTS - 1);
+
+    // Register a scene update handler for this projectile
+    const updateHandler = (_time: number, dt: number) => {
+      if (!projState.alive) return;
+      const dtSec = dt / 1000;
+      projState.x += projState.vx * dtSec;
+      projState.y += projState.vy * dtSec;
+      projState.age += dt;
+
+      if (projState.age >= maxLifetime) {
+        projState.alive = false;
+        this.scene.events.off('update', updateHandler);
+        this.scene.tweens.add({
+          targets: [projGfx, trailGfx], alpha: 0, duration: 200,
+          onComplete: () => { projGfx.destroy(); trailGfx.destroy(); },
+        });
+        return;
+      }
+
+      // Redraw projectile at new position
+      projGfx.clear();
+      // Outer glow
+      projGfx.fillStyle(color, 0.7);
+      projGfx.fillCircle(projState.x, projState.y, projSize);
+      // Inner bright core
+      projGfx.fillStyle(glowColor, 0.9);
+      projGfx.fillCircle(projState.x, projState.y, projSize * 0.55);
+      // White hot center
+      projGfx.fillStyle(0xFFFFFF, 0.7);
+      projGfx.fillCircle(projState.x, projState.y, projSize * 0.2);
+
+      // Trail (fading circles behind)
+      trailGfx.clear();
+      for (let i = 1; i <= 4; i++) {
+        const trailAlpha = (0.25 - i * 0.05);
+        const trailX = projState.x - projState.vx * dtSec * i * 2;
+        const trailY = projState.y - projState.vy * dtSec * i * 2;
+        trailGfx.fillStyle(color, trailAlpha);
+        trailGfx.fillCircle(trailX, trailY, projSize * (1 - i * 0.15));
+      }
+
+      // Hit detection
+      const enemies = this.getEnemiesInRadius(projState.x, projState.y, projSize + 6);
+      for (const enemy of enemies) {
+        if (projState.hitEnemies.has(enemy)) continue;
+        enemy.takeDamage(damage, false);
+        EventBus.emit(EVENTS.ENEMY_HIT, enemy, damage);
+        projState.hitEnemies.add(enemy);
+        this.drawPulse(enemy.x, enemy.y, 12, color, 0.7, 200);
+        this.drawImpactParticles(enemy.x, enemy.y, color, 4, 40, 200);
+      }
+    };
+
+    this.scene.events.on('update', updateHandler);
+
+    // Muzzle flash + additive glow
+    this.drawPulse(px, py, 14, color, 0.7, 250);
+    this.drawAdditiveGlow(px, py, 16, color, 0.4, 250);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DRAGON DIVE (Dragoon) - big jump + flames on landing
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateDragonDive(skillId: string, params: Record<string, number>, delta: number): void {
+    if (this.isDragonDiving || this.isDragonDiveAiming || this.isJumping) return;
+    if (this.lockCooldown > 0) return; // wait for free-movement gap
+
+    const cooldown = Math.max(4000, this.getEffectiveCooldown(params.cooldown ?? 10000));
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    // Start aim phase
+    this.isDragonDiveAiming = true;
+    this.dragonDiveAimTimer = 0;
+    this.dragonDiveSkillId = skillId;
+    this.dragonDiveParams = { ...params };
+
+    // Slow player during aim (less harsh than Jump)
+    this.player.playerState.modifiers.speedMultiplier *= 0.6;
+
+    if (!this.dragonDiveAimGfx) {
+      this.dragonDiveAimGfx = this.scene.add.graphics();
+    }
+    this.dragonDiveAimGfx.setDepth(DEPTHS.EFFECTS);
+    this.dragonDiveAimGfx.setAlpha(1);
+  }
+
+  private updateDragonDiveAim(delta: number): void {
+    this.dragonDiveAimTimer += delta;
+    const aimDuration = 600; // 600ms aim phase (longer for progressive distance)
+    const maxDiveDistance = 120 * SPRITE_SCALE;
+    const indicatorDelay = 100; // indicator shows 100ms after aim starts
+
+    // Progressive distance: ramps from 30% to 100% over aim duration
+    const distProgress = Math.min(this.dragonDiveAimTimer / aimDuration, 1);
+    const easedProgress = distProgress * distProgress; // ease-in: starts slow, accelerates
+    const currentDistance = maxDiveDistance * (0.3 + 0.7 * easedProgress);
+
+    // Determine aim direction from player facing
+    const facing = this.player.getFacing();
+    let dirX = 0, dirY = 0;
+    switch (facing) {
+      case 0: dirX = 0; dirY = 1; break;   // DOWN
+      case 1: dirX = -1; dirY = 0; break;  // LEFT
+      case 2: dirX = 1; dirY = 0; break;   // RIGHT
+      case 3: dirX = 0; dirY = -1; break;  // UP
+    }
+
+    // Calculate target with progressive distance
+    const targetX = this.player.x + dirX * currentDistance;
+    const targetY = this.player.y + dirY * currentDistance;
+
+    // Clamp to world bounds
+    const cam = this.scene.cameras.main;
+    const worldW = cam.getBounds().width || 3000;
+    const worldH = cam.getBounds().height || 3000;
+    this.dragonDiveTargetX = Phaser.Math.Clamp(targetX, 20, worldW - 20);
+    this.dragonDiveTargetY = Phaser.Math.Clamp(targetY, 20, worldH - 20);
+
+    // Draw aim indicator (appears after short delay)
+    if (this.dragonDiveAimGfx && this.dragonDiveAimTimer >= indicatorDelay) {
+      this.dragonDiveAimGfx.clear();
+      const px = this.player.x;
+      const py = this.player.y;
+      const tx = this.dragonDiveTargetX;
+      const ty = this.dragonDiveTargetY;
+      const pulseAlpha = 0.5 + Math.sin(this.dragonDiveAimTimer * 0.012) * 0.3;
+      const fadeIn = Math.min((this.dragonDiveAimTimer - indicatorDelay) / 150, 1); // fade in over 150ms
+      const alpha = pulseAlpha * fadeIn;
+
+      // Fire trail particles along the arrow path
+      const arrowDist = Math.sqrt((tx - px) * (tx - px) + (ty - py) * (ty - py));
+      const angle = Math.atan2(ty - py, tx - px);
+      const particleCount = Math.floor(arrowDist / (8 * SPRITE_SCALE));
+      for (let i = 0; i < particleCount; i++) {
+        const t = (i + 0.5) / particleCount;
+        const flicker = Math.sin(this.dragonDiveAimTimer * 0.015 + i * 1.2) * 3 * SPRITE_SCALE;
+        const perpX = -Math.sin(angle) * flicker;
+        const perpY = Math.cos(angle) * flicker;
+        const fx = px + (tx - px) * t + perpX;
+        const fy = py + (ty - py) * t + perpY;
+        const size = (2 + Math.sin(this.dragonDiveAimTimer * 0.02 + i) * 1.5) * SPRITE_SCALE;
+        // Fire gradient: orange core -> red outer
+        const fireAlpha = alpha * (0.4 + 0.4 * Math.sin(this.dragonDiveAimTimer * 0.018 + i * 0.8));
+        this.dragonDiveAimGfx.fillStyle(0xFF6600, fireAlpha);
+        this.dragonDiveAimGfx.fillCircle(fx, fy, size);
+        this.dragonDiveAimGfx.fillStyle(0xFFAA00, fireAlpha * 0.6);
+        this.dragonDiveAimGfx.fillCircle(fx, fy, size * 0.6);
+      }
+
+      // Main arrow line (fiery)
+      this.dragonDiveAimGfx.lineStyle(3, 0xFF4400, alpha);
+      this.dragonDiveAimGfx.beginPath();
+      this.dragonDiveAimGfx.moveTo(px, py);
+      this.dragonDiveAimGfx.lineTo(tx, ty);
+      this.dragonDiveAimGfx.strokePath();
+      // Glow line (wider, fainter)
+      this.dragonDiveAimGfx.lineStyle(6, 0xFF6600, alpha * 0.25);
+      this.dragonDiveAimGfx.beginPath();
+      this.dragonDiveAimGfx.moveTo(px, py);
+      this.dragonDiveAimGfx.lineTo(tx, ty);
+      this.dragonDiveAimGfx.strokePath();
+
+      // Dragon head arrowhead (larger, fiercer)
+      const headLen = 12 * SPRITE_SCALE;
+      this.dragonDiveAimGfx.lineStyle(3, 0xFF4400, alpha);
+      this.dragonDiveAimGfx.beginPath();
+      this.dragonDiveAimGfx.moveTo(tx, ty);
+      this.dragonDiveAimGfx.lineTo(
+        tx - Math.cos(angle - 0.5) * headLen,
+        ty - Math.sin(angle - 0.5) * headLen,
+      );
+      this.dragonDiveAimGfx.moveTo(tx, ty);
+      this.dragonDiveAimGfx.lineTo(
+        tx - Math.cos(angle + 0.5) * headLen,
+        ty - Math.sin(angle + 0.5) * headLen,
+      );
+      this.dragonDiveAimGfx.strokePath();
+
+      // Landing zone: fire circle with expanding/contracting ring
+      const landingRadius = 20 * SPRITE_SCALE;
+      const ringPulse = 1 + Math.sin(this.dragonDiveAimTimer * 0.01) * 0.15;
+      // Outer fire glow
+      this.dragonDiveAimGfx.fillStyle(0xFF2200, alpha * 0.08);
+      this.dragonDiveAimGfx.fillCircle(tx, ty, landingRadius * 1.5 * ringPulse);
+      // Main landing zone
+      this.dragonDiveAimGfx.lineStyle(2, 0xFF6600, alpha * 0.8);
+      this.dragonDiveAimGfx.strokeCircle(tx, ty, landingRadius * ringPulse);
+      this.dragonDiveAimGfx.fillStyle(0xFF4400, alpha * 0.15);
+      this.dragonDiveAimGfx.fillCircle(tx, ty, landingRadius * ringPulse);
+      // Inner fire core
+      this.dragonDiveAimGfx.fillStyle(0xFFAA00, alpha * 0.25);
+      this.dragonDiveAimGfx.fillCircle(tx, ty, landingRadius * 0.4);
+
+      // Dragon wing shapes at landing zone (decorative arcs)
+      const wingAlpha = alpha * 0.3;
+      this.dragonDiveAimGfx.lineStyle(2, 0xFF4400, wingAlpha);
+      this.dragonDiveAimGfx.beginPath();
+      this.dragonDiveAimGfx.arc(tx - 8 * SPRITE_SCALE, ty, 10 * SPRITE_SCALE, -Math.PI * 0.6, Math.PI * 0.6);
+      this.dragonDiveAimGfx.strokePath();
+      this.dragonDiveAimGfx.beginPath();
+      this.dragonDiveAimGfx.arc(tx + 8 * SPRITE_SCALE, ty, 10 * SPRITE_SCALE, Math.PI * 0.4, Math.PI * 1.6);
+      this.dragonDiveAimGfx.strokePath();
+    }
+
+    // Aim phase complete -> start dive
+    if (this.dragonDiveAimTimer >= aimDuration) {
+      this.isDragonDiveAiming = false;
+
+      // Restore aim speed
+      this.player.playerState.modifiers.speedMultiplier /= 0.6;
+
+      // Clean up aim gfx
+      if (this.dragonDiveAimGfx) {
+        this.dragonDiveAimGfx.clear();
+      }
+
+      // Start the actual dive
+      this.isDragonDiving = true;
+      this.dragonDiveTimer = 0;
+      this.dragonDiveOriginX = this.player.x;
+      this.dragonDiveOriginY = this.player.y;
+      this.player.playerState.isInvulnerable = true;
+
+      if (this.player.body) {
+        (this.player.body as Phaser.Physics.Arcade.Body).enable = false;
+      }
+
+      if (!this.dragonDiveShadowGfx) {
+        this.dragonDiveShadowGfx = this.scene.add.graphics();
+      }
+      this.dragonDiveShadowGfx.setDepth(DEPTHS.GROUND + 1);
+      this.dragonDiveShadowGfx.setAlpha(1);
+    }
+  }
+
+  private updateDragonDiveInProgress(delta: number): void {
+    this.dragonDiveTimer += delta;
+    const totalDuration = this.dragonDiveDuration;
+    const progress = Math.min(this.dragonDiveTimer / totalDuration, 1);
+
+    const ascendEnd = 0.35;
+    const hoverEnd = 0.50;
+
+    let heightFactor: number;
+    if (progress < ascendEnd) {
+      const t = progress / ascendEnd;
+      heightFactor = 1 - Math.pow(1 - t, 2);
+    } else if (progress < hoverEnd) {
+      heightFactor = 1;
+    } else {
+      const t = (progress - hoverEnd) / (1 - hoverEnd);
+      heightFactor = 1 - t * t;
+    }
+
+    // Travel progress: how far along X/Y from origin to target
+    const travelProgress = Math.min(progress / 0.95, 1); // reach target slightly before landing
+
+    const maxHeight = 100;
+    const yOffset = -heightFactor * maxHeight;
+
+    // Interpolate player X/Y from origin toward target, plus height arc
+    const groundX = Phaser.Math.Linear(this.dragonDiveOriginX, this.dragonDiveTargetX, travelProgress);
+    const groundY = Phaser.Math.Linear(this.dragonDiveOriginY, this.dragonDiveTargetY, travelProgress);
+    this.player.x = groundX;
+    this.player.y = groundY + yOffset;
+
+    const scale = 1 + heightFactor * 0.5;
+    this.player.setScale(scale);
+
+    // Spinning descent with fire tint
+    if (progress > hoverEnd) {
+      const descendProgress = (progress - hoverEnd) / (1 - hoverEnd);
+      this.player.setAngle(descendProgress * 720);
+      this.player.setTint(0xFF4400);
+    } else {
+      this.player.setAngle(0);
+      this.player.clearTint();
+    }
+
+    // Shadow on ground travels toward target
+    if (this.dragonDiveShadowGfx) {
+      this.dragonDiveShadowGfx.clear();
+      const shadowX = Phaser.Math.Linear(this.dragonDiveOriginX, this.dragonDiveTargetX, travelProgress);
+      const shadowY = Phaser.Math.Linear(this.dragonDiveOriginY, this.dragonDiveTargetY, travelProgress);
+      const shadowScale = 1 - heightFactor * 0.5;
+      const shadowAlpha = 0.4 * (1 - heightFactor * 0.3);
+      this.dragonDiveShadowGfx.fillStyle(0x000000, shadowAlpha);
+      this.dragonDiveShadowGfx.fillEllipse(
+        shadowX, shadowY + 2,
+        14 * shadowScale, 5 * shadowScale,
+      );
+    }
+
+    // Landing
+    if (progress >= 1) {
+      this.isDragonDiving = false;
+      this.dragonDiveTimer = 0;
+
+      this.player.setScale(1);
+      this.player.setAngle(0);
+      this.player.clearTint();
+      // Teleport player to landing position
+      this.player.x = this.dragonDiveTargetX;
+      this.player.y = this.dragonDiveTargetY;
+      this.player.playerState.isInvulnerable = false;
+
+      if (this.player.body) {
+        (this.player.body as Phaser.Physics.Arcade.Body).enable = true;
+      }
+
+      if (this.dragonDiveShadowGfx) {
+        this.dragonDiveShadowGfx.clear();
+      }
+
+      const radius = this.dragonDiveParams.radius ?? 70;
+      const damage = this.dragonDiveParams.damage ?? 20;
+      const flameDamage = this.dragonDiveParams.flameDamage ?? 4;
+      const flameDuration = this.dragonDiveParams.flameDuration ?? 2000;
+      const lx = this.dragonDiveTargetX;
+      const ly = this.dragonDiveTargetY;
+
+      // Impact damage at landing spot
+      const enemies = this.getEnemiesInRadius(lx, ly, radius);
+      for (const enemy of enemies) {
+        enemy.takeDamage(damage, true);
+        EventBus.emit(EVENTS.ENEMY_HIT, enemy, damage);
+        if (flameDamage > 0) {
+          enemy.applyBurn(flameDamage, flameDuration);
+        }
+      }
+
+      // Big fire impact visual
+      this.drawExpandingRing(lx, ly, 10, radius, 0xFF4400, 500);
+      this.drawExpandingRing(lx, ly, 5, radius * 0.7, 0xFF8800, 350);
+      this.drawPulse(lx, ly, radius, 0xFF6600, 0.8, 400);
+      this.drawAdditiveGlow(lx, ly, radius, 0xFF4400, 0.5, 500);
+      this.drawImpactParticles(lx, ly, 0xFF4400, 12, 80, 400);
+
+      // Screen flash (brief white overlay)
+      const flashGfx = this.scene.add.graphics();
+      flashGfx.setDepth(DEPTHS.UI - 1);
+      flashGfx.fillStyle(0xFFFFFF, 0.4);
+      flashGfx.fillRect(
+        this.scene.cameras.main.scrollX,
+        this.scene.cameras.main.scrollY,
+        this.scene.cameras.main.width,
+        this.scene.cameras.main.height,
+      );
+      this.scene.tweens.add({
+        targets: flashGfx, alpha: 0, duration: 150,
+        onComplete: () => flashGfx.destroy(),
+      });
+
+      // Leave flame zone on ground
+      const flameGfx = this.scene.add.graphics();
+      flameGfx.setDepth(DEPTHS.EFFECTS - 2);
+      const flameProgress = { remaining: flameDuration };
+      const flameR = radius * 0.8;
+
+      this.scene.tweens.add({
+        targets: flameProgress, remaining: 0, duration: flameDuration,
+        onUpdate: () => {
+          flameGfx.clear();
+          const a = Math.max(0, flameProgress.remaining / flameDuration) * 0.35;
+          flameGfx.fillStyle(0xFF4400, a);
+          flameGfx.fillCircle(lx, ly, flameR);
+          flameGfx.fillStyle(0xFF8800, a * 0.6);
+          flameGfx.fillCircle(lx, ly, flameR * 0.5);
+        },
+        onComplete: () => flameGfx.destroy(),
+      });
+
+      this.scene.cameras.main.shake(250, 0.012);
+
+      // Set lock cooldown
+      this.lockCooldown = JobSkillManager.LOCK_GAP;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BLADE STORM (Samurai) - rotary slashes around player
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateBladeStorm(skillId: string, params: Record<string, number>, delta: number): void {
+    if (this.bladeStormActive) return;
+    if (this.lockCooldown > 0) return; // wait for free-movement gap
+
+    const cooldown = Math.max(4000, this.getEffectiveCooldown(params.cooldown ?? 7000));
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    this.bladeStormActive = true;
+    this.bladeStormTimer = 0;
+    this.bladeStormSkillId = skillId;
+    this.bladeStormParams = { ...params };
+    this.bladeStormHitTimer = 0;
+
+    if (!this.bladeStormGfx) {
+      this.bladeStormGfx = this.scene.add.graphics();
+      this.bladeStormGfx.setDepth(DEPTHS.EFFECTS);
+    }
+  }
+
+  private updateBladeStormInProgress(delta: number): void {
+    this.bladeStormTimer += delta;
+    const duration = this.bladeStormParams.duration ?? 1500;
+    const radius = this.bladeStormParams.radius ?? 50;
+    const damage = this.bladeStormParams.damage ?? 12;
+    const slashCount = this.bladeStormParams.slashCount ?? 4;
+
+    if (this.bladeStormTimer >= duration) {
+      this.bladeStormActive = false;
+      if (this.bladeStormGfx) {
+        this.bladeStormGfx.clear();
+      }
+      this.lockCooldown = JobSkillManager.LOCK_GAP;
+      return;
+    }
+
+    const progress = this.bladeStormTimer / duration;
+    const rotSpeed = Math.PI * 6; // 3 full rotations over the duration
+    const currentAngle = progress * rotSpeed;
+    const fadeAlpha = progress > 0.7 ? (1 - progress) / 0.3 : 1;
+
+    // Draw rotating slash arcs
+    if (this.bladeStormGfx) {
+      this.bladeStormGfx.clear();
+      const px = this.player.x;
+      const py = this.player.y;
+
+      for (let i = 0; i < slashCount; i++) {
+        const slashAngle = currentAngle + (Math.PI * 2 / slashCount) * i;
+        const sx = px + Math.cos(slashAngle) * radius * 0.8;
+        const sy = py + Math.sin(slashAngle) * radius * 0.8;
+        const ex = px + Math.cos(slashAngle) * radius;
+        const ey = py + Math.sin(slashAngle) * radius;
+
+        // Bright slash line
+        this.bladeStormGfx.lineStyle(2, 0xFF4444, fadeAlpha * 0.9);
+        this.bladeStormGfx.lineBetween(px, py, ex, ey);
+
+        // Slash tip glow
+        this.bladeStormGfx.fillStyle(0xFFAAAA, fadeAlpha * 0.6);
+        this.bladeStormGfx.fillCircle(sx, sy, 2);
+      }
+
+      // Center glow
+      this.bladeStormGfx.fillStyle(0xB22222, fadeAlpha * 0.2);
+      this.bladeStormGfx.fillCircle(px, py, radius * 0.3);
+    }
+
+    // Hit enemies periodically
+    this.bladeStormHitTimer += delta;
+    const hitInterval = duration / (slashCount * 2);
+    if (this.bladeStormHitTimer >= hitInterval) {
+      this.bladeStormHitTimer -= hitInterval;
+      const enemies = this.getEnemiesInRadius(this.player.x, this.player.y, radius);
+      for (const enemy of enemies) {
+        enemy.takeDamage(damage, false);
+        EventBus.emit(EVENTS.ENEMY_HIT, enemy, damage);
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // DARKNESS (Dark Knight) - triggered on player damage taken
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1320,23 +2509,23 @@ export class JobSkillManager {
     for (let i = 0; i < chainOrder.length - 1; i++) {
       const from = chainOrder[i];
       const to = chainOrder[i + 1];
-      this.drawLightningBolt(from.x, from.y, to.x, to.y);
+      this.drawLightningBolt(from.x, from.y, to.x, to.y, 1);
     }
   }
 
-  private drawLightningBolt(x1: number, y1: number, x2: number, y2: number): void {
+  private drawLightningBolt(x1: number, y1: number, x2: number, y2: number, scale = 1): void {
     const gfx = this.scene.add.graphics();
     gfx.setDepth(DEPTHS.EFFECTS);
 
-    // Jagged lightning with 4 segments
-    const segments = 4;
+    // Jagged lightning with segments scaling with size
+    const segments = Math.floor(4 + scale);
     const points: { x: number; y: number }[] = [{ x: x1, y: y1 }];
     const dx = x2 - x1;
     const dy = y2 - y1;
 
     for (let i = 1; i < segments; i++) {
       const t = i / segments;
-      const jitter = 6;
+      const jitter = 6 * scale;
       points.push({
         x: x1 + dx * t + (Math.random() - 0.5) * jitter * 2,
         y: y1 + dy * t + (Math.random() - 0.5) * jitter * 2,
@@ -1344,8 +2533,8 @@ export class JobSkillManager {
     }
     points.push({ x: x2, y: y2 });
 
-    // Draw bright core
-    gfx.lineStyle(2, 0xFFFF44, 0.9);
+    // Draw bright core (thicker at higher scale)
+    gfx.lineStyle(Math.max(2, 2 * scale), 0xFFFF44, 0.9);
     gfx.beginPath();
     gfx.moveTo(points[0].x, points[0].y);
     for (let i = 1; i < points.length; i++) {
@@ -1353,8 +2542,8 @@ export class JobSkillManager {
     }
     gfx.strokePath();
 
-    // Draw glow
-    gfx.lineStyle(4, 0x4444FF, 0.3);
+    // Draw glow (thicker at higher scale)
+    gfx.lineStyle(Math.max(4, 4 * scale), 0x4444FF, 0.3);
     gfx.beginPath();
     gfx.moveTo(points[0].x, points[0].y);
     for (let i = 1; i < points.length; i++) {
@@ -1400,6 +2589,225 @@ export class JobSkillManager {
   // DESTROY / CLEANUP
   // ═══════════════════════════════════════════════════════════════════════════
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SMOKE BOMB (Ninja) - invuln + blind nearby enemies
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateSmokeBomb(skillId: string, params: Record<string, number>, delta: number): void {
+    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 10000);
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    const radius = params.radius ?? 50;
+    const invulnDuration = params.invulnDuration ?? 1500;
+
+    // Make player invulnerable
+    this.player.playerState.isInvulnerable = true;
+    this.scene.time.delayedCall(invulnDuration, () => {
+      this.player.playerState.isInvulnerable = false;
+    });
+
+    // Stun/blind enemies in radius (treat as stun)
+    const enemies = this.getEnemiesInRadius(this.player.x, this.player.y, radius);
+    for (const enemy of enemies) {
+      enemy.applyStun(params.blindDuration ?? 2000);
+    }
+
+    // Smoke visual
+    const gfx = this.scene.add.graphics();
+    gfx.setDepth(DEPTHS.EFFECTS);
+    gfx.fillStyle(0x333344, 0.6);
+    gfx.fillCircle(this.player.x, this.player.y, radius);
+    this.scene.tweens.add({
+      targets: gfx,
+      alpha: 0,
+      duration: invulnDuration,
+      ease: 'Quad.easeOut',
+      onComplete: () => gfx.destroy(),
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DUAL STRIKE (Ninja) - multi-hit AoE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateDualStrike(skillId: string, params: Record<string, number>, delta: number): void {
+    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 4000);
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    const radius = params.radius ?? 40;
+    const damage = params.damage ?? 8;
+    const hitCount = params.hitCount ?? 2;
+    const px = this.player.x;
+    const py = this.player.y;
+
+    // Find nearest enemy for direction
+    let target: Enemy | null = null;
+    let nearestDist = Infinity;
+    const children = this.enemyGroup.getChildren() as Enemy[];
+    for (const enemy of children) {
+      if (!enemy.active) continue;
+      const d = Phaser.Math.Distance.Between(px, py, enemy.x, enemy.y);
+      if (d < nearestDist) { nearestDist = d; target = enemy; }
+    }
+    const baseAngle = target
+      ? Math.atan2(target.y - py, target.x - px)
+      : Math.random() * Math.PI * 2;
+
+    for (let h = 0; h < hitCount; h++) {
+      const slashAngle = baseAngle + (h - (hitCount - 1) / 2) * 0.5;
+      const delay = h * 100;
+
+      this.scene.time.delayedCall(delay, () => {
+        // Damage enemies in arc
+        const enemies = this.getEnemiesInRadius(px, py, radius);
+        for (const enemy of enemies) {
+          enemy.takeDamage(damage, false);
+          EventBus.emit(EVENTS.ENEMY_HIT, enemy, damage);
+        }
+
+        // Purple slash visual
+        const gfx = this.scene.add.graphics();
+        gfx.setDepth(DEPTHS.EFFECTS);
+        gfx.fillStyle(0x9933FF, 0.4);
+        gfx.slice(px, py, radius, slashAngle - 0.4, slashAngle + 0.4, false);
+        gfx.fillPath();
+        this.scene.tweens.add({
+          targets: gfx, alpha: 0, duration: 200,
+          onComplete: () => gfx.destroy(),
+        });
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HALLOWED GROUND (Paladin mastery) - invulnerability zone
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateHallowedGround(skillId: string, params: Record<string, number>, delta: number): void {
+    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 20000);
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    const duration = params.duration ?? 2000;
+
+    this.player.playerState.isInvulnerable = true;
+    this.scene.time.delayedCall(duration, () => {
+      this.player.playerState.isInvulnerable = false;
+    });
+
+    // Golden zone visual
+    const radius = params.radius ?? 60;
+    const gfx = this.scene.add.graphics();
+    gfx.setDepth(DEPTHS.EFFECTS - 1);
+    gfx.fillStyle(0xFFDD44, 0.3);
+    gfx.fillCircle(this.player.x, this.player.y, radius);
+    gfx.lineStyle(2, 0xFFDD44, 0.8);
+    gfx.strokeCircle(this.player.x, this.player.y, radius);
+    this.scene.tweens.add({
+      targets: gfx, alpha: 0, duration: duration,
+      ease: 'Linear',
+      onComplete: () => gfx.destroy(),
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TIME STOP (Time Mage mastery) - freeze all enemies
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateTimeStop(skillId: string, params: Record<string, number>, delta: number): void {
+    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 20000);
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    const duration = params.duration ?? 2000;
+    const enemies = this.enemyGroup.getChildren() as Enemy[];
+    for (const enemy of enemies) {
+      if (!enemy.active) continue;
+      enemy.applyStun(duration);
+    }
+
+    // Screen flash
+    this.drawPulse(this.player.x, this.player.y, 500, 0x9370DB, 0.3, duration);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FREEZE (Black Mage mastery) - freeze enemies in area
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateFreeze(skillId: string, params: Record<string, number>, delta: number): void {
+    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 12000);
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    const radius = params.radius ?? 60;
+    const freezeDuration = params.freezeDuration ?? 1500;
+    const enemies = this.getEnemiesInRadius(this.player.x, this.player.y, radius);
+    for (const enemy of enemies) {
+      enemy.applyStun(freezeDuration);
+    }
+
+    // Ice field visual
+    const gfx = this.scene.add.graphics();
+    gfx.setDepth(DEPTHS.EFFECTS - 1);
+    gfx.fillStyle(0x88CCFF, 0.4);
+    gfx.fillCircle(this.player.x, this.player.y, radius);
+    this.scene.tweens.add({
+      targets: gfx, alpha: 0, duration: freezeDuration,
+      onComplete: () => gfx.destroy(),
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ASYLUM (White Mage mastery) - healing zone
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateAsylum(skillId: string, params: Record<string, number>, delta: number): void {
+    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 15000);
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    const radius = params.radius ?? 60;
+    const healPerTick = params.healPerTick ?? 3;
+    const duration = params.duration ?? 5000;
+    const tickInterval = 1000;
+    const px = this.player.x;
+    const py = this.player.y;
+
+    // Green healing zone visual
+    const gfx = this.scene.add.graphics();
+    gfx.setDepth(DEPTHS.EFFECTS - 1);
+    gfx.fillStyle(0x44FF88, 0.25);
+    gfx.fillCircle(px, py, radius);
+    gfx.lineStyle(2, 0x44FF88, 0.6);
+    gfx.strokeCircle(px, py, radius);
+    this.scene.tweens.add({
+      targets: gfx, alpha: 0, duration: duration,
+      ease: 'Linear',
+      onComplete: () => gfx.destroy(),
+    });
+
+    // Heal ticks
+    let ticksRemaining = Math.floor(duration / tickInterval);
+    this.scene.time.addEvent({
+      delay: tickInterval,
+      repeat: ticksRemaining - 1,
+      callback: () => {
+        const dist = Phaser.Math.Distance.Between(px, py, this.player.x, this.player.y);
+        if (dist <= radius) {
+          this.player.heal(healPerTick);
+        }
+      },
+    });
+  }
+
   public destroy(): void {
     // Remove event listeners
     if (this.onJobSkillUpgraded) {
@@ -1430,10 +2838,26 @@ export class JobSkillManager {
     }
     this.orbitalLastCount.clear();
 
-    // Destroy jump shadow graphics
+    // Destroy jump graphics
     if (this.jumpShadowGfx) {
       this.jumpShadowGfx.destroy();
       this.jumpShadowGfx = null;
+    }
+    if (this.jumpChargeGfx) {
+      this.jumpChargeGfx.destroy();
+      this.jumpChargeGfx = null;
+    }
+
+    // Destroy dragon dive shadow
+    if (this.dragonDiveShadowGfx) {
+      this.dragonDiveShadowGfx.destroy();
+      this.dragonDiveShadowGfx = null;
+    }
+
+    // Destroy blade storm graphics
+    if (this.bladeStormGfx) {
+      this.bladeStormGfx.destroy();
+      this.bladeStormGfx = null;
     }
 
     // Destroy trail zone graphics
@@ -1441,6 +2865,12 @@ export class JobSkillManager {
       zone.graphics.destroy();
     }
     this.trailZones.length = 0;
+
+    // Destroy ground zone graphics
+    for (const zone of this.groundZones) {
+      zone.graphics.destroy();
+    }
+    this.groundZones.length = 0;
 
     // Clear timers
     this.skillTimers.clear();

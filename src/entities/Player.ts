@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import {
   PLAYER_SPEED, PLAYER_MAX_HP, PLAYER_PICKUP_RADIUS,
   PLAYER_INVULN_MS, PLAYER_MAX_WEAPONS, Direction, DEPTHS, EVENTS, WeaponId,
+  SPRITE_SCALE,
 } from '../constants';
 import { PlayerState, PlayerStatModifiers, WeaponInstance } from '../types';
 import { EventBus } from '../systems/EventBus';
@@ -33,7 +34,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private dashRechargeTime = 3000;
   public isDashing = false;
   private dashTimer = 0;
-  private dashDuration = 150;
+  private dashDuration = 150 * SPRITE_SCALE;
   private dashTrailTimer = 0;
   private lastMoveVx = 0;
   private lastMoveVy = 0;
@@ -45,8 +46,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.setDepth(DEPTHS.PLAYER);
     this.setCollideWorldBounds(true);
-    this.body!.setSize(10, 14);
-    this.body!.setOffset(3, 5);
+    this.body!.setSize(10 * SPRITE_SCALE, 14 * SPRITE_SCALE);
+    this.body!.setOffset(3 * SPRITE_SCALE, 5 * SPRITE_SCALE);
 
     this.playerState = this.createInitialState();
 
@@ -84,9 +85,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       modifiers: this.defaultModifiers(),
       chosenJobs: [],
       jobSkillLevels: {},
-      isDoubledDown: false,
+      isAwakened: false,
       passiveTiers: {},
       activeSynergies: [],
+      synergySkillLevels: {},
       takenMalus: [],
       isInvulnerable: false,
       isDead: false,
@@ -121,6 +123,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       rageMaxStacks: 0,
       frenzyAttackSpeedBonus: 0,
       killHealAmount: 0,
+      deathSaveCooldown: 0,
       projectileRangeMultiplier: 0,
       burnChance: 0,
       slowChance: 0,
@@ -220,7 +223,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private triggerDash(): void {
-    const maxCharges = 2 + this.playerState.modifiers.bonusDashCharges;
+    const maxCharges = this.getEffectiveDashCharges();
     if (this.isDashing || this.dashCharges <= 0) return;
     if (this.lastMoveVx === 0 && this.lastMoveVy === 0) return;
 
@@ -304,7 +307,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private handleDashRecharge(delta: number): void {
-    const maxCharges = 2 + this.playerState.modifiers.bonusDashCharges;
+    const maxCharges = this.getEffectiveDashCharges();
     if (this.dashCharges >= maxCharges) {
       this.dashRechargeTimer = 0;
       return;
@@ -342,10 +345,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  public getEffectiveSpeed(): number {
-    let speed = this.playerState.stats.speed * this.playerState.modifiers.speedMultiplier;
+  // ── Diminishing returns: past a soft cap, extra value is halved ──
+  // softCap(value, threshold) → value up to threshold + half of excess
+  private static softCap(value: number, threshold: number): number {
+    if (value <= threshold) return value;
+    return threshold + (value - threshold) * 0.5;
+  }
 
-    // Adrenaline bonus when below 50% HP
+  public getEffectiveSpeed(): number {
+    // Speed soft-capped at 2x base
+    const rawMult = this.playerState.modifiers.speedMultiplier;
+    const cappedMult = Player.softCap(rawMult, 2.0);
+    let speed = this.playerState.stats.speed * cappedMult;
+
     if (this.playerState.stats.currentHP < this.getEffectiveMaxHP() * 0.5) {
       speed *= (1 + this.playerState.modifiers.adrenalineSpeedBonus);
     }
@@ -354,20 +366,42 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   public getEffectiveMaxHP(): number {
-    return PLAYER_MAX_HP + this.playerState.modifiers.maxHpBonus;
+    // HP bonus soft-capped at 150
+    const cappedBonus = Player.softCap(this.playerState.modifiers.maxHpBonus, 150);
+    return PLAYER_MAX_HP + cappedBonus;
   }
 
   public getEffectiveDamageMultiplier(): number {
-    let mult = this.playerState.modifiers.damageMultiplier;
+    // Damage multiplier soft-capped at 3x
+    let mult = Player.softCap(this.playerState.modifiers.damageMultiplier, 3.0);
     if (this.playerState.stats.currentHP < this.getEffectiveMaxHP() * 0.5) {
       mult *= (1 + this.playerState.modifiers.adrenalineDamageBonus);
     }
-    // Dark Force: bonus damage below 30% HP
     if (this.playerState.modifiers.lowHpDamageBonus > 0 &&
         this.playerState.stats.currentHP < this.getEffectiveMaxHP() * 0.3) {
       mult *= (1 + this.playerState.modifiers.lowHpDamageBonus);
     }
     return mult;
+  }
+
+  /** Effective dash charges with hard cap at 5 */
+  public getEffectiveDashCharges(): number {
+    return Math.min(5, 2 + this.playerState.modifiers.bonusDashCharges);
+  }
+
+  /** Effective dodge chance: hard cap 60% */
+  public getEffectiveDodgeChance(): number {
+    return Math.min(0.60, this.playerState.modifiers.dodgeChance);
+  }
+
+  /** Effective crit chance: hard cap 75% */
+  public getEffectiveCritChance(): number {
+    return Math.min(0.75, this.playerState.modifiers.critChance);
+  }
+
+  /** Effective cooldown multiplier: floor at 0.3 (max 70% CDR) */
+  public getEffectiveCooldownMultiplier(): number {
+    return Math.max(0.30, this.playerState.modifiers.cooldownMultiplier);
   }
 
   public getEffectivePickupRadius(): number {
@@ -378,11 +412,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.playerState.isInvulnerable || this.playerState.isDead) return;
 
     // Dodge chance (Smoke Bomb)
-    if (this.playerState.modifiers.dodgeChance > 0 && Math.random() < this.playerState.modifiers.dodgeChance) {
+    if (this.playerState.modifiers.dodgeChance > 0 && Math.random() < this.getEffectiveDodgeChance()) {
       return; // dodged
     }
 
-    let finalDamage = Math.max(1, amount - this.playerState.modifiers.armor);
+    // Armor soft-capped at 15
+    const effectiveArmor = Player.softCap(this.playerState.modifiers.armor, 15);
+    let finalDamage = Math.max(1, amount - effectiveArmor);
 
     // Divine Guard: damage reduction below 50% HP
     if (this.playerState.modifiers.lowHpDamageReduction > 0 &&

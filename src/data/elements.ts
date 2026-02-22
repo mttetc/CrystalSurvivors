@@ -1,4 +1,6 @@
-import { ElementId } from '../constants';
+import { ElementId, SPRITE_SCALE } from '../constants';
+
+const SS = SPRITE_SCALE;
 
 export interface ElementUpgradeDef {
   id: string;
@@ -142,7 +144,7 @@ const LIGHTNING_UPGRADES: ElementUpgradeDef[] = [
     description: '+1 chain target, +40px chain range',
     effect: {
       chainBonus: 1,
-      chainRangeBonus: 40,
+      chainRangeBonus: 40 * SS,
     },
   },
 ];

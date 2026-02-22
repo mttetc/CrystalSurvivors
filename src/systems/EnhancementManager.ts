@@ -1,13 +1,14 @@
 import {
   EnhancementCategory, WeaponId, EnchantId, ElementId, EVENTS, Rarity,
-  JobId, JobSkillId, JOB_SELECTION_LEVELS, PLAYER_MAX_WEAPONS, PLAYER_MAX_JOBS,
+  JobId, JobSkillId, MasterySkillId, JOB_SELECTION_LEVELS, PLAYER_MAX_WEAPONS, PLAYER_MAX_JOBS,
 } from '../constants';
 import { EnhancementCard, PlayerStatModifiers } from '../types';
 import { CATEGORY_WEIGHTS, WEAPON_NAMES, ENCHANT_NAMES, STAT_BOOST_DEFS } from '../data/enhancements';
 import { WEAPON_DEFS } from '../data/weapons';
-import { JOB_DEFS, JOB_SKILL_DEFS } from '../data/jobs';
+import { JOB_DEFS, JOB_SKILL_DEFS, MASTERY_SKILL_DEFS } from '../data/jobs';
 import { ELEMENT_DEFS } from '../data/elements';
 import { MALUS_CARD_DEFS } from '../data/malus-cards';
+import { JOB_SYNERGIES, SKILL_SYNERGIES } from '../data/synergies';
 import { RANGE_CARD_DEFS } from '../data/range-cards';
 import { Player } from '../entities/Player';
 import { EventBus } from './EventBus';
@@ -17,12 +18,37 @@ const ALL_ENCHANT_IDS = Object.values(EnchantId);
 const ALL_ELEMENT_IDS = Object.values(ElementId);
 const ALL_JOB_IDS = Object.values(JobId);
 
+// When these synergies are active, their combo skills replace these base skills
+// Only for "active" type skills where the combo does the same thing but better
+const SYNERGY_SUPERSEDES_SKILL: Record<string, string[]> = {
+  // Skill synergies (triggered by having both component skills)
+  'spirit_bomb':     [JobSkillId.CHI_BURST, JobSkillId.HADOUKEN],
+  'bullet_storm':    [JobSkillId.MULTI_SHOT, JobSkillId.BARRAGE],
+  'tornado_dive':    [JobSkillId.JUMP, JobSkillId.GUST],
+  'spinning_death':  [JobSkillId.SACRED_ORBIT, JobSkillId.BLADE_STORM],
+  'iaido_master':    [JobSkillId.BUSHIDO, JobSkillId.DUAL_STRIKE],
+  'twilight':        [JobSkillId.HOLY, JobSkillId.DARKNESS],
+  'inferno':         [JobSkillId.FIRE],
+  'thunderstorm':    [JobSkillId.THUNDER],
+  'tectonic_fury':   [JobSkillId.QUAKE],
+  'absolute_zero':   [JobSkillId.BLIZZARD],
+  'fire_god':        [JobSkillId.IFRIT],
+  // Job synergies (triggered by having both jobs)
+  'sky_hunter':       [JobSkillId.RAIN_OF_ARROWS],
+  'iron_berserker':   [JobSkillId.WAR_CRY],
+  // Skill synergies with active component skills
+  'war_march':        [JobSkillId.WAR_CRY],       // War March combo > War Cry (active AoE stun)
+  'holy_punch':       [JobSkillId.CONSECRATE],     // Holy Punch combo > Consecrate (active holy aura)
+  'quicksand':        [JobSkillId.PITFALL],        // Quicksand combo > Pitfall (active damage trail)
+};
+
 // Weights for new categories (extend existing CATEGORY_WEIGHTS)
 const EXTENDED_WEIGHTS: Record<string, number> = {
   ...CATEGORY_WEIGHTS,
   [EnhancementCategory.APPLY_ELEMENT]: 6,
   [EnhancementCategory.ELEMENT_UPGRADE]: 8,
   [EnhancementCategory.MALUS_TRADE]: 8,
+  [EnhancementCategory.SYNERGY_UPGRADE]: 14,
 };
 
 // Level-scaled rarity rates
@@ -35,17 +61,19 @@ interface RarityBracket {
 }
 
 const LEVELUP_RARITY_BRACKETS: RarityBracket[] = [
-  { minLevel: 20, common: 0.45, rare: 0.30, epic: 0.18, legendary: 0.07 },
-  { minLevel: 15, common: 0.55, rare: 0.28, epic: 0.13, legendary: 0.04 },
-  { minLevel: 10, common: 0.65, rare: 0.25, epic: 0.08, legendary: 0.02 },
-  { minLevel: 5,  common: 0.78, rare: 0.18, epic: 0.04, legendary: 0.00 },
-  { minLevel: 1,  common: 0.92, rare: 0.08, epic: 0.00, legendary: 0.00 },
+  { minLevel: 30, common: 0.60, rare: 0.27, epic: 0.10, legendary: 0.03 },
+  { minLevel: 25, common: 0.67, rare: 0.24, epic: 0.07, legendary: 0.02 },
+  { minLevel: 20, common: 0.74, rare: 0.20, epic: 0.05, legendary: 0.01 },
+  { minLevel: 15, common: 0.80, rare: 0.16, epic: 0.04, legendary: 0.00 },
+  { minLevel: 10, common: 0.87, rare: 0.11, epic: 0.02, legendary: 0.00 },
+  { minLevel: 5,  common: 0.93, rare: 0.06, epic: 0.01, legendary: 0.00 },
+  { minLevel: 1,  common: 0.98, rare: 0.02, epic: 0.00, legendary: 0.00 },
 ];
 
 // Chest drops add bonuses on top of levelup rates
-const CHEST_BONUS = { rare: 0.10, epic: 0.05, legendary: 0.02 };
+const CHEST_BONUS = { rare: 0.04, epic: 0.02, legendary: 0.005 };
 // Elite drops are even better
-const ELITE_BONUS = { rare: 0.15, epic: 0.10, legendary: 0.05 };
+const ELITE_BONUS = { rare: 0.06, epic: 0.03, legendary: 0.01 };
 
 function getRarityRates(playerLevel: number, source: 'levelup' | 'chest' | 'elite'): { common: number; rare: number; epic: number; legendary: number } {
   let bracket = LEVELUP_RARITY_BRACKETS[LEVELUP_RARITY_BRACKETS.length - 1];
@@ -83,10 +111,10 @@ function rollRarity(playerLevel: number, source: 'levelup' | 'chest' | 'elite'):
 }
 
 export const RARITY_MULTIPLIERS: Record<Rarity, number> = {
-  [Rarity.COMMON]: 1.0,
-  [Rarity.RARE]: 1.0,
-  [Rarity.EPIC]: 1.5,
-  [Rarity.LEGENDARY]: 2.0,
+  [Rarity.COMMON]: 0.5,
+  [Rarity.RARE]: 0.8,
+  [Rarity.EPIC]: 1.2,
+  [Rarity.LEGENDARY]: 1.6,
 };
 
 export const RARITY_COLORS: Record<Rarity, string> = {
@@ -161,34 +189,31 @@ export class EnhancementManager {
 
     const cards: EnhancementCard[] = [];
 
-    // New job cards (2 if double down available, 3 if first pick)
-    const canDoubleDown = state.chosenJobs.length >= 2 && !state.isDoubledDown;
-    const newJobCount = canDoubleDown ? 2 : 3;
+    // New job cards (2 if awakening available, 3 if first pick)
+    const canAwaken = state.chosenJobs.length >= 2 && !state.isAwakened;
+    const newJobCount = canAwaken ? 2 : 3;
     const picked = available.slice(0, newJobCount);
 
     for (const jobId of picked) {
       const job = JOB_DEFS[jobId];
-      const skillList = job.skills
-        .map(sid => JOB_SKILL_DEFS[sid].name)
-        .join(', ');
       cards.push({
         category: EnhancementCategory.JOB_SELECTION,
         title: job.name,
-        description: `${job.description}. Skills: ${skillList}`,
+        description: job.description,
         icon: job.icon,
         rarity: Rarity.EPIC,
         jobId,
       });
     }
 
-    // Double Down card: lock to 2 jobs, get enhanced skills
-    if (canDoubleDown) {
+    // Awakening card: lock to 2 jobs, get awakened skills
+    if (canAwaken) {
       const jobNames = state.chosenJobs.map(j => JOB_DEFS[j].name).join(' + ');
       cards.push({
-        category: EnhancementCategory.JOB_DOUBLE_DOWN,
-        title: 'DOUBLE DOWN',
-        description: `Lock to ${jobNames}. Upgrade passives, +1 all skills, +1 weapon levels.`,
-        icon: 'icon_double_down',
+        category: EnhancementCategory.JOB_AWAKENING,
+        title: 'AWAKENING',
+        description: `Awaken ${jobNames}. Upgrade passives, +1 unlocked skills, +1 weapon levels.`,
+        icon: 'icon_awakening',
         rarity: Rarity.LEGENDARY,
       });
     }
@@ -203,6 +228,9 @@ export class EnhancementManager {
 
     if (this.getUpgradableJobSkills().length > 0) {
       result.push({ category: EnhancementCategory.JOB_SKILL, weight: EXTENDED_WEIGHTS[EnhancementCategory.JOB_SKILL] });
+    }
+    if (this.getUpgradableMasterySkills().length > 0) {
+      result.push({ category: EnhancementCategory.MASTERY_SKILL, weight: EXTENDED_WEIGHTS[EnhancementCategory.MASTERY_SKILL] ?? 18 });
     }
     if (this.getUnownedWeapons().length > 0) {
       result.push({ category: EnhancementCategory.NEW_WEAPON, weight: EXTENDED_WEIGHTS[EnhancementCategory.NEW_WEAPON] });
@@ -231,6 +259,11 @@ export class EnhancementManager {
       result.push({ category: EnhancementCategory.MALUS_TRADE, weight: EXTENDED_WEIGHTS[EnhancementCategory.MALUS_TRADE] });
     }
 
+    // Synergy skill upgrades
+    if (this.getUpgradableSynergySkills().length > 0) {
+      result.push({ category: EnhancementCategory.SYNERGY_UPGRADE, weight: EXTENDED_WEIGHTS[EnhancementCategory.SYNERGY_UPGRADE] });
+    }
+
     // Stat boosts (includes range cards) are always available as filler
     result.push({ category: EnhancementCategory.STAT_BOOST, weight: EXTENDED_WEIGHTS[EnhancementCategory.STAT_BOOST] });
 
@@ -240,7 +273,6 @@ export class EnhancementManager {
   // ─── Card generation per category ────────────────────────────────────
 
   private generateCardForCategory(cat: EnhancementCategory, rarity: Rarity): EnhancementCard | null {
-    const rarityTag = rarity !== Rarity.COMMON ? ` [${RARITY_NAMES[rarity]}]` : '';
 
     switch (cat) {
       case EnhancementCategory.JOB_SKILL: {
@@ -260,14 +292,35 @@ export class EnhancementManager {
           jobSkillId: skillId,
         };
       }
+      case EnhancementCategory.MASTERY_SKILL: {
+        const mSkills = this.getUpgradableMasterySkills();
+        if (mSkills.length === 0) return null;
+        const mSkillId = mSkills[Math.floor(Math.random() * mSkills.length)];
+        const mDef = MASTERY_SKILL_DEFS[mSkillId];
+        const mCurrentLevel = this.player.playerState.jobSkillLevels[mSkillId] ?? 0;
+        const mNextLevel = mDef.levels[mCurrentLevel];
+        return {
+          category: cat,
+          title: `[M] ${mDef.name}`,
+          description: mNextLevel.description,
+          icon: `skill_${mSkillId}`,
+          rarity,
+          jobId: mDef.jobId,
+          masterySkillId: mSkillId,
+        };
+      }
       case EnhancementCategory.NEW_WEAPON: {
         const weapons = this.getUnownedWeapons();
         if (weapons.length === 0) return null;
         const id = weapons[Math.floor(Math.random() * weapons.length)];
         const def = WEAPON_DEFS[id];
+        const startLv = rarity === Rarity.LEGENDARY ? 4
+          : rarity === Rarity.EPIC ? 3
+          : rarity === Rarity.RARE ? 2 : 1;
+        const lvText = startLv > 1 ? ` (Lv${startLv})` : '';
         return {
           category: cat,
-          title: WEAPON_NAMES[id],
+          title: WEAPON_NAMES[id] + lvText,
           description: def.description,
           icon: `icon_${id}`,
           rarity,
@@ -279,10 +332,12 @@ export class EnhancementManager {
         if (weapons.length === 0) return null;
         const id = weapons[Math.floor(Math.random() * weapons.length)];
         const w = this.player.getWeapon(id)!;
+        const upAmt = rarity >= Rarity.EPIC ? 2 : 1;
+        const targetLv = Math.min(5, w.level + upAmt);
         return {
           category: cat,
-          title: `${WEAPON_NAMES[id]} Lv${w.level + 1}`,
-          description: `Upgrade to level ${w.level + 1}${rarityTag}`,
+          title: `${WEAPON_NAMES[id]} Lv${targetLv}`,
+          description: upAmt > 1 ? `Upgrade +${upAmt} levels` : `Upgrade to level ${targetLv}`,
           icon: `icon_${id}`,
           rarity,
           weaponId: id,
@@ -296,7 +351,7 @@ export class EnhancementManager {
         return {
           category: cat,
           title: `${ENCHANT_NAMES[eId]}`,
-          description: `Apply ${ENCHANT_NAMES[eId]} to ${WEAPON_NAMES[wId]}${rarityTag}`,
+          description: `Apply ${ENCHANT_NAMES[eId]} to ${WEAPON_NAMES[wId]}`,
           icon: `icon_${wId}`,
           rarity,
           enchantId: eId,
@@ -311,7 +366,7 @@ export class EnhancementManager {
         return {
           category: cat,
           title: `${ENCHANT_NAMES[w.enchant!]} T${w.enchantTier + 1}`,
-          description: `Upgrade ${ENCHANT_NAMES[w.enchant!]} on ${WEAPON_NAMES[wId]}${rarityTag}`,
+          description: `Upgrade ${ENCHANT_NAMES[w.enchant!]} on ${WEAPON_NAMES[wId]}`,
           icon: `icon_${wId}`,
           rarity,
           enchantId: w.enchant!,
@@ -370,23 +425,43 @@ export class EnhancementManager {
         // Mix in range cards with stat boosts (20% chance for range card)
         if (Math.random() < 0.20 && RANGE_CARD_DEFS.length > 0) {
           const rangeCard = RANGE_CARD_DEFS[Math.floor(Math.random() * RANGE_CARD_DEFS.length)];
+          const rMult = RARITY_MULTIPLIERS[rarity];
+          const desc = rangeCard.descriptionFn ? rangeCard.descriptionFn(rMult) : rangeCard.description;
+          const malusDesc = rangeCard.malusFn ? rangeCard.malusFn(rMult) : undefined;
           return {
             category: cat,
             title: rangeCard.name,
-            description: rangeCard.description,
+            description: malusDesc ? desc : desc,
             icon: 'stat_range',
             rarity,
             statBoostId: rangeCard.id,
+            bonusText: malusDesc ? desc : undefined,
+            malusText: malusDesc,
           };
         }
         const boost = STAT_BOOST_DEFS[Math.floor(Math.random() * STAT_BOOST_DEFS.length)];
+        const rarityMult = RARITY_MULTIPLIERS[rarity];
         return {
           category: cat,
           title: boost.name,
-          description: boost.description,
+          description: boost.descriptionFn ? boost.descriptionFn(rarityMult) : boost.description,
           icon: boost.icon,
           rarity,
           statBoostId: boost.id,
+        };
+      }
+      case EnhancementCategory.SYNERGY_UPGRADE: {
+        const upgradable = this.getUpgradableSynergySkills();
+        if (upgradable.length === 0) return null;
+        const pick = upgradable[Math.floor(Math.random() * upgradable.length)];
+        const nextLv = (this.player.playerState.synergySkillLevels[pick.id] ?? 1) + 1;
+        return {
+          category: cat,
+          title: `${pick.comboName} Lv${nextLv}`,
+          description: `Upgrade ${pick.synergyName} combo skill`,
+          icon: 'stat_damage',
+          rarity,
+          synergyId: pick.id,
         };
       }
       default:
@@ -408,9 +483,9 @@ export class EnhancementManager {
         }
         break;
 
-      case EnhancementCategory.JOB_DOUBLE_DOWN:
+      case EnhancementCategory.JOB_AWAKENING:
         // Handled by PassiveManager via GameScene
-        EventBus.emit('double-down-chosen');
+        EventBus.emit('awakening-chosen');
         break;
 
       case EnhancementCategory.JOB_SKILL:
@@ -431,15 +506,44 @@ export class EnhancementManager {
         }
         break;
 
+      case EnhancementCategory.MASTERY_SKILL:
+        if (card.masterySkillId) {
+          const mSkillId = card.masterySkillId;
+          const mLevels = this.player.playerState.jobSkillLevels;
+          const mCurrentLevel = mLevels[mSkillId] ?? 0;
+          mLevels[mSkillId] = mCurrentLevel + 1;
+
+          const mDef = MASTERY_SKILL_DEFS[mSkillId];
+          const mLevelDef = mDef.levels[mCurrentLevel];
+          if (mDef.type === 'modifier' && mLevelDef.apply) {
+            mLevelDef.apply(this.player.playerState.modifiers);
+          }
+
+          EventBus.emit(EVENTS.JOB_SKILL_UPGRADED, mSkillId, mLevels[mSkillId]);
+          EventBus.emit(EVENTS.STATS_CHANGED);
+        }
+        break;
+
       case EnhancementCategory.NEW_WEAPON:
         if (card.weaponId) {
+          // Rarity determines starting level: Common=1, Rare=2, Epic=3, Legendary=4
+          const startLevel = card.rarity === Rarity.LEGENDARY ? 4
+            : card.rarity === Rarity.EPIC ? 3
+            : card.rarity === Rarity.RARE ? 2 : 1;
           this.player.addWeapon(card.weaponId);
+          for (let i = 1; i < startLevel; i++) {
+            this.player.upgradeWeapon(card.weaponId);
+          }
         }
         break;
 
       case EnhancementCategory.WEAPON_UPGRADE:
         if (card.weaponId) {
-          this.player.upgradeWeapon(card.weaponId);
+          // Rarity determines upgrade amount: Common/Rare=+1, Epic=+2, Legendary=+2
+          const upgrades = card.rarity >= Rarity.EPIC ? 2 : 1;
+          for (let i = 0; i < upgrades; i++) {
+            this.player.upgradeWeapon(card.weaponId);
+          }
         }
         break;
 
@@ -499,16 +603,22 @@ export class EnhancementManager {
           // Check range cards first
           const rangeCard = RANGE_CARD_DEFS.find(r => r.id === card.statBoostId);
           if (rangeCard) {
-            rangeCard.apply(this.player.playerState.modifiers);
+            rangeCard.apply(this.player.playerState.modifiers, mult);
             EventBus.emit(EVENTS.STATS_CHANGED);
             break;
           }
-          // Then regular stat boosts
+          // Then regular stat boosts - apply with rarity multiplier
           const boost = STAT_BOOST_DEFS.find(b => b.id === card.statBoostId);
           if (boost) {
-            boost.apply(this.player.playerState.modifiers);
+            boost.apply(this.player.playerState.modifiers, mult);
             EventBus.emit(EVENTS.STATS_CHANGED);
           }
+        }
+        break;
+
+      case EnhancementCategory.SYNERGY_UPGRADE:
+        if (card.synergyId) {
+          EventBus.emit(EVENTS.SYNERGY_SKILL_UPGRADE, card.synergyId);
         }
         break;
     }
@@ -522,19 +632,7 @@ export class EnhancementManager {
     const job = JOB_DEFS[jobId];
     if (!job) return;
 
-    const levels = this.player.playerState.jobSkillLevels;
     const mods = this.player.playerState.modifiers;
-
-    // Grant first skill at level 1 (the "signature" skill)
-    const firstSkill = job.skills[0];
-    if (firstSkill && (levels[firstSkill] ?? 0) === 0) {
-      levels[firstSkill] = 1;
-      const def = JOB_SKILL_DEFS[firstSkill];
-      if (def?.type === 'modifier' && def.levels[0]?.apply) {
-        def.levels[0].apply(mods);
-      }
-      EventBus.emit(EVENTS.JOB_SKILL_UPGRADED, firstSkill, 1);
-    }
 
     // Grant tier 1 passive on job pick
     const state = this.player.playerState;
@@ -571,6 +669,25 @@ export class EnhancementManager {
     return ALL_WEAPON_IDS.filter(id => !owned.has(id));
   }
 
+  private getUpgradableSynergySkills(): { id: string; synergyName: string; comboName: string }[] {
+    const levels = this.player.playerState.synergySkillLevels;
+    const result: { id: string; synergyName: string; comboName: string }[] = [];
+    for (const id of this.player.playerState.activeSynergies) {
+      if ((levels[id] ?? 1) >= 6) continue;
+      // Find synergy info
+      const job = JOB_SYNERGIES.find(s => s.id === id);
+      if (job?.comboSkill) {
+        result.push({ id, synergyName: job.name, comboName: job.comboSkill.name });
+        continue;
+      }
+      const skill = SKILL_SYNERGIES.find(s => s.id === id);
+      if (skill?.comboSkill) {
+        result.push({ id, synergyName: skill.name, comboName: skill.comboSkill.name });
+      }
+    }
+    return result;
+  }
+
   private getUpgradableWeapons(): WeaponId[] {
     return this.player.playerState.weapons
       .filter(w => w.level < 5)
@@ -578,12 +695,35 @@ export class EnhancementManager {
   }
 
   private getUpgradableJobSkills(): JobSkillId[] {
+    // Build set of skills superseded by active synergies
+    const superseded = new Set<string>();
+    for (const synergyId of this.player.playerState.activeSynergies) {
+      const replaced = SYNERGY_SUPERSEDES_SKILL[synergyId];
+      if (replaced) replaced.forEach(s => superseded.add(s));
+    }
+
     const result: JobSkillId[] = [];
     for (const jobId of this.player.playerState.chosenJobs) {
       const job = JOB_DEFS[jobId];
       for (const skillId of job.skills) {
+        if (superseded.has(skillId)) continue;
         const level = this.player.playerState.jobSkillLevels[skillId] ?? 0;
-        if (level < 3) {
+        if (level < 6) {
+          result.push(skillId);
+        }
+      }
+    }
+    return result;
+  }
+
+  private getUpgradableMasterySkills(): MasterySkillId[] {
+    if (!this.player.playerState.isAwakened) return [];
+    const result: MasterySkillId[] = [];
+    for (const jobId of this.player.playerState.chosenJobs) {
+      const job = JOB_DEFS[jobId];
+      for (const skillId of job.masterySkills) {
+        const level = this.player.playerState.jobSkillLevels[skillId] ?? 0;
+        if (level < 6) {
           result.push(skillId);
         }
       }
@@ -667,11 +807,10 @@ export class EnhancementManager {
         if (result.length >= count) break;
         const rarity = rollRarity(playerLevel, source);
         const w = this.player.getWeapon(id)!;
-        const rarityTag = rarity !== Rarity.COMMON ? ` [${RARITY_NAMES[rarity]}]` : '';
         const card: EnhancementCard = {
           category: EnhancementCategory.WEAPON_UPGRADE,
           title: `${WEAPON_NAMES[id]} Lv${w.level + 1}`,
-          description: `Upgrade to level ${w.level + 1}${rarityTag}`,
+          description: `Upgrade to level ${w.level + 1}`,
           icon: `icon_${id}`,
           rarity,
           weaponId: id,

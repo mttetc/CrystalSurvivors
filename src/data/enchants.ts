@@ -1,5 +1,7 @@
-import { EnchantId } from '../constants';
+import { EnchantId, SPRITE_SCALE } from '../constants';
 import { EnchantDef } from '../types';
+
+const SS = SPRITE_SCALE;
 
 export const ENCHANT_DEFS: Record<EnchantId, EnchantDef> = {
   [EnchantId.BURNING]: {
@@ -57,9 +59,9 @@ export const ENCHANT_DEFS: Record<EnchantId, EnchantDef> = {
     name: 'Explosive',
     description: 'Hits explode in an area',
     tiers: [
-      { explosionRadius: 25, explosionDamagePercent: 0.25 },
-      { explosionRadius: 32, explosionDamagePercent: 0.35 },
-      { explosionRadius: 42, explosionDamagePercent: 0.50 },
+      { explosionRadius: 25 * SS, explosionDamagePercent: 0.25 },
+      { explosionRadius: 32 * SS, explosionDamagePercent: 0.35 },
+      { explosionRadius: 42 * SS, explosionDamagePercent: 0.50 },
     ],
   },
   [EnchantId.TOXIC]: {
@@ -67,9 +69,9 @@ export const ENCHANT_DEFS: Record<EnchantId, EnchantDef> = {
     name: 'Toxic',
     description: 'Creates poison clouds on hit',
     tiers: [
-      { cloudRadius: 20, cloudDamage: 2, cloudDuration: 2000, toxicProcChance: 0.25 },
-      { cloudRadius: 26, cloudDamage: 3, cloudDuration: 2500, toxicProcChance: 0.35 },
-      { cloudRadius: 32, cloudDamage: 5, cloudDuration: 3000, toxicProcChance: 0.50 },
+      { cloudRadius: 20 * SS, cloudDamage: 2, cloudDuration: 2000, toxicProcChance: 0.25 },
+      { cloudRadius: 26 * SS, cloudDamage: 3, cloudDuration: 2500, toxicProcChance: 0.35 },
+      { cloudRadius: 32 * SS, cloudDamage: 5, cloudDuration: 3000, toxicProcChance: 0.50 },
     ],
   },
   [EnchantId.CRITICAL]: {

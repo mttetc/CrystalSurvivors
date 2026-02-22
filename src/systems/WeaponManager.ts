@@ -35,6 +35,9 @@ export class WeaponManager {
     EventBus.on(EVENTS.WEAPON_ADDED, (id: WeaponId) => {
       this.addWeapon(id);
     });
+    EventBus.on(EVENTS.RESET_WEAPON_COOLDOWNS, () => {
+      this.resetAllCooldowns();
+    });
   }
 
   private addWeapon(id: WeaponId): void {
@@ -98,6 +101,15 @@ export class WeaponManager {
       // Only update if player has this weapon
       if (this.player.getWeapon(id)) {
         weapon.update(time, delta, enemies);
+      }
+    }
+  }
+
+  /** Reset all weapon cooldowns so they fire immediately */
+  public resetAllCooldowns(): void {
+    for (const [id, weapon] of this.weapons) {
+      if (this.player.getWeapon(id)) {
+        weapon.resetCooldown();
       }
     }
   }

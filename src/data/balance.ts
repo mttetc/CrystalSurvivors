@@ -1,7 +1,7 @@
 import { SCALE_HP_PER_WAVE, SCALE_SPEED_PER_WAVE, SCALE_DAMAGE_PER_WAVE } from '../constants';
 
 export function xpRequired(level: number): number {
-  return Math.floor(8 + (level - 1) * 4 + Math.pow(level - 1, 1.6));
+  return Math.floor(14 + (level - 1) * 7 + Math.pow(level - 1, 1.75));
 }
 
 export function scaleHP(baseHP: number, wave: number): number {

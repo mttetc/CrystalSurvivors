@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WeaponId, DEPTHS, EVENTS, KNOCKBACK_VELOCITY } from '../constants';
+import { WeaponId, DEPTHS, EVENTS, KNOCKBACK_VELOCITY, SPRITE_SCALE } from '../constants';
 import { BaseWeapon } from './BaseWeapon';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -37,7 +37,7 @@ export class ChronoRod extends BaseWeapon {
     // Inner glow ring
     const glow = this.scene.add.graphics();
     glow.setDepth(DEPTHS.EFFECTS);
-    glow.lineStyle(3, 0xCC99FF, 0.6);
+    glow.lineStyle(3 * SPRITE_SCALE, 0xCC99FF, 0.6);
     glow.strokeCircle(this.player.x, this.player.y, radius * 0.3 * aoeScale);
 
     this.scene.tweens.add({

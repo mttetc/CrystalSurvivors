@@ -37,8 +37,9 @@ export class Shuriken extends BaseWeapon {
       }
 
       const speed = stats.projectileSpeed ?? 220;
+      const sp = this.getSpawnPoint(angle);
       proj.fire(
-        this.player.x, this.player.y,
+        sp.x, sp.y,
         Math.cos(angle) * speed,
         Math.sin(angle) * speed,
         'shuriken',
@@ -64,6 +65,8 @@ export class Shuriken extends BaseWeapon {
       const playerRef = this.player;
       this.scene.time.delayedCall(750, () => {
         if (!proj.active) return;
+        // Clear hit list so shuriken damages on the return trip too
+        proj.resetHitEnemies();
         const bx = playerRef.x - proj.x;
         const by = playerRef.y - proj.y;
         const bd = Math.sqrt(bx * bx + by * by) || 1;

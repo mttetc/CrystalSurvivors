@@ -8,14 +8,14 @@ export class WaveBanner {
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
-    this.text = scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 30, '', {
-      fontSize: '16px',
-      fontFamily: 'monospace',
+    this.text = scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, '', {
+      fontSize: '32px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#FFFFFF',
       stroke: '#000000',
-      strokeThickness: 3,
+      strokeThickness: 6,
       fontStyle: 'bold',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0).setResolution(8);
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0).setResolution(16);
 
     EventBus.on(EVENTS.WAVE_STARTED, this.onWaveStarted, this);
     EventBus.on(EVENTS.BOSS_SPAWNED, this.onBossSpawned, this);
@@ -35,7 +35,7 @@ export class WaveBanner {
 
   public show(message: string, color: string): void {
     this.text.setText(message);
-    this.text.setStyle({ color, stroke: '#000000', strokeThickness: 3 });
+    this.text.setStyle({ color, stroke: '#000000', strokeThickness: 6 });
     this.text.setAlpha(1);
     this.text.setScale(0.5);
 

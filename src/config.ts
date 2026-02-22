@@ -8,6 +8,7 @@ import { LevelUpScene } from './scenes/LevelUpScene';
 import { PauseScene } from './scenes/PauseScene';
 import { CharSelectScene } from './scenes/CharSelectScene';
 import { GameOverScene } from './scenes/GameOverScene';
+import { PerksScene } from './scenes/PerksScene';
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -24,7 +25,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, TitleScene, CharSelectScene, GameScene, HUDScene, LevelUpScene, PauseScene, GameOverScene],
+  scene: [BootScene, TitleScene, CharSelectScene, GameScene, HUDScene, LevelUpScene, PauseScene, PerksScene, GameOverScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

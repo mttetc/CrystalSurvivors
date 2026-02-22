@@ -22,9 +22,10 @@ export interface PlayerState {
   modifiers: PlayerStatModifiers;
   chosenJobs: JobId[];
   jobSkillLevels: Record<string, number>;  // skillId → level (1-3)
-  isDoubledDown: boolean;                   // true = locked to 2 jobs, enhanced skills
+  isAwakened: boolean;                       // true = locked to 2 jobs, awakened skills
   passiveTiers: Record<string, number>;     // jobId → passive tier (0=none, 1, 2)
   activeSynergies: string[];                // active synergy IDs
+  synergySkillLevels: Record<string, number>; // synergyId → level (1-3)
   takenMalus: string[];                     // taken malus card IDs
   isInvulnerable: boolean;
   isDead: boolean;

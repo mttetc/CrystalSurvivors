@@ -1,4 +1,4 @@
-import { EnemyType } from '../constants';
+import { EnemyType, SPRITE_SCALE } from '../constants';
 
 export function generateEnemyTextures(scene: Phaser.Scene): void {
   generateEnemyTexture(scene, EnemyType.SHAMBLER, 16, drawShambler);
@@ -23,8 +23,10 @@ function generateEnemyTexture(
   drawFn: (ctx: CanvasRenderingContext2D, x: number, y: number, s: number, frame: number) => void,
 ): void {
   const frames = 2;
-  const canvas = scene.textures.createCanvas(key, size * frames, size)!;
+  const scaledSize = size * SPRITE_SCALE;
+  const canvas = scene.textures.createCanvas(key, scaledSize * frames, scaledSize)!;
   const ctx = canvas.context;
+  ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
 
   for (let f = 0; f < frames; f++) {
     drawFn(ctx, f * size, 0, size, f);
@@ -33,7 +35,7 @@ function generateEnemyTexture(
   canvas.refresh();
   const texture = scene.textures.get(key);
   for (let f = 0; f < frames; f++) {
-    texture.add(f, 0, f * size, 0, size, size);
+    texture.add(f, 0, f * scaledSize, 0, scaledSize, scaledSize);
   }
 }
 
@@ -44,8 +46,10 @@ function generateBossTexture(
   drawFn: (ctx: CanvasRenderingContext2D, x: number, y: number, s: number, frame: number) => void,
 ): void {
   const frames = 2;
-  const canvas = scene.textures.createCanvas(key, size * frames, size)!;
+  const scaledSize = size * SPRITE_SCALE;
+  const canvas = scene.textures.createCanvas(key, scaledSize * frames, scaledSize)!;
   const ctx = canvas.context;
+  ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
 
   for (let f = 0; f < frames; f++) {
     drawFn(ctx, f * size, 0, size, f);
@@ -54,15 +58,18 @@ function generateBossTexture(
   canvas.refresh();
   const texture = scene.textures.get(key);
   for (let f = 0; f < frames; f++) {
-    texture.add(f, 0, f * size, 0, size, size);
+    texture.add(f, 0, f * scaledSize, 0, scaledSize, scaledSize);
   }
 }
 
 /**
  * Draws a 1px dark outline around all non-transparent pixels in the given region.
+ * Coordinates are in logical (unscaled) space - internally scales to actual canvas pixels.
  */
 function addOutline(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string): void {
-  const imageData = ctx.getImageData(x, y, w, h);
+  const sx = x * SPRITE_SCALE, sy = y * SPRITE_SCALE;
+  const sw = w * SPRITE_SCALE, sh = h * SPRITE_SCALE;
+  const imageData = ctx.getImageData(sx, sy, sw, sh);
   const { data, width, height } = imageData;
   const outlinePixels: [number, number][] = [];
   for (let py = 0; py < height; py++) {
@@ -84,10 +91,14 @@ function addOutline(ctx: CanvasRenderingContext2D, x: number, y: number, w: numb
       }
     }
   }
+  // Save/restore to draw outline at actual pixel level (bypassing ctx.scale)
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = color;
   for (const [px, py] of outlinePixels) {
-    ctx.fillRect(x + px, y + py, 1, 1);
+    ctx.fillRect(sx + px, sy + py, 1, 1);
   }
+  ctx.restore();
 }
 
 // ─── Shambler: Skeleton walker (16px) ───────────────────────────────

@@ -197,7 +197,8 @@ export class WaveManager {
     if (wave <= 3) return [EnemyType.SHAMBLER, EnemyType.SWARMER];
     if (wave <= 6) return [EnemyType.SHAMBLER, EnemyType.SWARMER, EnemyType.SPRINTER, EnemyType.BOMBER];
     if (wave <= 10) return [EnemyType.SHAMBLER, EnemyType.SWARMER, EnemyType.SPRINTER, EnemyType.SPITTER, EnemyType.PHANTOM];
-    return [EnemyType.SHAMBLER, EnemyType.SWARMER, EnemyType.SPRINTER, EnemyType.SPITTER, EnemyType.SPLITTER, EnemyType.PHANTOM, EnemyType.BOMBER, EnemyType.LEAPER];
+    if (wave < 15) return [EnemyType.SHAMBLER, EnemyType.SWARMER, EnemyType.SPRINTER, EnemyType.SPITTER, EnemyType.SPLITTER, EnemyType.PHANTOM, EnemyType.BOMBER, EnemyType.LEAPER];
+    return [EnemyType.SHAMBLER, EnemyType.SWARMER, EnemyType.SPRINTER, EnemyType.SPITTER, EnemyType.SPLITTER, EnemyType.PHANTOM, EnemyType.BOMBER, EnemyType.LEAPER, EnemyType.GOREHOUND];
   }
 
   // ─── Swarm Rush ────────────────────────────────────────────────────

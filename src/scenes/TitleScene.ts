@@ -50,8 +50,8 @@ export class TitleScene extends Phaser.Scene {
 
     for (const { key, count, alphaMin, alphaMax } of decoData) {
       for (let i = 0; i < count; i++) {
-        const x = 20 + Math.random() * (GAME_WIDTH - 40);
-        const y = 20 + Math.random() * (GAME_HEIGHT - 40);
+        const x = 40 + Math.random() * (GAME_WIDTH - 80);
+        const y = 40 + Math.random() * (GAME_HEIGHT - 80);
         if (this.textures.exists(key)) {
           const deco = this.add.image(x, y, key);
           deco.setAlpha(alphaMin + Math.random() * (alphaMax - alphaMin));
@@ -63,10 +63,10 @@ export class TitleScene extends Phaser.Scene {
     // ─── Animated torches on sides ───────────────────────────────
     if (this.textures.exists('deco_torch')) {
       const torchPositions = [
-        { x: 30, y: GAME_HEIGHT / 2 - 40 },
-        { x: 30, y: GAME_HEIGHT / 2 + 40 },
-        { x: GAME_WIDTH - 30, y: GAME_HEIGHT / 2 - 40 },
-        { x: GAME_WIDTH - 30, y: GAME_HEIGHT / 2 + 40 },
+        { x: 60, y: GAME_HEIGHT / 2 - 80 },
+        { x: 60, y: GAME_HEIGHT / 2 + 80 },
+        { x: GAME_WIDTH - 60, y: GAME_HEIGHT / 2 - 80 },
+        { x: GAME_WIDTH - 60, y: GAME_HEIGHT / 2 + 80 },
       ];
       for (const pos of torchPositions) {
         const torch = this.add.sprite(pos.x, pos.y, 'deco_torch', 0);
@@ -84,17 +84,17 @@ export class TitleScene extends Phaser.Scene {
 
     // ─── Dark vignette overlay (stepped for pixel-crisp look) ────
     const vignette = this.add.graphics();
-    const vStep = 4; // step size in pixels for crisp banding
+    const vStep = 8; // step size in pixels for crisp banding
     // Top and bottom stepped dark bars
-    for (let i = 0; i < 40; i += vStep) {
-      const alpha = (1 - i / 40) * 0.6;
+    for (let i = 0; i < 80; i += vStep) {
+      const alpha = (1 - i / 80) * 0.6;
       vignette.fillStyle(0x000000, alpha);
       vignette.fillRect(0, i, GAME_WIDTH, vStep);
       vignette.fillRect(0, GAME_HEIGHT - i - vStep, GAME_WIDTH, vStep);
     }
     // Left and right stepped dark bars
-    for (let i = 0; i < 60; i += vStep) {
-      const alpha = (1 - i / 60) * 0.5;
+    for (let i = 0; i < 120; i += vStep) {
+      const alpha = (1 - i / 120) * 0.5;
       vignette.fillStyle(0x000000, alpha);
       vignette.fillRect(i, 0, vStep, GAME_HEIGHT);
       vignette.fillRect(GAME_WIDTH - i - vStep, 0, vStep, GAME_HEIGHT);
@@ -106,8 +106,8 @@ export class TitleScene extends Phaser.Scene {
       this.particles.push({
         x: Math.random() * GAME_WIDTH,
         y: Math.random() * GAME_HEIGHT,
-        vx: (Math.random() - 0.5) * 8,
-        vy: -5 - Math.random() * 15,
+        vx: (Math.random() - 0.5) * 16,
+        vy: -10 - Math.random() * 30,
         alpha: 0.1 + Math.random() * 0.4,
         size: Math.random() < 0.3 ? 2 : 1,
       });
@@ -120,12 +120,12 @@ export class TitleScene extends Phaser.Scene {
 
     // ─── Title text with glow effect ─────────────────────────────
     // Glow behind title
-    const glow = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40, 'CRYSTAL SURVIVORS', {
-      fontSize: '26px',
-      fontFamily: 'monospace',
+    const glow = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, 'CRYSTAL SURVIVORS', {
+      fontSize: '52px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#1a3355',
       fontStyle: 'bold',
-    }).setOrigin(0.5).setResolution(8).setAlpha(0.6);
+    }).setOrigin(0.5).setResolution(16).setAlpha(0.6);
 
     this.tweens.add({
       targets: glow,
@@ -137,14 +137,14 @@ export class TitleScene extends Phaser.Scene {
     });
 
     // Main title
-    const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40, 'CRYSTAL SURVIVORS', {
-      fontSize: '24px',
-      fontFamily: 'monospace',
+    const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, 'CRYSTAL SURVIVORS', {
+      fontSize: '48px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#CC4444',
       fontStyle: 'bold',
       stroke: '#000000',
-      strokeThickness: 6,
-    }).setOrigin(0.5).setResolution(8);
+      strokeThickness: 12,
+    }).setOrigin(0.5).setResolution(16);
 
     // Subtle title pulse
     this.tweens.add({
@@ -158,30 +158,30 @@ export class TitleScene extends Phaser.Scene {
     });
 
     // Subtitle
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 10, 'Jobs, Crystals & Chaos', {
-      fontSize: '14px',
-      fontFamily: 'monospace',
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20, 'Jobs, Crystals & Chaos', {
+      fontSize: '28px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#553333',
       stroke: '#000000',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setResolution(8);
+      strokeThickness: 6,
+    }).setOrigin(0.5).setResolution(16);
 
     // Divider line
     const divider = this.add.graphics();
     divider.lineStyle(1, 0x442222, 0.5);
     divider.beginPath();
-    divider.moveTo(GAME_WIDTH / 2 - 80, GAME_HEIGHT / 2 + 8);
-    divider.lineTo(GAME_WIDTH / 2 + 80, GAME_HEIGHT / 2 + 8);
+    divider.moveTo(GAME_WIDTH / 2 - 160, GAME_HEIGHT / 2 + 16);
+    divider.lineTo(GAME_WIDTH / 2 + 160, GAME_HEIGHT / 2 + 16);
     divider.stroke();
 
     // Prompt
-    const prompt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50, 'Press ENTER to Start', {
-      fontSize: '14px',
-      fontFamily: 'monospace',
+    const prompt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100, 'Press ENTER to Start', {
+      fontSize: '28px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#666666',
       stroke: '#000000',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setResolution(8);
+      strokeThickness: 6,
+    }).setOrigin(0.5).setResolution(16);
 
     // Blink prompt
     this.tweens.add({
@@ -193,13 +193,13 @@ export class TitleScene extends Phaser.Scene {
     });
 
     // Controls hint
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, 'WASD: Move  |  SPACE: Dash  |  ESC: Pause', {
-      fontSize: '11px',
-      fontFamily: 'monospace',
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 40, 'WASD: Move  |  SPACE: Dash  |  ESC: Pause', {
+      fontSize: '22px',
+      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
       color: '#333344',
       stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5).setResolution(8);
+      strokeThickness: 4,
+    }).setOrigin(0.5).setResolution(16);
 
     this.input.keyboard!.once('keydown-ENTER', () => {
       this.scene.start(SCENES.CHAR_SELECT);
@@ -235,10 +235,10 @@ export class TitleScene extends Phaser.Scene {
     this.fogTime += dt;
     this.fogGfx.clear();
     for (let i = 0; i < 3; i++) {
-      const fogCX = ((this.fogTime * (8 + i * 3)) % (GAME_WIDTH + 200)) - 100;
-      const fogCY = GAME_HEIGHT * 0.6 + i * 25 + Math.floor(Math.sin(this.fogTime * 0.5 + i) * 10);
-      const fogW = 200 + i * 40;
-      const fogH = 16 + i * 6;
+      const fogCX = ((this.fogTime * (16 + i * 6)) % (GAME_WIDTH + 400)) - 200;
+      const fogCY = GAME_HEIGHT * 0.6 + i * 50 + Math.floor(Math.sin(this.fogTime * 0.5 + i) * 20);
+      const fogW = 400 + i * 80;
+      const fogH = 32 + i * 12;
       const baseAlpha = 0.06 + i * 0.015;
       // Draw fog as stacked rectangles for a pixel-crisp look
       const layers = 4;

@@ -1,4 +1,4 @@
-import { EnhancementCategory, WeaponId, EnchantId, ElementId, Rarity, JobId, JobSkillId, SkillFamily } from '../constants';
+import { EnhancementCategory, WeaponId, EnchantId, ElementId, Rarity, JobId, JobSkillId, MasterySkillId, SkillFamily } from '../constants';
 
 export interface EnhancementCard {
   category: EnhancementCategory;
@@ -9,6 +9,7 @@ export interface EnhancementCard {
   // Category-specific
   jobId?: JobId;              // for JOB_SELECTION and JOB_SKILL
   jobSkillId?: JobSkillId;    // for JOB_SKILL
+  masterySkillId?: MasterySkillId;  // for MASTERY_SKILL
   weaponId?: WeaponId;
   enchantId?: EnchantId;
   targetWeaponId?: WeaponId;  // for enchant/element application
@@ -17,6 +18,7 @@ export interface EnhancementCard {
   elementId?: ElementId;      // for APPLY_ELEMENT
   elementUpgradeId?: string;  // for ELEMENT_UPGRADE
   malusCardId?: string;       // for MALUS_TRADE
+  synergyId?: string;         // for SYNERGY_UPGRADE
   // Malus display
   bonusText?: string;         // green text for malus cards
   malusText?: string;         // red text for malus cards
@@ -50,6 +52,7 @@ export interface PlayerStatModifiers {
   rageMaxStacks: number;            // Rage
   frenzyAttackSpeedBonus: number;   // Frenzy
   killHealAmount: number;           // Bloodlust
+  deathSaveCooldown: number;        // Living Dead (0 = disabled)
   projectileRangeMultiplier: number;// Eagle Eye
   burnChance: number;               // Fire
   slowChance: number;               // Blizzard

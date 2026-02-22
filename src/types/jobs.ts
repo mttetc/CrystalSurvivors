@@ -1,4 +1,4 @@
-import { JobId, JobSkillId, SkillFamily } from '../constants';
+import { JobId, JobSkillId, MasterySkillId, SkillFamily } from '../constants';
 import { PlayerStatModifiers } from './enhancements';
 
 export interface JobPassiveTier {
@@ -8,7 +8,7 @@ export interface JobPassiveTier {
 
 export interface JobPassiveDef {
   name: string;
-  tiers: JobPassiveTier[];  // 2 tiers (double down at 11 + mastery at 17)
+  tiers: JobPassiveTier[];  // 2 tiers (awakening at 11 + mastery at 17)
 }
 
 export interface JobDef {
@@ -18,11 +18,12 @@ export interface JobDef {
   color: string;       // couleur du badge sur les cartes
   icon: string;        // texture key ex: 'job_ninja'
   skills: JobSkillId[];
+  masterySkills: MasterySkillId[];  // unlocked post-awakening
   passive: JobPassiveDef;
 }
 
 export interface JobSkillDef {
-  id: JobSkillId;
+  id: JobSkillId | MasterySkillId;
   jobId: JobId;
   name: string;
   type: 'modifier' | 'active';

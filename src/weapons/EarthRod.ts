@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WeaponId, DEPTHS, EVENTS } from '../constants';
+import { WeaponId, DEPTHS, EVENTS, SPRITE_SCALE } from '../constants';
 import { BaseWeapon } from './BaseWeapon';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -28,7 +28,7 @@ export class EarthRod extends BaseWeapon {
     // Update aura position - brown-green earth aura
     this.auraGraphics.clear();
     const visualRadius = radius * aoeScale;
-    this.auraGraphics.lineStyle(1, 0x8B4513, 0.3);
+    this.auraGraphics.lineStyle(1 * SPRITE_SCALE, 0x8B4513, 0.3);
     this.auraGraphics.strokeCircle(this.player.x, this.player.y, visualRadius);
     this.auraGraphics.fillStyle(0x654321, 0.1);
     this.auraGraphics.fillCircle(this.player.x, this.player.y, visualRadius);
@@ -38,10 +38,24 @@ export class EarthRod extends BaseWeapon {
     if (this.damageTimer < tickInterval) return;
     this.damageTimer -= tickInterval;
 
+    // Gentle repulsion: push enemies outward every frame (garlic-like)
+    const pushForce = 30 * SPRITE_SCALE;
+    const children = enemies.getChildren() as Enemy[];
+    for (const enemy of children) {
+      if (!enemy.active) continue;
+      const dx = enemy.x - this.player.x;
+      const dy = enemy.y - this.player.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 0 && dist <= radius) {
+        const strength = pushForce * (1 - dist / radius); // stronger near center
+        enemy.x += (dx / dist) * strength * (delta / 1000);
+        enemy.y += (dy / dist) * strength * (delta / 1000);
+      }
+    }
+
     // Deal damage to all enemies in radius
     const damage = this.getDamage();
     const enchant = this.getEnchant();
-    const children = enemies.getChildren() as Enemy[];
 
     for (const enemy of children) {
       if (!enemy.active) continue;
@@ -55,7 +69,7 @@ export class EarthRod extends BaseWeapon {
     // Pulse visual on damage tick - earthy brown pulse
     const pulse = this.scene.add.graphics();
     pulse.setDepth(DEPTHS.EFFECTS);
-    pulse.lineStyle(2, 0x8B4513, 0.5);
+    pulse.lineStyle(2 * SPRITE_SCALE, 0x8B4513, 0.5);
     pulse.strokeCircle(this.player.x, this.player.y, radius * aoeScale);
 
     this.scene.tweens.add({

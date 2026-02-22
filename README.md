@@ -12,8 +12,8 @@ Paladin, Dark Knight, Dragoon, Ninja, Monk, Berserker, Ranger, Bard, Black Mage,
 ### 15 Armes
 Une arme par job : Hunter's Bow, Sacred Shield, Fire Rod, Dark Claymore, War Harp, Shuriken, Katana, Battle Axe, War Lance, Flask Throw, Holy Rod, Ether Rod, Iron Fists, Chrono Rod, Earth Rod.
 
-### Double Down
-A partir du niveau 11, choisis entre prendre un 3e/4e job ou **specialiser** tes 2 jobs existants pour debloquer des passifs puissants, +1 a toutes les competences et +1 au niveau des armes.
+### Awakening
+A partir du niveau 11, choisis entre prendre un 3e/4e job ou **eveiller** tes 2 jobs existants pour debloquer des passifs puissants, +1 a toutes les competences et +1 au niveau des armes.
 
 ### 8 Enchantements
 Burning, Freezing, Vampiric, Piercing, Chain, Explosive, Toxic, Critical. Chaque enchantement a 3 tiers.

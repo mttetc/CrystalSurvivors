@@ -85,13 +85,14 @@ export const WAVE_DEFS: WaveDef[] = [
 
   // ─── ACT 3: Intensity ramp (waves 11-14) ───────────────────────
 
-  // Wave 11: "Undead Army" - heavy flood + phantoms + tanks
+  // Wave 11: "Undead Army" - heavy flood + phantoms + tanks + gorehound debut as regular enemy
   { wave: 11, duration: 42000, isBossWave: false, groups: [
     { type: EnemyType.SHAMBLER, count: 90, spawnRate: 5.0 },
     { type: EnemyType.BRUTE, count: 8, spawnRate: 0.5 },
     { type: EnemyType.SPITTER, count: 12, spawnRate: 0.8 },
     { type: EnemyType.PHANTOM, count: 12, spawnRate: 0.7 },
     { type: EnemyType.TANK, count: 6, spawnRate: 0.3 },
+    { type: EnemyType.GOREHOUND, count: 1, spawnRate: 0.05, delay: 20000 },
   ]},
 
   // Wave 12: "The Splitting" - splitters + brutes, chain reaction chaos
@@ -115,6 +116,7 @@ export const WAVE_DEFS: WaveDef[] = [
     { type: EnemyType.SHAMBLER, count: 50, spawnRate: 3.0 },
     { type: EnemyType.BOMBER, count: 15, spawnRate: 1.0 },
     { type: EnemyType.LEAPER, count: 12, spawnRate: 0.8 },
+    { type: EnemyType.GOREHOUND, count: 2, spawnRate: 0.08 },
   ]},
 
   // ─── BOSS 3: Wave 15 ───────────────────────────────────────────
@@ -132,6 +134,7 @@ export const WAVE_DEFS: WaveDef[] = [
   { wave: 16, duration: 43000, isBossWave: false, groups: [
     { type: EnemyType.SWARMER, count: 100, spawnRate: 7.0 },
     { type: EnemyType.SHAMBLER, count: 80, spawnRate: 5.0 },
+    { type: EnemyType.GOREHOUND, count: 2, spawnRate: 0.1 },
   ]},
 
   // Wave 17: "Dark Council" - elite composition: necros + brutes + ghosts
@@ -139,6 +142,7 @@ export const WAVE_DEFS: WaveDef[] = [
     { type: EnemyType.NECROMANCER, count: 12, spawnRate: 0.7 },
     { type: EnemyType.BRUTE, count: 18, spawnRate: 1.0 },
     { type: EnemyType.SPITTER, count: 20, spawnRate: 1.5 },
+    { type: EnemyType.GOREHOUND, count: 3, spawnRate: 0.12 },
   ]},
 
   // Wave 18: "Blitz" - fast chaos: sprinters + swarmers + splitters
@@ -146,6 +150,7 @@ export const WAVE_DEFS: WaveDef[] = [
     { type: EnemyType.SPRINTER, count: 45, spawnRate: 3.0 },
     { type: EnemyType.SWARMER, count: 80, spawnRate: 5.0 },
     { type: EnemyType.SPLITTER, count: 30, spawnRate: 1.8 },
+    { type: EnemyType.GOREHOUND, count: 2, spawnRate: 0.1 },
   ]},
 
   // Wave 19: "Apocalypse" - all types, max intensity
@@ -161,6 +166,8 @@ export const WAVE_DEFS: WaveDef[] = [
     { type: EnemyType.BOMBER, count: 18, spawnRate: 1.2 },
     { type: EnemyType.TANK, count: 10, spawnRate: 0.5 },
     { type: EnemyType.LEAPER, count: 14, spawnRate: 0.9 },
+    { type: EnemyType.GOREHOUND, count: 3, spawnRate: 0.15 },
+    { type: EnemyType.HIVEMIND, count: 1, spawnRate: 0.03, delay: 25000 },
   ]},
 
   // ─── FINAL BOSS: Wave 20 ───────────────────────────────────────

@@ -164,6 +164,12 @@ export class Projectile extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  /** Clear hit tracking so the projectile can damage the same enemies again (boomerang return) */
+  public resetHitEnemies(): void {
+    this.hitEnemies.clear();
+    this.pierceCount = 0;
+  }
+
   public onHitEnemy(enemyId: number): boolean {
     if (this.hitEnemies.has(enemyId)) return false;
     this.hitEnemies.add(enemyId);

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import {
   SCENES, WORLD_WIDTH, WORLD_HEIGHT, EVENTS, MAX_ENEMIES,
   MAX_PROJECTILES, EnemyBehavior, EnemyType, DEPTHS, Rarity,
-  JOB_SELECTION_LEVELS, PLAYER_MAX_JOBS, EnhancementCategory,
+  JOB_SELECTION_LEVELS, PLAYER_MAX_JOBS, EnhancementCategory, SPRITE_SCALE,
 } from '../constants';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -65,6 +65,7 @@ export class GameScene extends Phaser.Scene {
   private instanceCounter = 0;
   private chestSpawnTimer = 0;
   private pendingStartJob: string | null = null;
+  private isProcessingBomberExplosion = false;
 
   constructor() {
     super(SCENES.GAME);
@@ -180,7 +181,7 @@ export class GameScene extends Phaser.Scene {
     this.jobSkillManager = new JobSkillManager(this, this.player, this.enemyGroup, this.projectileGroup);
     this.passiveManager = new PassiveManager(this.player);
     this.elementManager = new ElementManager(this, this.player, this.enemyGroup);
-    this.synergyManager = new SynergyManager(this.player);
+    this.synergyManager = new SynergyManager(this, this.player, this.enemyGroup);
 
     // Apply starting class (must happen after enhancementManager is created)
     if (this.pendingStartJob) {
@@ -255,9 +256,9 @@ export class GameScene extends Phaser.Scene {
       this.waveBanner.show('SWARM INCOMING!', '#FF4444');
     });
 
-    // Double down: PassiveManager handles the actual upgrades
-    EventBus.on('double-down-chosen', () => {
-      this.passiveManager.applyDoubleDown();
+    // Awakening: PassiveManager handles the actual upgrades
+    EventBus.on('awakening-chosen', () => {
+      this.passiveManager.applyAwakening();
     });
 
     // Pause key
@@ -289,6 +290,7 @@ export class GameScene extends Phaser.Scene {
     this.weaponManager.update(time, delta, this.enemyGroup);
     this.jobSkillManager.update(time, delta);
     this.pickupManager.update(time, delta);
+    this.synergyManager.update(time, delta);
 
     // Periodic chest spawning
     this.chestSpawnTimer -= delta;
@@ -574,13 +576,13 @@ export class GameScene extends Phaser.Scene {
     const state = this.player.playerState;
     const isJobLevel = JOB_SELECTION_LEVELS.includes(level);
 
-    // If doubled down, no more job selections at levels 11/17
+    // If awakened, no more job selections at levels 11/17
     const needsJobSelection = isJobLevel
-      && !state.isDoubledDown
+      && !state.isAwakened
       && state.chosenJobs.length < PLAYER_MAX_JOBS;
 
-    // At level 17 when already doubled down, apply mastery
-    if (isJobLevel && state.isDoubledDown && level >= 17) {
+    // At level 17 when already awakened, apply mastery
+    if (isJobLevel && state.isAwakened && level >= 17) {
       this.passiveManager.applyMastery();
     }
 
@@ -624,24 +626,26 @@ export class GameScene extends Phaser.Scene {
     const killHeal = this.player.playerState.modifiers.killHealAmount;
     if (killHeal > 0) this.player.heal(killHeal);
 
-    if (type === EnemyType.BOMBER) {
-      // Bomber explosion AoE
+    if (type === EnemyType.BOMBER && !this.isProcessingBomberExplosion) {
+      // Bomber explosion AoE - guard prevents infinite recursion when chain-killing Bombers
+      this.isProcessingBomberExplosion = true;
       const enemies = this.enemyGroup.getChildren() as Enemy[];
       for (const e of enemies) {
         if (!e.active) continue;
         const d = Phaser.Math.Distance.Between(x, y, e.x, e.y);
-        if (d <= 30) e.takeDamage(15);
+        if (d <= 30 * SPRITE_SCALE) e.takeDamage(15);
       }
       // Also damage player if close
       const playerDist = Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y);
-      if (playerDist <= 30) this.player.takeDamage(15);
+      if (playerDist <= 30 * SPRITE_SCALE) this.player.takeDamage(15);
 
       // Visual explosion
       const gfx = this.add.graphics();
       gfx.setDepth(DEPTHS.EFFECTS);
       gfx.fillStyle(0xFF4400, 0.6);
-      gfx.fillCircle(x, y, 30);
+      gfx.fillCircle(x, y, 30 * SPRITE_SCALE);
       this.tweens.add({ targets: gfx, alpha: 0, duration: 300, onComplete: () => gfx.destroy() });
+      this.isProcessingBomberExplosion = false;
     }
 
     this.handleSplitterDeath(type, x, y);

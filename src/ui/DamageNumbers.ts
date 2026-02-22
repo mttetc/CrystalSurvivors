@@ -18,12 +18,12 @@ export class DamageNumbers {
     // Pre-create pool
     for (let i = 0; i < 40; i++) {
       const text = scene.add.text(0, 0, '', {
-        fontSize: '11px',
-        fontFamily: 'monospace',
+        fontSize: '22px',
+        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
         color: '#FFFFFF',
         stroke: '#000000',
-        strokeThickness: 2,
-      }).setResolution(8);
+        strokeThickness: 4,
+      }).setResolution(16);
       text.setDepth(DEPTHS.EFFECTS + 10);
       text.setVisible(false);
       this.pool.push({ text, timer: 0, maxTimer: 600 });
@@ -36,12 +36,12 @@ export class DamageNumbers {
 
     item.text.setText(String(Math.floor(amount)));
     item.text.setPosition(
-      x - 4 + (Math.random() - 0.5) * 10,
-      y - 8 + (Math.random() - 0.5) * 6,
+      x - 8 + (Math.random() - 0.5) * 20,
+      y - 16 + (Math.random() - 0.5) * 12,
     );
     item.text.setVisible(true);
     item.text.setAlpha(1);
-    item.text.setStyle({ color, fontSize: '10px' });
+    item.text.setStyle({ color, fontSize: '20px' });
     item.text.setScale(1);
     item.timer = 600;
     item.maxTimer = 600;
@@ -54,12 +54,12 @@ export class DamageNumbers {
 
     item.text.setText(`${Math.floor(amount)}!`);
     item.text.setPosition(
-      x - 6 + (Math.random() - 0.5) * 10,
-      y - 12 + (Math.random() - 0.5) * 6,
+      x - 12 + (Math.random() - 0.5) * 20,
+      y - 24 + (Math.random() - 0.5) * 12,
     );
     item.text.setVisible(true);
     item.text.setAlpha(1);
-    item.text.setStyle({ color: '#FFDD00', fontSize: '13px', fontStyle: 'bold' });
+    item.text.setStyle({ color: '#FFDD00', fontSize: '26px', fontStyle: 'bold' });
     item.text.setScale(1.3);
     item.timer = 800;
     item.maxTimer = 800;
@@ -71,10 +71,10 @@ export class DamageNumbers {
     if (!item) return;
 
     item.text.setText(text);
-    item.text.setPosition(x - 8, y - 8);
+    item.text.setPosition(x - 16, y - 16);
     item.text.setVisible(true);
     item.text.setAlpha(1);
-    item.text.setStyle({ color, fontSize: '9px' });
+    item.text.setStyle({ color, fontSize: '18px' });
     item.text.setScale(1);
     item.timer = 800;
     item.maxTimer = 800;
@@ -85,7 +85,7 @@ export class DamageNumbers {
     for (let i = this.active.length - 1; i >= 0; i--) {
       const item = this.active[i];
       item.timer -= delta;
-      item.text.y -= delta * 0.03;
+      item.text.y -= delta * 0.06;
       item.text.setAlpha(Math.max(0, item.timer / item.maxTimer));
 
       // Crit scale pop effect (scale down from large)

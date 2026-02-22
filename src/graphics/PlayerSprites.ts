@@ -1,4 +1,5 @@
 import { JobId } from '../constants';
+import { S } from './spriteUtils';
 
 interface PlayerPalette {
   armor: string;
@@ -101,10 +102,7 @@ const JOB_PALETTES: Record<JobId, PlayerPalette> = {
 };
 
 export function generatePlayerTextures(scene: Phaser.Scene): void {
-  // Default texture
   generatePlayerSheet(scene, 'player', DEFAULT_PALETTE);
-
-  // One texture per job
   for (const jobId of Object.values(JobId)) {
     const palette = JOB_PALETTES[jobId];
     if (palette) {
@@ -114,8 +112,8 @@ export function generatePlayerTextures(scene: Phaser.Scene): void {
 }
 
 function generatePlayerSheet(scene: Phaser.Scene, key: string, palette: PlayerPalette): void {
-  const W = 16;
-  const H = 20;
+  const W = S(16);
+  const H = S(20);
   const frames = 4;
   const directions = 4;
   const canvas = scene.textures.createCanvas(key, W * frames, H * directions)!;
@@ -145,89 +143,83 @@ function drawPlayerFrame(
   dir: number, frame: number,
   palette: PlayerPalette,
 ): void {
-  const bob = (frame === 1 || frame === 3) ? -1 : 0;
+  const bob = (frame === 1 || frame === 3) ? S(-1) : 0;
   const headType = palette.headType ?? 'normal';
   const bodyType = palette.bodyType ?? 'standard';
   const eyeColor = palette.eyeColor;
   const detail = palette.detail ?? palette.armorLight;
 
-  // 1. Shadow at y+19
   drawShadow(ctx, x, y);
 
-  // 2. Legs (y+13 to y+18)
   if (bodyType !== 'robe') {
     drawLegs(ctx, x, y, bob, frame, palette);
   } else {
     drawRobeLegs(ctx, x, y, bob, frame, palette);
   }
 
-  // 3. Body (y+7 to y+12)
   drawBody(ctx, x, y, bob, dir, palette, bodyType);
-
-  // 4. Arms
   drawArms(ctx, x, y, bob, dir, palette, bodyType);
-
-  // 5. Head/face (y+1 to y+6)
   drawHead(ctx, x, y, bob, dir, palette, headType);
-
-  // 6. Hair/hat
   drawHeadgear(ctx, x, y, bob, dir, palette, headType, detail);
-
-  // 7. Eyes
   drawEyes(ctx, x, y, bob, dir, palette, headType, eyeColor);
 }
 
 // --------------------------------------------------
-// Shadow - at y+19
+// Shadow
 // --------------------------------------------------
 function drawShadow(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   ctx.fillStyle = 'rgba(0,0,0,0.2)';
-  ctx.fillRect(x + 4, y + 18, 8, 2);
+  ctx.fillRect(x + S(4), y + S(18), S(8), S(2));
 }
 
 // --------------------------------------------------
-// Legs - y+13 to y+18 (6px tall, much longer)
+// Legs
 // --------------------------------------------------
 function drawLegs(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, bob: number, frame: number,
   palette: PlayerPalette,
 ): void {
-  const legOffset = frame === 1 ? 1 : frame === 3 ? -1 : 0;
+  const legOffset = frame === 1 ? S(1) : frame === 3 ? S(-1) : 0;
 
-  // Upper leg (thigh) - darker
+  // Upper leg (thigh)
   ctx.fillStyle = palette.legs;
-  ctx.fillRect(x + 5, y + 13 + bob, 2, 2);
-  ctx.fillRect(x + 9, y + 13 + bob, 2, 2);
+  ctx.fillRect(x + S(5), y + S(13) + bob, S(2), S(2));
+  ctx.fillRect(x + S(9), y + S(13) + bob, S(2), S(2));
 
-  // Lower leg (shin) - slightly lighter
+  // Lower leg (shin)
   const shinColor = blendColor(palette.legs, '#FFFFFF', 0.08);
   ctx.fillStyle = shinColor;
-  ctx.fillRect(x + 5, y + 15 + bob, 2, 2);
-  ctx.fillRect(x + 9, y + 15 + bob, 2, 2);
+  ctx.fillRect(x + S(5), y + S(15) + bob, S(2), S(2));
+  ctx.fillRect(x + S(9), y + S(15) + bob, S(2), S(2));
 
   // Feet / boots
   ctx.fillStyle = palette.legs;
-  ctx.fillRect(x + 4, y + 17 + bob, 3, 1);
-  ctx.fillRect(x + 9, y + 17 + bob, 3, 1);
+  ctx.fillRect(x + S(4), y + S(17) + bob, S(3), S(1));
+  ctx.fillRect(x + S(9), y + S(17) + bob, S(3), S(1));
 
-  // Walk animation offset
+  // Walk animation
   if (legOffset !== 0) {
     ctx.fillStyle = palette.legs;
-    ctx.fillRect(x + 5, y + 13 + bob + legOffset, 2, 2);
-    ctx.fillRect(x + 9, y + 13 + bob - legOffset, 2, 2);
+    ctx.fillRect(x + S(5), y + S(13) + bob + legOffset, S(2), S(2));
+    ctx.fillRect(x + S(9), y + S(13) + bob - legOffset, S(2), S(2));
     ctx.fillStyle = shinColor;
-    ctx.fillRect(x + 5, y + 15 + bob + legOffset, 2, 2);
-    ctx.fillRect(x + 9, y + 15 + bob - legOffset, 2, 2);
+    ctx.fillRect(x + S(5), y + S(15) + bob + legOffset, S(2), S(2));
+    ctx.fillRect(x + S(9), y + S(15) + bob - legOffset, S(2), S(2));
     ctx.fillStyle = palette.legs;
-    ctx.fillRect(x + 4, y + 17 + bob + legOffset, 3, 1);
-    ctx.fillRect(x + 9, y + 17 + bob - legOffset, 3, 1);
+    ctx.fillRect(x + S(4), y + S(17) + bob + legOffset, S(3), S(1));
+    ctx.fillRect(x + S(9), y + S(17) + bob - legOffset, S(3), S(1));
   }
 
   // Knee highlight
   ctx.fillStyle = blendColor(palette.legs, '#FFFFFF', 0.15);
-  ctx.fillRect(x + 5, y + 14 + bob, 1, 1);
-  ctx.fillRect(x + 9, y + 14 + bob, 1, 1);
+  ctx.fillRect(x + S(5), y + S(14) + bob, S(1), S(1));
+  ctx.fillRect(x + S(9), y + S(14) + bob, S(1), S(1));
+
+  // Extra detail at 2x: boot cuff
+  ctx.fillStyle = blendColor(palette.legs, '#FFFFFF', 0.1);
+  ctx.fillRect(x + S(4), y + S(16.5) + bob, S(3), S(0.5));
+  ctx.fillRect(x + S(9), y + S(16.5) + bob, S(3), S(0.5));
 }
 
 function drawRobeLegs(
@@ -235,19 +227,18 @@ function drawRobeLegs(
   x: number, y: number, bob: number, frame: number,
   palette: PlayerPalette,
 ): void {
-  // Tiny feet peeking below robe at y+17..y+18
-  const legOffset = frame === 1 ? 1 : frame === 3 ? -1 : 0;
+  const legOffset = frame === 1 ? S(1) : frame === 3 ? S(-1) : 0;
   ctx.fillStyle = palette.legs;
-  ctx.fillRect(x + 5, y + 17 + bob, 2, 1);
-  ctx.fillRect(x + 9, y + 17 + bob, 2, 1);
+  ctx.fillRect(x + S(5), y + S(17) + bob, S(2), S(1));
+  ctx.fillRect(x + S(9), y + S(17) + bob, S(2), S(1));
   if (legOffset !== 0) {
-    ctx.fillRect(x + 5 + legOffset, y + 17 + bob, 2, 1);
-    ctx.fillRect(x + 9 - legOffset, y + 17 + bob, 2, 1);
+    ctx.fillRect(x + S(5) + legOffset, y + S(17) + bob, S(2), S(1));
+    ctx.fillRect(x + S(9) - legOffset, y + S(17) + bob, S(2), S(1));
   }
 }
 
 // --------------------------------------------------
-// Body - y+7 to y+12 (6px tall torso)
+// Body
 // --------------------------------------------------
 function drawBody(
   ctx: CanvasRenderingContext2D,
@@ -276,21 +267,20 @@ function drawStandardBody(
   x: number, y: number, bob: number, _dir: number,
   palette: PlayerPalette,
 ): void {
-  // Main torso: 8px wide
   ctx.fillStyle = palette.armor;
-  ctx.fillRect(x + 4, y + 7 + bob, 8, 6);
-  // Highlight top
+  ctx.fillRect(x + S(4), y + S(7) + bob, S(8), S(6));
   ctx.fillStyle = palette.armorLight;
-  ctx.fillRect(x + 5, y + 8 + bob, 6, 2);
-  // Subtle chest shading
+  ctx.fillRect(x + S(5), y + S(8) + bob, S(6), S(2));
   ctx.fillStyle = palette.armor;
-  ctx.fillRect(x + 5, y + 10 + bob, 6, 1);
-  // Dark belt/lower region
+  ctx.fillRect(x + S(5), y + S(10) + bob, S(6), S(1));
   ctx.fillStyle = palette.armorDark;
-  ctx.fillRect(x + 4, y + 11 + bob, 8, 2);
-  // Belt buckle hint
+  ctx.fillRect(x + S(4), y + S(11) + bob, S(8), S(2));
+  // Belt buckle
   ctx.fillStyle = palette.armorLight;
-  ctx.fillRect(x + 7, y + 11 + bob, 2, 1);
+  ctx.fillRect(x + S(7), y + S(11) + bob, S(2), S(1));
+  // Subtle chest seam detail
+  ctx.fillStyle = blendColor(palette.armor, '#000000', 0.06);
+  ctx.fillRect(x + S(7.5), y + S(8) + bob, S(1), S(3));
 }
 
 function drawArmorBody(
@@ -298,30 +288,33 @@ function drawArmorBody(
   x: number, y: number, bob: number, _dir: number,
   palette: PlayerPalette,
 ): void {
-  // Shoulder pads: 10px wide at y+7
+  // Shoulder pads
   ctx.fillStyle = palette.armorLight;
-  ctx.fillRect(x + 3, y + 7 + bob, 10, 2);
-  // Shoulder highlight
+  ctx.fillRect(x + S(3), y + S(7) + bob, S(10), S(2));
   ctx.fillStyle = blendColor(palette.armorLight, '#FFFFFF', 0.15);
-  ctx.fillRect(x + 3, y + 7 + bob, 10, 1);
+  ctx.fillRect(x + S(3), y + S(7) + bob, S(10), S(1));
   // Main torso plate
   ctx.fillStyle = palette.armor;
-  ctx.fillRect(x + 4, y + 8 + bob, 8, 5);
+  ctx.fillRect(x + S(4), y + S(8) + bob, S(8), S(5));
   // Chest plate highlight
   ctx.fillStyle = palette.armorLight;
-  ctx.fillRect(x + 5, y + 9 + bob, 6, 2);
+  ctx.fillRect(x + S(5), y + S(9) + bob, S(6), S(2));
   // Chest center line
   ctx.fillStyle = palette.armorDark;
-  ctx.fillRect(x + 7, y + 8 + bob, 2, 3);
-  // Dark belt region
+  ctx.fillRect(x + S(7), y + S(8) + bob, S(2), S(3));
+  // Belt region
   ctx.fillStyle = palette.armorDark;
-  ctx.fillRect(x + 4, y + 11 + bob, 8, 2);
+  ctx.fillRect(x + S(4), y + S(11) + bob, S(8), S(2));
   // Belt buckle
   ctx.fillStyle = palette.armorLight;
-  ctx.fillRect(x + 7, y + 11 + bob, 2, 1);
+  ctx.fillRect(x + S(7), y + S(11) + bob, S(2), S(1));
   // Armor edge highlight
   ctx.fillStyle = blendColor(palette.armor, '#FFFFFF', 0.1);
-  ctx.fillRect(x + 4, y + 8 + bob, 1, 5);
+  ctx.fillRect(x + S(4), y + S(8) + bob, S(1), S(5));
+  // Rivet detail on shoulders
+  ctx.fillStyle = blendColor(palette.armorLight, '#FFFFFF', 0.25);
+  ctx.fillRect(x + S(4), y + S(7.5) + bob, S(1), S(1));
+  ctx.fillRect(x + S(11), y + S(7.5) + bob, S(1), S(1));
 }
 
 function drawRobeBody(
@@ -329,29 +322,29 @@ function drawRobeBody(
   x: number, y: number, bob: number, _dir: number,
   palette: PlayerPalette,
 ): void {
-  // Robe: from y+7 down to y+17 (long robe covering legs)
-  // Upper robe (waist)
   ctx.fillStyle = palette.armor;
-  ctx.fillRect(x + 4, y + 7 + bob, 8, 5);
-  // Highlight on upper robe
+  ctx.fillRect(x + S(4), y + S(7) + bob, S(8), S(5));
   ctx.fillStyle = palette.armorLight;
-  ctx.fillRect(x + 5, y + 8 + bob, 6, 2);
-  // Belt/sash
+  ctx.fillRect(x + S(5), y + S(8) + bob, S(6), S(2));
+  // Sash/belt
   ctx.fillStyle = palette.armorDark;
-  ctx.fillRect(x + 4, y + 10 + bob, 8, 1);
+  ctx.fillRect(x + S(4), y + S(10) + bob, S(8), S(1));
   // Lower robe widens
   ctx.fillStyle = palette.armor;
-  ctx.fillRect(x + 4, y + 11 + bob, 9, 3);
-  // Bottom hem: wider
+  ctx.fillRect(x + S(4), y + S(11) + bob, S(9), S(3));
+  // Bottom hem wider
   ctx.fillStyle = palette.armorDark;
-  ctx.fillRect(x + 3, y + 14 + bob, 10, 3);
+  ctx.fillRect(x + S(3), y + S(14) + bob, S(10), S(3));
   // Robe fold detail
   ctx.fillStyle = blendColor(palette.armorDark, '#000000', 0.15);
-  ctx.fillRect(x + 5, y + 14 + bob, 1, 3);
-  ctx.fillRect(x + 9, y + 14 + bob, 1, 3);
+  ctx.fillRect(x + S(5), y + S(14) + bob, S(1), S(3));
+  ctx.fillRect(x + S(9), y + S(14) + bob, S(1), S(3));
   // Robe hem highlight
   ctx.fillStyle = palette.armor;
-  ctx.fillRect(x + 4, y + 16 + bob, 8, 1);
+  ctx.fillRect(x + S(4), y + S(16) + bob, S(8), S(1));
+  // Center embroidery line
+  ctx.fillStyle = blendColor(palette.armorLight, '#FFFFFF', 0.08);
+  ctx.fillRect(x + S(7.5), y + S(11) + bob, S(1), S(5));
 }
 
 function drawLightBody(
@@ -359,42 +352,41 @@ function drawLightBody(
   x: number, y: number, bob: number, _dir: number,
   palette: PlayerPalette,
 ): void {
-  // Slimmer body: 7px wide
   ctx.fillStyle = palette.armor;
-  ctx.fillRect(x + 5, y + 7 + bob, 7, 6);
-  // Highlight
+  ctx.fillRect(x + S(5), y + S(7) + bob, S(7), S(6));
   ctx.fillStyle = palette.armorLight;
-  ctx.fillRect(x + 6, y + 8 + bob, 5, 2);
-  // Mid tone
+  ctx.fillRect(x + S(6), y + S(8) + bob, S(5), S(2));
   ctx.fillStyle = palette.armor;
-  ctx.fillRect(x + 5, y + 10 + bob, 7, 1);
-  // Dark bottom
+  ctx.fillRect(x + S(5), y + S(10) + bob, S(7), S(1));
   ctx.fillStyle = palette.armorDark;
-  ctx.fillRect(x + 5, y + 11 + bob, 7, 2);
+  ctx.fillRect(x + S(5), y + S(11) + bob, S(7), S(2));
 
   // Monk: gi neckline
   if (palette.headType === 'bald') {
     ctx.fillStyle = palette.skin;
-    ctx.fillRect(x + 7, y + 7 + bob, 3, 1);
+    ctx.fillRect(x + S(7), y + S(7) + bob, S(3), S(1));
   }
 
   // Berserker: bare upper chest
   if (palette.headType === 'wild') {
     ctx.fillStyle = palette.skin;
-    ctx.fillRect(x + 6, y + 7 + bob, 5, 2);
+    ctx.fillRect(x + S(6), y + S(7) + bob, S(5), S(2));
     // Muscle definition
     ctx.fillStyle = blendColor(palette.skin, '#000000', 0.1);
-    ctx.fillRect(x + 8, y + 7 + bob, 1, 2);
-    // Just a belt/lower garment
+    ctx.fillRect(x + S(8), y + S(7) + bob, S(1), S(2));
+    // Scar detail
+    ctx.fillStyle = blendColor(palette.skin, '#AA4444', 0.3);
+    ctx.fillRect(x + S(7), y + S(7.5) + bob, S(2), S(0.5));
+    // Lower garment
     ctx.fillStyle = palette.armor;
-    ctx.fillRect(x + 5, y + 9 + bob, 7, 4);
+    ctx.fillRect(x + S(5), y + S(9) + bob, S(7), S(4));
     ctx.fillStyle = palette.armorDark;
-    ctx.fillRect(x + 5, y + 11 + bob, 7, 2);
+    ctx.fillRect(x + S(5), y + S(11) + bob, S(7), S(2));
   }
 }
 
 // --------------------------------------------------
-// Arms - extend from torso (y+8 to y+12)
+// Arms
 // --------------------------------------------------
 function drawArms(
   ctx: CanvasRenderingContext2D,
@@ -410,40 +402,37 @@ function drawArms(
   } else if (bodyType === 'robe') {
     drawRobeArms(ctx, x, y, bob, dir, palette);
   } else {
-    // Standard or light arms
     ctx.fillStyle = armColor;
     if (dir === 1) {
-      ctx.fillRect(x + 3, y + 8 + bob, 2, 5);
+      ctx.fillRect(x + S(3), y + S(8) + bob, S(2), S(5));
     } else if (dir === 2) {
-      ctx.fillRect(x + 11, y + 8 + bob, 2, 5);
+      ctx.fillRect(x + S(11), y + S(8) + bob, S(2), S(5));
     } else {
-      ctx.fillRect(x + 3, y + 8 + bob, 2, 5);
-      ctx.fillRect(x + 11, y + 8 + bob, 2, 5);
+      ctx.fillRect(x + S(3), y + S(8) + bob, S(2), S(5));
+      ctx.fillRect(x + S(11), y + S(8) + bob, S(2), S(5));
     }
 
-    // Hand detail
     if (isLight) {
       ctx.fillStyle = palette.skin;
       if (dir === 1) {
-        ctx.fillRect(x + 3, y + 12 + bob, 2, 1);
+        ctx.fillRect(x + S(3), y + S(12) + bob, S(2), S(1));
       } else if (dir === 2) {
-        ctx.fillRect(x + 11, y + 12 + bob, 2, 1);
+        ctx.fillRect(x + S(11), y + S(12) + bob, S(2), S(1));
       } else {
-        ctx.fillRect(x + 3, y + 12 + bob, 2, 1);
-        ctx.fillRect(x + 11, y + 12 + bob, 2, 1);
+        ctx.fillRect(x + S(3), y + S(12) + bob, S(2), S(1));
+        ctx.fillRect(x + S(11), y + S(12) + bob, S(2), S(1));
       }
     }
 
-    // Arm highlight
     const armHL = blendColor(armColor, '#FFFFFF', 0.12);
     ctx.fillStyle = armHL;
     if (dir === 1) {
-      ctx.fillRect(x + 3, y + 8 + bob, 1, 1);
+      ctx.fillRect(x + S(3), y + S(8) + bob, S(1), S(1));
     } else if (dir === 2) {
-      ctx.fillRect(x + 12, y + 8 + bob, 1, 1);
+      ctx.fillRect(x + S(12), y + S(8) + bob, S(1), S(1));
     } else {
-      ctx.fillRect(x + 3, y + 8 + bob, 1, 1);
-      ctx.fillRect(x + 12, y + 8 + bob, 1, 1);
+      ctx.fillRect(x + S(3), y + S(8) + bob, S(1), S(1));
+      ctx.fillRect(x + S(12), y + S(8) + bob, S(1), S(1));
     }
   }
 }
@@ -455,29 +444,28 @@ function drawArmoredArms(
 ): void {
   if (dir === 1) {
     ctx.fillStyle = palette.armor;
-    ctx.fillRect(x + 2, y + 8 + bob, 2, 5);
+    ctx.fillRect(x + S(2), y + S(8) + bob, S(2), S(5));
     ctx.fillStyle = palette.armorDark;
-    ctx.fillRect(x + 2, y + 12 + bob, 2, 1);
-    // Gauntlet highlight
+    ctx.fillRect(x + S(2), y + S(12) + bob, S(2), S(1));
     ctx.fillStyle = palette.armorLight;
-    ctx.fillRect(x + 2, y + 8 + bob, 1, 1);
+    ctx.fillRect(x + S(2), y + S(8) + bob, S(1), S(1));
   } else if (dir === 2) {
     ctx.fillStyle = palette.armor;
-    ctx.fillRect(x + 12, y + 8 + bob, 2, 5);
+    ctx.fillRect(x + S(12), y + S(8) + bob, S(2), S(5));
     ctx.fillStyle = palette.armorDark;
-    ctx.fillRect(x + 12, y + 12 + bob, 2, 1);
+    ctx.fillRect(x + S(12), y + S(12) + bob, S(2), S(1));
     ctx.fillStyle = palette.armorLight;
-    ctx.fillRect(x + 13, y + 8 + bob, 1, 1);
+    ctx.fillRect(x + S(13), y + S(8) + bob, S(1), S(1));
   } else {
     ctx.fillStyle = palette.armor;
-    ctx.fillRect(x + 2, y + 8 + bob, 2, 5);
-    ctx.fillRect(x + 12, y + 8 + bob, 2, 5);
+    ctx.fillRect(x + S(2), y + S(8) + bob, S(2), S(5));
+    ctx.fillRect(x + S(12), y + S(8) + bob, S(2), S(5));
     ctx.fillStyle = palette.armorDark;
-    ctx.fillRect(x + 2, y + 12 + bob, 2, 1);
-    ctx.fillRect(x + 12, y + 12 + bob, 2, 1);
+    ctx.fillRect(x + S(2), y + S(12) + bob, S(2), S(1));
+    ctx.fillRect(x + S(12), y + S(12) + bob, S(2), S(1));
     ctx.fillStyle = palette.armorLight;
-    ctx.fillRect(x + 2, y + 8 + bob, 1, 1);
-    ctx.fillRect(x + 13, y + 8 + bob, 1, 1);
+    ctx.fillRect(x + S(2), y + S(8) + bob, S(1), S(1));
+    ctx.fillRect(x + S(13), y + S(8) + bob, S(1), S(1));
   }
 }
 
@@ -488,34 +476,33 @@ function drawRobeArms(
 ): void {
   if (dir === 1) {
     ctx.fillStyle = palette.armor;
-    ctx.fillRect(x + 2, y + 8 + bob, 3, 5);
+    ctx.fillRect(x + S(2), y + S(8) + bob, S(3), S(5));
     ctx.fillStyle = palette.armorDark;
-    ctx.fillRect(x + 2, y + 12 + bob, 3, 1);
-    // Sleeve highlight
+    ctx.fillRect(x + S(2), y + S(12) + bob, S(3), S(1));
     ctx.fillStyle = palette.armorLight;
-    ctx.fillRect(x + 2, y + 8 + bob, 1, 2);
+    ctx.fillRect(x + S(2), y + S(8) + bob, S(1), S(2));
   } else if (dir === 2) {
     ctx.fillStyle = palette.armor;
-    ctx.fillRect(x + 11, y + 8 + bob, 3, 5);
+    ctx.fillRect(x + S(11), y + S(8) + bob, S(3), S(5));
     ctx.fillStyle = palette.armorDark;
-    ctx.fillRect(x + 11, y + 12 + bob, 3, 1);
+    ctx.fillRect(x + S(11), y + S(12) + bob, S(3), S(1));
     ctx.fillStyle = palette.armorLight;
-    ctx.fillRect(x + 13, y + 8 + bob, 1, 2);
+    ctx.fillRect(x + S(13), y + S(8) + bob, S(1), S(2));
   } else {
     ctx.fillStyle = palette.armor;
-    ctx.fillRect(x + 2, y + 8 + bob, 3, 5);
-    ctx.fillRect(x + 11, y + 8 + bob, 3, 5);
+    ctx.fillRect(x + S(2), y + S(8) + bob, S(3), S(5));
+    ctx.fillRect(x + S(11), y + S(8) + bob, S(3), S(5));
     ctx.fillStyle = palette.armorDark;
-    ctx.fillRect(x + 2, y + 12 + bob, 3, 1);
-    ctx.fillRect(x + 11, y + 12 + bob, 3, 1);
+    ctx.fillRect(x + S(2), y + S(12) + bob, S(3), S(1));
+    ctx.fillRect(x + S(11), y + S(12) + bob, S(3), S(1));
     ctx.fillStyle = palette.armorLight;
-    ctx.fillRect(x + 2, y + 8 + bob, 1, 2);
-    ctx.fillRect(x + 13, y + 8 + bob, 1, 2);
+    ctx.fillRect(x + S(2), y + S(8) + bob, S(1), S(2));
+    ctx.fillRect(x + S(13), y + S(8) + bob, S(1), S(2));
   }
 }
 
 // --------------------------------------------------
-// Head (base skin) - y+1 to y+6
+// Head (base skin)
 // --------------------------------------------------
 function drawHead(
   ctx: CanvasRenderingContext2D,
@@ -527,15 +514,18 @@ function drawHead(
     return;
   }
 
-  // Draw base skin-colored head (y+2 to y+6, 6px tall, 6px wide)
   ctx.fillStyle = palette.skin;
-  ctx.fillRect(x + 5, y + 2 + bob, 6, 5);
+  ctx.fillRect(x + S(5), y + S(2) + bob, S(6), S(5));
 
-  // Subtle shading on sides of face
+  // Face shading
   const skinShadow = blendColor(palette.skin, '#000000', 0.08);
   ctx.fillStyle = skinShadow;
-  ctx.fillRect(x + 5, y + 4 + bob, 1, 3);
-  ctx.fillRect(x + 10, y + 4 + bob, 1, 3);
+  ctx.fillRect(x + S(5), y + S(4) + bob, S(1), S(3));
+  ctx.fillRect(x + S(10), y + S(4) + bob, S(1), S(3));
+
+  // Chin shadow
+  ctx.fillStyle = blendColor(palette.skin, '#000000', 0.05);
+  ctx.fillRect(x + S(6), y + S(6) + bob, S(4), S(1));
 }
 
 // --------------------------------------------------
@@ -565,7 +555,6 @@ function drawHeadgear(
       drawHood(ctx, x, y, bob, dir, palette);
       break;
     case 'bald':
-      // No hair
       break;
     case 'mask':
       drawMask(ctx, x, y, bob, dir, palette);
@@ -595,24 +584,23 @@ function drawNormalHair(
 ): void {
   ctx.fillStyle = palette.hair;
   if (dir === 0) {
-    ctx.fillRect(x + 4, y + 1 + bob, 8, 3);
-    // Hair highlight
+    ctx.fillRect(x + S(4), y + S(1) + bob, S(8), S(3));
     ctx.fillStyle = blendColor(palette.hair, '#FFFFFF', 0.15);
-    ctx.fillRect(x + 5, y + 1 + bob, 4, 1);
+    ctx.fillRect(x + S(5), y + S(1) + bob, S(4), S(1));
   } else if (dir === 3) {
-    ctx.fillRect(x + 4, y + 1 + bob, 8, 5);
+    ctx.fillRect(x + S(4), y + S(1) + bob, S(8), S(5));
     ctx.fillStyle = blendColor(palette.hair, '#FFFFFF', 0.1);
-    ctx.fillRect(x + 5, y + 1 + bob, 4, 1);
+    ctx.fillRect(x + S(5), y + S(1) + bob, S(4), S(1));
   } else if (dir === 1) {
-    ctx.fillRect(x + 5, y + 1 + bob, 7, 3);
-    ctx.fillRect(x + 9, y + 3 + bob, 3, 2);
+    ctx.fillRect(x + S(5), y + S(1) + bob, S(7), S(3));
+    ctx.fillRect(x + S(9), y + S(3) + bob, S(3), S(2));
     ctx.fillStyle = blendColor(palette.hair, '#FFFFFF', 0.15);
-    ctx.fillRect(x + 6, y + 1 + bob, 3, 1);
+    ctx.fillRect(x + S(6), y + S(1) + bob, S(3), S(1));
   } else {
-    ctx.fillRect(x + 4, y + 1 + bob, 7, 3);
-    ctx.fillRect(x + 4, y + 3 + bob, 3, 2);
+    ctx.fillRect(x + S(4), y + S(1) + bob, S(7), S(3));
+    ctx.fillRect(x + S(4), y + S(3) + bob, S(3), S(2));
     ctx.fillStyle = blendColor(palette.hair, '#FFFFFF', 0.15);
-    ctx.fillRect(x + 5, y + 1 + bob, 3, 1);
+    ctx.fillRect(x + S(5), y + S(1) + bob, S(3), S(1));
   }
 }
 
@@ -622,39 +610,33 @@ function drawPointyHat(
   palette: PlayerPalette,
 ): void {
   ctx.fillStyle = palette.hair;
-
-  // Brim at y+3
-  ctx.fillRect(x + 4, y + 3 + bob, 8, 1);
-  // Mid hat at y+2
-  ctx.fillRect(x + 5, y + 2 + bob, 6, 1);
-  // Upper at y+1
-  ctx.fillRect(x + 6, y + 1 + bob, 4, 1);
-  // Tip at y+0
-  ctx.fillRect(x + 7, y + 0 + bob, 2, 1);
+  ctx.fillRect(x + S(4), y + S(3) + bob, S(8), S(1));
+  ctx.fillRect(x + S(5), y + S(2) + bob, S(6), S(1));
+  ctx.fillRect(x + S(6), y + S(1) + bob, S(4), S(1));
+  ctx.fillRect(x + S(7), y + S(0) + bob, S(2), S(1));
 
   if (dir === 3) {
-    ctx.fillRect(x + 4, y + 3 + bob, 8, 4);
+    ctx.fillRect(x + S(4), y + S(3) + bob, S(8), S(4));
   }
 
   if (dir === 1) {
-    ctx.fillRect(x + 5, y + 3 + bob, 7, 1);
-    ctx.fillRect(x + 6, y + 2 + bob, 5, 1);
-    ctx.fillRect(x + 7, y + 1 + bob, 4, 1);
-    ctx.fillRect(x + 8, y + 0 + bob, 2, 1);
+    ctx.fillRect(x + S(5), y + S(3) + bob, S(7), S(1));
+    ctx.fillRect(x + S(6), y + S(2) + bob, S(5), S(1));
+    ctx.fillRect(x + S(7), y + S(1) + bob, S(4), S(1));
+    ctx.fillRect(x + S(8), y + S(0) + bob, S(2), S(1));
   } else if (dir === 2) {
-    ctx.fillRect(x + 4, y + 3 + bob, 7, 1);
-    ctx.fillRect(x + 5, y + 2 + bob, 5, 1);
-    ctx.fillRect(x + 5, y + 1 + bob, 4, 1);
-    ctx.fillRect(x + 6, y + 0 + bob, 2, 1);
+    ctx.fillRect(x + S(4), y + S(3) + bob, S(7), S(1));
+    ctx.fillRect(x + S(5), y + S(2) + bob, S(5), S(1));
+    ctx.fillRect(x + S(5), y + S(1) + bob, S(4), S(1));
+    ctx.fillRect(x + S(6), y + S(0) + bob, S(2), S(1));
   }
 
   // Hat band
   ctx.fillStyle = palette.armorDark;
-  ctx.fillRect(x + 4, y + 3 + bob, 8, 1);
-
+  ctx.fillRect(x + S(4), y + S(3) + bob, S(8), S(1));
   // Hat highlight
   ctx.fillStyle = blendColor(palette.hair, '#FFFFFF', 0.12);
-  ctx.fillRect(x + 6, y + 1 + bob, 2, 1);
+  ctx.fillRect(x + S(6), y + S(1) + bob, S(2), S(1));
 }
 
 function drawHelmet(
@@ -662,47 +644,52 @@ function drawHelmet(
   x: number, y: number, bob: number, dir: number,
   palette: PlayerPalette,
 ): void {
-  // Full helmet covering entire head y+1 to y+6
   ctx.fillStyle = palette.armor;
-  ctx.fillRect(x + 4, y + 1 + bob, 8, 6);
+  ctx.fillRect(x + S(4), y + S(1) + bob, S(8), S(6));
 
-  // Highlight on top
+  // Top highlight
   ctx.fillStyle = palette.armorLight;
-  ctx.fillRect(x + 5, y + 1 + bob, 6, 2);
-
-  // Extra highlight for HD-2D feel
+  ctx.fillRect(x + S(5), y + S(1) + bob, S(6), S(2));
   ctx.fillStyle = blendColor(palette.armorLight, '#FFFFFF', 0.15);
-  ctx.fillRect(x + 6, y + 1 + bob, 4, 1);
+  ctx.fillRect(x + S(6), y + S(1) + bob, S(4), S(1));
 
   // Dark edges
   ctx.fillStyle = palette.armorDark;
-  ctx.fillRect(x + 4, y + 1 + bob, 1, 6);
-  ctx.fillRect(x + 11, y + 1 + bob, 1, 6);
+  ctx.fillRect(x + S(4), y + S(1) + bob, S(1), S(6));
+  ctx.fillRect(x + S(11), y + S(1) + bob, S(1), S(6));
 
-  // Visor slit at y+4
+  // Visor detail - crest line
+  ctx.fillStyle = blendColor(palette.armorLight, '#FFFFFF', 0.2);
+  ctx.fillRect(x + S(7.5), y + S(1) + bob, S(1), S(2));
+
+  // Visor slit
   if (dir === 0) {
     ctx.fillStyle = '#111111';
-    ctx.fillRect(x + 5, y + 4 + bob, 6, 1);
+    ctx.fillRect(x + S(5), y + S(4) + bob, S(6), S(1));
     if (palette.eyeColor) {
       ctx.fillStyle = palette.eyeColor;
-      ctx.fillRect(x + 6, y + 4 + bob, 1, 1);
-      ctx.fillRect(x + 9, y + 4 + bob, 1, 1);
+      ctx.fillRect(x + S(6), y + S(4) + bob, S(1), S(1));
+      ctx.fillRect(x + S(9), y + S(4) + bob, S(1), S(1));
     }
   } else if (dir === 1) {
     ctx.fillStyle = '#111111';
-    ctx.fillRect(x + 4, y + 4 + bob, 4, 1);
+    ctx.fillRect(x + S(4), y + S(4) + bob, S(4), S(1));
     if (palette.eyeColor) {
       ctx.fillStyle = palette.eyeColor;
-      ctx.fillRect(x + 5, y + 4 + bob, 1, 1);
+      ctx.fillRect(x + S(5), y + S(4) + bob, S(1), S(1));
     }
   } else if (dir === 2) {
     ctx.fillStyle = '#111111';
-    ctx.fillRect(x + 8, y + 4 + bob, 4, 1);
+    ctx.fillRect(x + S(8), y + S(4) + bob, S(4), S(1));
     if (palette.eyeColor) {
       ctx.fillStyle = palette.eyeColor;
-      ctx.fillRect(x + 10, y + 4 + bob, 1, 1);
+      ctx.fillRect(x + S(10), y + S(4) + bob, S(1), S(1));
     }
   }
+
+  // Chin guard
+  ctx.fillStyle = palette.armorDark;
+  ctx.fillRect(x + S(5), y + S(6) + bob, S(6), S(1));
 }
 
 function drawHornedHelmet(
@@ -713,13 +700,16 @@ function drawHornedHelmet(
 ): void {
   drawHelmet(ctx, x, y, bob, dir, palette);
 
-  // Horns extending up from top corners
+  // Horns
   ctx.fillStyle = detail;
-  ctx.fillRect(x + 4, y + 0 + bob, 1, 1);
-  ctx.fillRect(x + 11, y + 0 + bob, 1, 1);
+  ctx.fillRect(x + S(4), y + S(0) + bob, S(1), S(1));
+  ctx.fillRect(x + S(11), y + S(0) + bob, S(1), S(1));
+  // Horn base
+  ctx.fillRect(x + S(4), y + S(0.5) + bob, S(2), S(1));
+  ctx.fillRect(x + S(10), y + S(0.5) + bob, S(2), S(1));
   // Horn highlight
   ctx.fillStyle = blendColor(detail, '#FFFFFF', 0.2);
-  ctx.fillRect(x + 4, y + 0 + bob, 1, 1);
+  ctx.fillRect(x + S(4), y + S(0) + bob, S(1), S(1));
 }
 
 function drawHood(
@@ -730,26 +720,25 @@ function drawHood(
   ctx.fillStyle = palette.hair;
 
   if (dir === 0) {
-    ctx.fillRect(x + 4, y + 1 + bob, 8, 3);
-    ctx.fillRect(x + 4, y + 3 + bob, 2, 3);
-    ctx.fillRect(x + 10, y + 3 + bob, 2, 3);
-    ctx.fillRect(x + 6, y + 0 + bob, 4, 1);
-    // Hood shadow inside
+    ctx.fillRect(x + S(4), y + S(1) + bob, S(8), S(3));
+    ctx.fillRect(x + S(4), y + S(3) + bob, S(2), S(3));
+    ctx.fillRect(x + S(10), y + S(3) + bob, S(2), S(3));
+    ctx.fillRect(x + S(6), y + S(0) + bob, S(4), S(1));
     ctx.fillStyle = blendColor(palette.hair, '#000000', 0.2);
-    ctx.fillRect(x + 5, y + 2 + bob, 6, 1);
+    ctx.fillRect(x + S(5), y + S(2) + bob, S(6), S(1));
   } else if (dir === 3) {
-    ctx.fillRect(x + 4, y + 0 + bob, 8, 6);
-    ctx.fillRect(x + 6, y + 0 + bob, 4, 1);
+    ctx.fillRect(x + S(4), y + S(0) + bob, S(8), S(6));
+    ctx.fillRect(x + S(6), y + S(0) + bob, S(4), S(1));
     ctx.fillStyle = blendColor(palette.hair, '#FFFFFF', 0.1);
-    ctx.fillRect(x + 5, y + 0 + bob, 6, 1);
+    ctx.fillRect(x + S(5), y + S(0) + bob, S(6), S(1));
   } else if (dir === 1) {
-    ctx.fillRect(x + 5, y + 1 + bob, 7, 3);
-    ctx.fillRect(x + 9, y + 3 + bob, 3, 3);
-    ctx.fillRect(x + 7, y + 0 + bob, 4, 1);
+    ctx.fillRect(x + S(5), y + S(1) + bob, S(7), S(3));
+    ctx.fillRect(x + S(9), y + S(3) + bob, S(3), S(3));
+    ctx.fillRect(x + S(7), y + S(0) + bob, S(4), S(1));
   } else {
-    ctx.fillRect(x + 4, y + 1 + bob, 7, 3);
-    ctx.fillRect(x + 4, y + 3 + bob, 3, 3);
-    ctx.fillRect(x + 5, y + 0 + bob, 4, 1);
+    ctx.fillRect(x + S(4), y + S(1) + bob, S(7), S(3));
+    ctx.fillRect(x + S(4), y + S(3) + bob, S(3), S(3));
+    ctx.fillRect(x + S(5), y + S(0) + bob, S(4), S(1));
   }
 }
 
@@ -760,24 +749,26 @@ function drawMask(
 ): void {
   ctx.fillStyle = palette.hair;
   if (dir === 0) {
-    ctx.fillRect(x + 4, y + 1 + bob, 8, 2);
+    ctx.fillRect(x + S(4), y + S(1) + bob, S(8), S(2));
   } else if (dir === 3) {
-    ctx.fillRect(x + 4, y + 1 + bob, 8, 5);
+    ctx.fillRect(x + S(4), y + S(1) + bob, S(8), S(5));
   } else if (dir === 1) {
-    ctx.fillRect(x + 5, y + 1 + bob, 7, 2);
-    ctx.fillRect(x + 9, y + 2 + bob, 3, 1);
+    ctx.fillRect(x + S(5), y + S(1) + bob, S(7), S(2));
+    ctx.fillRect(x + S(9), y + S(2) + bob, S(3), S(1));
   } else {
-    ctx.fillRect(x + 4, y + 1 + bob, 7, 2);
-    ctx.fillRect(x + 4, y + 2 + bob, 3, 1);
+    ctx.fillRect(x + S(4), y + S(1) + bob, S(7), S(2));
+    ctx.fillRect(x + S(4), y + S(2) + bob, S(3), S(1));
   }
 
-  // Mask covering lower face (y+5 to y+6)
+  // Mask covering lower face
   if (dir !== 3) {
     ctx.fillStyle = palette.armor;
-    ctx.fillRect(x + 5, y + 5 + bob, 6, 2);
-    // Mask detail line
+    ctx.fillRect(x + S(5), y + S(5) + bob, S(6), S(2));
     ctx.fillStyle = palette.armorDark;
-    ctx.fillRect(x + 5, y + 6 + bob, 6, 1);
+    ctx.fillRect(x + S(5), y + S(6) + bob, S(6), S(1));
+    // Mask stitch detail
+    ctx.fillStyle = blendColor(palette.armor, '#000000', 0.1);
+    ctx.fillRect(x + S(7.5), y + S(5) + bob, S(1), S(2));
   }
 }
 
@@ -789,27 +780,25 @@ function drawWildHair(
   ctx.fillStyle = palette.hair;
 
   if (dir === 0) {
-    ctx.fillRect(x + 3, y + 0 + bob, 10, 3);
-    // Spiky tips
-    ctx.fillRect(x + 3, y + 0 + bob, 1, 1);
-    ctx.fillRect(x + 6, y + 0 + bob, 1, 1);
-    ctx.fillRect(x + 9, y + 0 + bob, 1, 1);
-    ctx.fillRect(x + 12, y + 0 + bob, 1, 1);
-    // Hair highlight
+    ctx.fillRect(x + S(3), y + S(0) + bob, S(10), S(3));
+    ctx.fillRect(x + S(3), y + S(0) + bob, S(1), S(1));
+    ctx.fillRect(x + S(6), y + S(0) + bob, S(1), S(1));
+    ctx.fillRect(x + S(9), y + S(0) + bob, S(1), S(1));
+    ctx.fillRect(x + S(12), y + S(0) + bob, S(1), S(1));
     ctx.fillStyle = blendColor(palette.hair, '#FFFFFF', 0.15);
-    ctx.fillRect(x + 5, y + 0 + bob, 2, 1);
+    ctx.fillRect(x + S(5), y + S(0) + bob, S(2), S(1));
   } else if (dir === 3) {
-    ctx.fillRect(x + 3, y + 0 + bob, 10, 5);
-    ctx.fillRect(x + 3, y + 0 + bob, 1, 1);
-    ctx.fillRect(x + 12, y + 0 + bob, 1, 1);
+    ctx.fillRect(x + S(3), y + S(0) + bob, S(10), S(5));
+    ctx.fillRect(x + S(3), y + S(0) + bob, S(1), S(1));
+    ctx.fillRect(x + S(12), y + S(0) + bob, S(1), S(1));
   } else if (dir === 1) {
-    ctx.fillRect(x + 4, y + 0 + bob, 9, 3);
-    ctx.fillRect(x + 9, y + 2 + bob, 4, 2);
-    ctx.fillRect(x + 12, y + 0 + bob, 1, 1);
+    ctx.fillRect(x + S(4), y + S(0) + bob, S(9), S(3));
+    ctx.fillRect(x + S(9), y + S(2) + bob, S(4), S(2));
+    ctx.fillRect(x + S(12), y + S(0) + bob, S(1), S(1));
   } else {
-    ctx.fillRect(x + 3, y + 0 + bob, 9, 3);
-    ctx.fillRect(x + 3, y + 2 + bob, 4, 2);
-    ctx.fillRect(x + 3, y + 0 + bob, 1, 1);
+    ctx.fillRect(x + S(3), y + S(0) + bob, S(9), S(3));
+    ctx.fillRect(x + S(3), y + S(2) + bob, S(4), S(2));
+    ctx.fillRect(x + S(3), y + S(0) + bob, S(1), S(1));
   }
 }
 
@@ -820,29 +809,34 @@ function drawTopknot(
 ): void {
   ctx.fillStyle = palette.hair;
   if (dir === 0) {
-    ctx.fillRect(x + 4, y + 1 + bob, 8, 2);
+    ctx.fillRect(x + S(4), y + S(1) + bob, S(8), S(2));
   } else if (dir === 3) {
-    ctx.fillRect(x + 4, y + 1 + bob, 8, 4);
+    ctx.fillRect(x + S(4), y + S(1) + bob, S(8), S(4));
   } else if (dir === 1) {
-    ctx.fillRect(x + 5, y + 1 + bob, 7, 2);
+    ctx.fillRect(x + S(5), y + S(1) + bob, S(7), S(2));
   } else {
-    ctx.fillRect(x + 4, y + 1 + bob, 7, 2);
+    ctx.fillRect(x + S(4), y + S(1) + bob, S(7), S(2));
   }
 
   // Topknot bun
   ctx.fillStyle = palette.hair;
   if (dir === 0 || dir === 3) {
-    ctx.fillRect(x + 7, y + 0 + bob, 2, 1);
-    ctx.fillRect(x + 7, y - 1 + bob, 2, 1);
-    ctx.fillRect(x + 7, y - 2 + bob, 2, 1);
+    ctx.fillRect(x + S(7), y + S(0) + bob, S(2), S(1));
+    ctx.fillRect(x + S(7), y + S(-1) + bob, S(2), S(1));
+    ctx.fillRect(x + S(7), y + S(-2) + bob, S(2), S(1));
   } else if (dir === 1) {
-    ctx.fillRect(x + 8, y + 0 + bob, 2, 1);
-    ctx.fillRect(x + 8, y - 1 + bob, 2, 1);
-    ctx.fillRect(x + 8, y - 2 + bob, 2, 1);
+    ctx.fillRect(x + S(8), y + S(0) + bob, S(2), S(1));
+    ctx.fillRect(x + S(8), y + S(-1) + bob, S(2), S(1));
+    ctx.fillRect(x + S(8), y + S(-2) + bob, S(2), S(1));
   } else {
-    ctx.fillRect(x + 6, y + 0 + bob, 2, 1);
-    ctx.fillRect(x + 6, y - 1 + bob, 2, 1);
-    ctx.fillRect(x + 6, y - 2 + bob, 2, 1);
+    ctx.fillRect(x + S(6), y + S(0) + bob, S(2), S(1));
+    ctx.fillRect(x + S(6), y + S(-1) + bob, S(2), S(1));
+    ctx.fillRect(x + S(6), y + S(-2) + bob, S(2), S(1));
+  }
+  // Topknot tie
+  ctx.fillStyle = blendColor(palette.hair, '#FFFFFF', 0.2);
+  if (dir === 0 || dir === 3) {
+    ctx.fillRect(x + S(7), y + S(0) + bob, S(2), S(0.5));
   }
 }
 
@@ -855,39 +849,38 @@ function drawFeatherHat(
   ctx.fillStyle = palette.hair;
 
   if (dir === 0) {
-    ctx.fillRect(x + 3, y + 2 + bob, 10, 1);
-    ctx.fillRect(x + 5, y + 1 + bob, 6, 1);
-    ctx.fillRect(x + 6, y + 0 + bob, 4, 1);
+    ctx.fillRect(x + S(3), y + S(2) + bob, S(10), S(1));
+    ctx.fillRect(x + S(5), y + S(1) + bob, S(6), S(1));
+    ctx.fillRect(x + S(6), y + S(0) + bob, S(4), S(1));
   } else if (dir === 3) {
-    ctx.fillRect(x + 3, y + 2 + bob, 10, 1);
-    ctx.fillRect(x + 5, y + 1 + bob, 6, 1);
-    ctx.fillRect(x + 6, y + 0 + bob, 4, 1);
-    ctx.fillRect(x + 4, y + 3 + bob, 8, 2);
+    ctx.fillRect(x + S(3), y + S(2) + bob, S(10), S(1));
+    ctx.fillRect(x + S(5), y + S(1) + bob, S(6), S(1));
+    ctx.fillRect(x + S(6), y + S(0) + bob, S(4), S(1));
+    ctx.fillRect(x + S(4), y + S(3) + bob, S(8), S(2));
   } else if (dir === 1) {
-    ctx.fillRect(x + 3, y + 2 + bob, 10, 1);
-    ctx.fillRect(x + 6, y + 1 + bob, 6, 1);
-    ctx.fillRect(x + 7, y + 0 + bob, 4, 1);
+    ctx.fillRect(x + S(3), y + S(2) + bob, S(10), S(1));
+    ctx.fillRect(x + S(6), y + S(1) + bob, S(6), S(1));
+    ctx.fillRect(x + S(7), y + S(0) + bob, S(4), S(1));
   } else {
-    ctx.fillRect(x + 3, y + 2 + bob, 10, 1);
-    ctx.fillRect(x + 4, y + 1 + bob, 6, 1);
-    ctx.fillRect(x + 5, y + 0 + bob, 4, 1);
+    ctx.fillRect(x + S(3), y + S(2) + bob, S(10), S(1));
+    ctx.fillRect(x + S(4), y + S(1) + bob, S(6), S(1));
+    ctx.fillRect(x + S(5), y + S(0) + bob, S(4), S(1));
   }
 
-  // Hat highlight
   ctx.fillStyle = blendColor(palette.hair, '#FFFFFF', 0.12);
-  ctx.fillRect(x + 6, y + 0 + bob, 3, 1);
+  ctx.fillRect(x + S(6), y + S(0) + bob, S(3), S(1));
 
   // Feather accent
   ctx.fillStyle = detail;
   if (dir === 0 || dir === 2) {
-    ctx.fillRect(x + 11, y + 0 + bob, 1, 1);
-    ctx.fillRect(x + 12, y + 1 + bob, 1, 1);
+    ctx.fillRect(x + S(11), y + S(0) + bob, S(1), S(1));
+    ctx.fillRect(x + S(12), y + S(1) + bob, S(1), S(1));
   } else if (dir === 1) {
-    ctx.fillRect(x + 12, y + 0 + bob, 1, 1);
-    ctx.fillRect(x + 13, y + 1 + bob, 1, 1);
+    ctx.fillRect(x + S(12), y + S(0) + bob, S(1), S(1));
+    ctx.fillRect(x + S(13), y + S(1) + bob, S(1), S(1));
   } else {
-    ctx.fillRect(x + 10, y + 0 + bob, 1, 1);
-    ctx.fillRect(x + 11, y + 1 + bob, 1, 1);
+    ctx.fillRect(x + S(10), y + S(0) + bob, S(1), S(1));
+    ctx.fillRect(x + S(11), y + S(1) + bob, S(1), S(1));
   }
 }
 
@@ -899,29 +892,27 @@ function drawGoggles(
 ): void {
   drawNormalHair(ctx, x, y, bob, dir, palette);
 
-  // Goggles on forehead at y+3
   ctx.fillStyle = detail;
   if (dir === 0) {
-    ctx.fillRect(x + 5, y + 3 + bob, 2, 1);
-    ctx.fillRect(x + 9, y + 3 + bob, 2, 1);
+    ctx.fillRect(x + S(5), y + S(3) + bob, S(2), S(1));
+    ctx.fillRect(x + S(9), y + S(3) + bob, S(2), S(1));
     ctx.fillStyle = palette.armorDark;
-    ctx.fillRect(x + 7, y + 3 + bob, 2, 1);
-    // Lens highlight
+    ctx.fillRect(x + S(7), y + S(3) + bob, S(2), S(1));
     ctx.fillStyle = blendColor(detail, '#FFFFFF', 0.3);
-    ctx.fillRect(x + 5, y + 3 + bob, 1, 1);
-    ctx.fillRect(x + 9, y + 3 + bob, 1, 1);
+    ctx.fillRect(x + S(5), y + S(3) + bob, S(1), S(1));
+    ctx.fillRect(x + S(9), y + S(3) + bob, S(1), S(1));
   } else if (dir === 1) {
-    ctx.fillRect(x + 5, y + 3 + bob, 2, 1);
+    ctx.fillRect(x + S(5), y + S(3) + bob, S(2), S(1));
     ctx.fillStyle = palette.armorDark;
-    ctx.fillRect(x + 7, y + 3 + bob, 4, 1);
+    ctx.fillRect(x + S(7), y + S(3) + bob, S(4), S(1));
   } else if (dir === 2) {
-    ctx.fillRect(x + 9, y + 3 + bob, 2, 1);
+    ctx.fillRect(x + S(9), y + S(3) + bob, S(2), S(1));
     ctx.fillStyle = palette.armorDark;
-    ctx.fillRect(x + 5, y + 3 + bob, 4, 1);
+    ctx.fillRect(x + S(5), y + S(3) + bob, S(4), S(1));
   }
   if (dir === 3) {
     ctx.fillStyle = palette.armorDark;
-    ctx.fillRect(x + 4, y + 3 + bob, 8, 1);
+    ctx.fillRect(x + S(4), y + S(3) + bob, S(8), S(1));
   }
 }
 
@@ -935,22 +926,22 @@ function drawBandana(
 
   ctx.fillStyle = detail;
   if (dir === 0) {
-    ctx.fillRect(x + 4, y + 3 + bob, 8, 1);
+    ctx.fillRect(x + S(4), y + S(3) + bob, S(8), S(1));
   } else if (dir === 3) {
-    ctx.fillRect(x + 4, y + 3 + bob, 8, 1);
-    ctx.fillRect(x + 9, y + 4 + bob, 1, 2);
-    ctx.fillRect(x + 10, y + 5 + bob, 1, 1);
+    ctx.fillRect(x + S(4), y + S(3) + bob, S(8), S(1));
+    ctx.fillRect(x + S(9), y + S(4) + bob, S(1), S(2));
+    ctx.fillRect(x + S(10), y + S(5) + bob, S(1), S(1));
   } else if (dir === 1) {
-    ctx.fillRect(x + 4, y + 3 + bob, 8, 1);
-    ctx.fillRect(x + 11, y + 4 + bob, 1, 1);
+    ctx.fillRect(x + S(4), y + S(3) + bob, S(8), S(1));
+    ctx.fillRect(x + S(11), y + S(4) + bob, S(1), S(1));
   } else {
-    ctx.fillRect(x + 4, y + 3 + bob, 8, 1);
-    ctx.fillRect(x + 4, y + 4 + bob, 1, 1);
+    ctx.fillRect(x + S(4), y + S(3) + bob, S(8), S(1));
+    ctx.fillRect(x + S(4), y + S(4) + bob, S(1), S(1));
   }
 }
 
 // --------------------------------------------------
-// Eyes - at y+4 to y+5
+// Eyes
 // --------------------------------------------------
 function drawEyes(
   ctx: CanvasRenderingContext2D,
@@ -972,27 +963,27 @@ function drawEyes(
 
   if (dir === 0) {
     ctx.fillStyle = whiteColor;
-    ctx.fillRect(x + 6, y + 4 + bob, 2, 2);
-    ctx.fillRect(x + 9, y + 4 + bob, 2, 2);
+    ctx.fillRect(x + S(6), y + S(4) + bob, S(2), S(2));
+    ctx.fillRect(x + S(9), y + S(4) + bob, S(2), S(2));
 
     if (!eyeColor) {
       ctx.fillStyle = pupilColor;
-      ctx.fillRect(x + 7, y + 4 + bob, 1, 2);
-      ctx.fillRect(x + 10, y + 4 + bob, 1, 2);
+      ctx.fillRect(x + S(7), y + S(4) + bob, S(1), S(2));
+      ctx.fillRect(x + S(10), y + S(4) + bob, S(1), S(2));
     }
   } else if (dir === 1) {
     ctx.fillStyle = whiteColor;
-    ctx.fillRect(x + 5, y + 4 + bob, 2, 2);
+    ctx.fillRect(x + S(5), y + S(4) + bob, S(2), S(2));
     if (!eyeColor) {
       ctx.fillStyle = pupilColor;
-      ctx.fillRect(x + 5, y + 4 + bob, 1, 2);
+      ctx.fillRect(x + S(5), y + S(4) + bob, S(1), S(2));
     }
   } else if (dir === 2) {
     ctx.fillStyle = whiteColor;
-    ctx.fillRect(x + 9, y + 4 + bob, 2, 2);
+    ctx.fillRect(x + S(9), y + S(4) + bob, S(2), S(2));
     if (!eyeColor) {
       ctx.fillStyle = pupilColor;
-      ctx.fillRect(x + 10, y + 4 + bob, 1, 2);
+      ctx.fillRect(x + S(10), y + S(4) + bob, S(1), S(2));
     }
   }
 }

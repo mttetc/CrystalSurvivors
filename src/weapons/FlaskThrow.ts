@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WeaponId, DEPTHS, EVENTS, KNOCKBACK_VELOCITY } from '../constants';
+import { WeaponId, DEPTHS, EVENTS, KNOCKBACK_VELOCITY, SPRITE_SCALE } from '../constants';
 import { BaseWeapon } from './BaseWeapon';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -12,7 +12,10 @@ export class FlaskThrow extends BaseWeapon {
 
   protected fire(_time: number, enemies: Phaser.Physics.Arcade.Group): void {
     const stats = this.getStats();
-    const target = this.findNearestEnemy(enemies);
+    // Prefer melee/mid-range enemies (150*SS range) before falling back to longer range
+    const preferredRange = 150 * SPRITE_SCALE;
+    let target = this.findNearestEnemy(enemies, preferredRange);
+    if (!target) target = this.findNearestEnemy(enemies, 300 * SPRITE_SCALE);
     if (!target) return;
 
     const count = stats.count ?? 1;
@@ -24,15 +27,22 @@ export class FlaskThrow extends BaseWeapon {
     const weaponInst = this.player.getWeapon(this.id);
     const weaponLevel = weaponInst ? weaponInst.level : 1;
 
+    // Filter to nearby enemies for multi-flask targeting
     const children = enemies.getChildren() as Enemy[];
-    const activeEnemies = children.filter(e => e.active);
+    const activeEnemies = children.filter(e => {
+      if (!e.active) return false;
+      const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, e.x, e.y);
+      return d <= 300 * SPRITE_SCALE;
+    });
 
     for (let i = 0; i < count; i++) {
-      // Pick target: for multi-flask, pick different enemies if available
+      // Pick target: for multi-flask, pick different nearby enemies if available
       const t = activeEnemies[i % activeEnemies.length] || target;
 
-      const startX = this.player.x;
-      const startY = this.player.y;
+      const throwAngle = Math.atan2(t.y - this.player.y, t.x - this.player.x);
+      const sp = this.getSpawnPoint(throwAngle);
+      const startX = sp.x;
+      const startY = sp.y;
       const endX = t.x;
       const endY = t.y;
       const dx = endX - startX;
@@ -41,14 +51,14 @@ export class FlaskThrow extends BaseWeapon {
       if (dist < 1) continue;
 
       const flightDuration = Math.min(800, Math.max(400, dist * 2.5));
-      const arcHeight = Math.min(80, dist * 0.35);
+      const arcHeight = Math.min(80 * SPRITE_SCALE, dist * 0.35);
 
       // --- Flask sprite (Image, not physics body) ---
       const flask = this.scene.add.image(startX, startY, 'flask');
       flask.setDepth(DEPTHS.PROJECTILES);
 
       // --- Shadow on the ground ---
-      const shadow = this.scene.add.ellipse(startX, startY, 8, 4, 0x000000, 0.35);
+      const shadow = this.scene.add.ellipse(startX, startY, 8 * SPRITE_SCALE, 4 * SPRITE_SCALE, 0x000000, 0.35);
       shadow.setDepth(DEPTHS.GROUND + 1);
 
       // --- Shadow tween: moves linearly toward target on the ground ---
@@ -112,14 +122,14 @@ export class FlaskThrow extends BaseWeapon {
     weaponLevel: number,
   ): void {
     // --- Green explosion ring: expand + fade ---
-    const ring = this.scene.add.circle(x, y, 4, 0x44FF44, 0.8);
+    const ring = this.scene.add.circle(x, y, 4 * SPRITE_SCALE, 0x44FF44, 0.8);
     ring.setDepth(DEPTHS.EFFECTS);
-    const visualRadius = aoeRadius * this.getAoeScale();
+    const visualRadius = aoeRadius;
 
     this.scene.tweens.add({
       targets: ring,
-      scaleX: visualRadius / 4,
-      scaleY: visualRadius / 4,
+      scaleX: visualRadius / (4 * SPRITE_SCALE),
+      scaleY: visualRadius / (4 * SPRITE_SCALE),
       alpha: 0,
       duration: 300,
       ease: 'Quad.easeOut',
@@ -163,8 +173,7 @@ export class FlaskThrow extends BaseWeapon {
     enemies: Phaser.Physics.Arcade.Group,
   ): void {
     const puddleRadius = aoeRadius * 0.7;
-    const puddleVisualRadius = puddleRadius * this.getAoeScale();
-    const puddle = this.scene.add.circle(x, y, puddleVisualRadius, 0x22AA22, 0.45);
+    const puddle = this.scene.add.circle(x, y, puddleRadius, 0x22AA22, 0.45);
     puddle.setDepth(DEPTHS.GROUND + 2);
 
     const puddleDuration = 3000; // 3 seconds

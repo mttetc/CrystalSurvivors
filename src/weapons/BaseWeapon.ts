@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WeaponId, EnchantId } from '../constants';
+import { WeaponId, EnchantId, SPRITE_SCALE } from '../constants';
 import { WeaponLevelStats } from '../types';
 import { WEAPON_DEFS } from '../data/weapons';
 import { ENCHANT_DEFS } from '../data/enchants';
@@ -30,7 +30,7 @@ export abstract class BaseWeapon {
   }
 
   public getCooldown(): number {
-    return this.getStats().cooldown * this.player.playerState.modifiers.cooldownMultiplier;
+    return this.getStats().cooldown * this.player.getEffectiveCooldownMultiplier();
   }
 
   public getDamage(): number {
@@ -87,9 +87,23 @@ export abstract class BaseWeapon {
     }
   }
 
+  /** Reset cooldown so weapon fires immediately on next update */
+  public resetCooldown(): void {
+    this.cooldownTimer = 0;
+  }
+
+  /** Offset spawn point away from player center in the given direction */
+  protected getSpawnPoint(angle: number): { x: number; y: number } {
+    const offset = 12 * SPRITE_SCALE;
+    return {
+      x: this.player.x + Math.cos(angle) * offset,
+      y: this.player.y + Math.sin(angle) * offset,
+    };
+  }
+
   protected abstract fire(time: number, enemies: Phaser.Physics.Arcade.Group): void;
 
-  protected findNearestEnemy(enemies: Phaser.Physics.Arcade.Group, maxRange = 400): Enemy | null {
+  protected findNearestEnemy(enemies: Phaser.Physics.Arcade.Group, maxRange = 400 * SPRITE_SCALE): Enemy | null {
     let nearest: Enemy | null = null;
     let nearestDist = maxRange;
 

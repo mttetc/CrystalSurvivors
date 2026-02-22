@@ -12,15 +12,15 @@ export class PassiveManager {
   }
 
   /**
-   * Apply double down: upgrade both jobs' passives to next tier,
+   * Apply awakening: upgrade both jobs' passives to next tier,
    * +1 all skill levels, +1 both weapon levels
    */
-  public applyDoubleDown(): void {
+  public applyAwakening(): void {
     const state = this.player.playerState;
     const jobs = state.chosenJobs;
 
-    // Mark as doubled down
-    state.isDoubledDown = true;
+    // Mark as awakened
+    state.isAwakened = true;
 
     for (const jobId of jobs) {
       const job = JOB_DEFS[jobId];
@@ -37,10 +37,10 @@ export class PassiveManager {
         tierDef.apply(state.modifiers);
       }
 
-      // +1 all skill levels for this job (cap 3)
+      // +1 skill levels for already-unlocked skills (cap 3)
       for (const skillId of job.skills) {
         const currentLevel = state.jobSkillLevels[skillId] ?? 0;
-        if (currentLevel < 3) {
+        if (currentLevel >= 1 && currentLevel < 3) {
           state.jobSkillLevels[skillId] = currentLevel + 1;
           // Apply modifier if it's a modifier-type skill
           const skillDef = JOB_SKILL_DEFS[skillId];
@@ -65,12 +65,12 @@ export class PassiveManager {
   }
 
   /**
-   * Apply mastery (second double down at level 17).
-   * Same logic as double down but for tier 2.
+   * Apply mastery (second awakening at level 17).
+   * Same logic as awakening but for tier 2.
    */
   public applyMastery(): void {
     // Reuse the same logic - it advances to the next tier
-    this.applyDoubleDown();
+    this.applyAwakening();
   }
 
   public destroy(): void {

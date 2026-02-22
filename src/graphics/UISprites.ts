@@ -1,3 +1,5 @@
+import { SPRITE_SCALE } from '../constants';
+
 export function generateUITextures(scene: Phaser.Scene): void {
   // Enhancement card background
   const cardW = 80, cardH = 100;
@@ -301,6 +303,296 @@ export function generateUITextures(scene: Phaser.Scene): void {
     ctx.fill();
   });
 
+  // ─── Weapon icons (14 weapons) ──────────────────────────────────
+  generateWeaponIcon(scene, 'icon_hunters_bow', '#228B22', (ctx, s) => {
+    // Bow curve
+    ctx.strokeStyle = '#228B22'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(4, 6, 5, -Math.PI * 0.6, Math.PI * 0.6); ctx.stroke();
+    // Arrow
+    ctx.fillStyle = '#DDDDDD'; ctx.fillRect(4, 5, 7, 2);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(10, 5, 2, 2);
+  });
+  generateWeaponIcon(scene, 'icon_sacred_shield', '#FFD700', (ctx, s) => {
+    ctx.beginPath();
+    ctx.moveTo(6, 11); ctx.lineTo(1, 7); ctx.lineTo(1, 2);
+    ctx.lineTo(6, 1); ctx.lineTo(11, 2); ctx.lineTo(11, 7);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(5, 3, 2, 5); ctx.fillRect(3, 5, 6, 2);
+  });
+  generateWeaponIcon(scene, 'icon_fire_rod', '#FF4400', (ctx, s) => {
+    // Rod shaft
+    ctx.fillStyle = '#8B4513'; ctx.fillRect(5, 4, 2, 8);
+    // Flame tip
+    ctx.fillStyle = '#FF6600'; ctx.fillRect(4, 1, 4, 4);
+    ctx.fillStyle = '#FFAA00'; ctx.fillRect(5, 2, 2, 2);
+    ctx.fillStyle = '#FFDD44'; ctx.fillRect(5, 0, 2, 2);
+  });
+  generateWeaponIcon(scene, 'icon_dark_claymore', '#8B0000', (ctx, s) => {
+    // Blade
+    ctx.fillStyle = '#AAAAAA'; ctx.fillRect(5, 0, 2, 8);
+    // Guard
+    ctx.fillStyle = '#8B0000'; ctx.fillRect(3, 7, 6, 2);
+    // Handle
+    ctx.fillStyle = '#440000'; ctx.fillRect(5, 9, 2, 3);
+    // Dark glow
+    ctx.fillStyle = '#FF0000'; ctx.fillRect(5, 0, 2, 2);
+  });
+  generateWeaponIcon(scene, 'icon_war_harp', '#DAA520', (ctx, s) => {
+    ctx.strokeStyle = '#DAA520'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(6, 5, 4, Math.PI, Math.PI * 2); ctx.stroke();
+    ctx.fillRect(2, 5, 2, 6); ctx.fillRect(8, 5, 2, 6);
+    ctx.fillStyle = '#FFDD88';
+    ctx.fillRect(4, 6, 1, 4); ctx.fillRect(6, 6, 1, 4); ctx.fillRect(8, 6, 1, 4);
+  });
+  generateWeaponIcon(scene, 'icon_katana', '#B22222', (ctx, s) => {
+    ctx.fillStyle = '#DDDDDD'; ctx.fillRect(5, 0, 2, 7);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 0, 1, 2);
+    ctx.fillStyle = '#B22222'; ctx.fillRect(3, 7, 6, 2);
+    ctx.fillStyle = '#8B4513'; ctx.fillRect(5, 9, 2, 3);
+  });
+  generateWeaponIcon(scene, 'icon_battle_axe', '#DC143C', (ctx, s) => {
+    ctx.fillStyle = '#8B4513'; ctx.fillRect(5, 4, 2, 8);
+    ctx.fillStyle = '#DC143C'; ctx.fillRect(1, 0, 10, 4);
+    ctx.fillRect(0, 1, 12, 2);
+  });
+  generateWeaponIcon(scene, 'icon_war_lance', '#4169E1', (ctx, s) => {
+    ctx.fillRect(5, 0, 2, 10);
+    ctx.fillStyle = '#88AAFF';
+    ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(3, 3); ctx.lineTo(9, 3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#4169E1'; ctx.fillRect(4, 10, 4, 2);
+  });
+  generateWeaponIcon(scene, 'icon_flask_throw', '#32CD32', (ctx, s) => {
+    ctx.fillRect(4, 0, 4, 2);
+    ctx.fillRect(3, 2, 6, 8);
+    ctx.fillStyle = '#66FF66'; ctx.fillRect(4, 4, 4, 5);
+    ctx.fillStyle = '#AAFFAA'; ctx.fillRect(5, 5, 2, 2);
+  });
+  generateWeaponIcon(scene, 'icon_holy_rod', '#FFFFFF', (ctx, s) => {
+    ctx.fillStyle = '#8B4513'; ctx.fillRect(5, 4, 2, 8);
+    ctx.fillStyle = '#FFFFCC';
+    ctx.beginPath(); ctx.arc(6, 3, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.arc(6, 3, 1.5, 0, Math.PI * 2); ctx.fill();
+  });
+  generateWeaponIcon(scene, 'icon_ether_rod', '#AA66FF', (ctx, s) => {
+    ctx.fillStyle = '#8B4513'; ctx.fillRect(5, 4, 2, 8);
+    ctx.fillStyle = '#AA66FF';
+    ctx.beginPath(); ctx.arc(6, 3, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#DD99FF';
+    ctx.beginPath(); ctx.arc(6, 3, 1.5, 0, Math.PI * 2); ctx.fill();
+  });
+  generateWeaponIcon(scene, 'icon_iron_fists', '#FF8C00', (ctx, s) => {
+    ctx.fillStyle = '#FFAA33'; ctx.fillRect(2, 3, 8, 5);
+    ctx.fillStyle = '#FFCC44';
+    ctx.fillRect(2, 2, 2, 2); ctx.fillRect(5, 2, 2, 2); ctx.fillRect(8, 2, 2, 2);
+    ctx.fillStyle = '#CC7700';
+    ctx.fillRect(4, 4, 1, 3); ctx.fillRect(7, 4, 1, 3);
+    ctx.fillStyle = '#FF8C00'; ctx.fillRect(3, 8, 6, 3);
+  });
+  generateWeaponIcon(scene, 'icon_chrono_rod', '#9370DB', (ctx, s) => {
+    ctx.fillStyle = '#8B4513'; ctx.fillRect(5, 5, 2, 7);
+    ctx.strokeStyle = '#9370DB'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(6, 4, 3, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#9370DB';
+    ctx.fillRect(5, 2, 2, 3); ctx.fillRect(5, 3, 3, 2);
+  });
+  generateWeaponIcon(scene, 'icon_earth_rod', '#8B4513', (ctx, s) => {
+    ctx.fillStyle = '#5A3A1A'; ctx.fillRect(5, 4, 2, 8);
+    ctx.fillStyle = '#CD853F';
+    ctx.beginPath();
+    ctx.moveTo(6, 0); ctx.lineTo(9, 4); ctx.lineTo(6, 5); ctx.lineTo(3, 4);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#DEB887'; ctx.fillRect(5, 2, 2, 2);
+  });
+
+  // ─── Stat icons (12) ──────────────────────────────────────────────
+  generateWeaponIcon(scene, 'stat_power', '#FF4444', (ctx, s) => {
+    // Sword
+    ctx.fillRect(5, 0, 2, 8);
+    ctx.fillRect(3, 3, 6, 2);
+    ctx.fillStyle = '#8B4513'; ctx.fillRect(5, 8, 2, 4);
+  });
+  generateWeaponIcon(scene, 'stat_speed', '#FFFF44', (ctx, s) => {
+    // Lightning bolt
+    ctx.beginPath();
+    ctx.moveTo(7, 0); ctx.lineTo(3, 5); ctx.lineTo(6, 5);
+    ctx.lineTo(4, 12); ctx.lineTo(10, 5); ctx.lineTo(7, 5);
+    ctx.lineTo(9, 0); ctx.closePath(); ctx.fill();
+  });
+  generateWeaponIcon(scene, 'stat_armor', '#8888CC', (ctx, s) => {
+    // Shield
+    ctx.beginPath();
+    ctx.moveTo(6, 11); ctx.lineTo(1, 7); ctx.lineTo(1, 2);
+    ctx.lineTo(6, 1); ctx.lineTo(11, 2); ctx.lineTo(11, 7);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#9999DD'; ctx.fillRect(5, 3, 2, 2);
+  });
+  generateWeaponIcon(scene, 'stat_hp', '#FF4466', (ctx, s) => {
+    // Heart
+    ctx.beginPath();
+    ctx.moveTo(6, 10); ctx.lineTo(1, 5); ctx.lineTo(1, 3);
+    ctx.lineTo(3, 1); ctx.lineTo(6, 4);
+    ctx.lineTo(9, 1); ctx.lineTo(11, 3); ctx.lineTo(11, 5);
+    ctx.closePath(); ctx.fill();
+  });
+  generateWeaponIcon(scene, 'stat_regen', '#44FF88', (ctx, s) => {
+    // Green cross
+    ctx.fillRect(4, 1, 4, 10);
+    ctx.fillRect(1, 4, 10, 4);
+  });
+  generateWeaponIcon(scene, 'stat_move', '#44DDFF', (ctx, s) => {
+    // Boot
+    ctx.fillRect(3, 2, 4, 7);
+    ctx.fillRect(3, 8, 7, 2);
+    ctx.fillRect(7, 7, 3, 1);
+    ctx.fillStyle = '#88EEFF';
+    ctx.fillRect(1, 1, 2, 1); ctx.fillRect(0, 2, 3, 1); ctx.fillRect(1, 3, 2, 1);
+  });
+  generateWeaponIcon(scene, 'stat_magnet', '#FF44FF', (ctx, s) => {
+    // U-magnet
+    ctx.fillRect(2, 1, 3, 6);
+    ctx.fillRect(7, 1, 3, 6);
+    ctx.fillRect(2, 7, 8, 3);
+    ctx.clearRect(5, 1, 2, 6);
+    ctx.clearRect(4, 3, 4, 4);
+    ctx.fillStyle = '#CC33CC';
+    ctx.fillRect(2, 1, 3, 2); ctx.fillRect(7, 1, 3, 2);
+  });
+  generateWeaponIcon(scene, 'stat_crit', '#FFAA00', (ctx, s) => {
+    // Star
+    ctx.beginPath();
+    ctx.moveTo(6, 0); ctx.lineTo(7, 4); ctx.lineTo(12, 5);
+    ctx.lineTo(8, 7); ctx.lineTo(9, 12);
+    ctx.lineTo(6, 9); ctx.lineTo(3, 12);
+    ctx.lineTo(4, 7); ctx.lineTo(0, 5);
+    ctx.lineTo(5, 4); ctx.closePath(); ctx.fill();
+  });
+  generateWeaponIcon(scene, 'stat_gem', '#44FF44', (ctx, s) => {
+    // Diamond gem
+    ctx.beginPath();
+    ctx.moveTo(6, 0); ctx.lineTo(10, 4); ctx.lineTo(6, 11); ctx.lineTo(2, 4);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#88FF88'; ctx.fillRect(5, 3, 2, 3);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 3, 1, 1);
+  });
+  generateWeaponIcon(scene, 'stat_xp', '#FFDD44', (ctx, s) => {
+    // Book
+    ctx.fillRect(2, 2, 8, 8);
+    ctx.fillStyle = '#CCAA22'; ctx.fillRect(2, 2, 1, 8);
+    ctx.fillStyle = '#FFFFCC'; ctx.fillRect(4, 3, 5, 6);
+    ctx.fillStyle = '#CCAA44';
+    ctx.fillRect(5, 4, 3, 1); ctx.fillRect(5, 6, 3, 1); ctx.fillRect(5, 8, 2, 1);
+  });
+  generateWeaponIcon(scene, 'stat_range', '#88CCFF', (ctx, s) => {
+    // Expanding circles
+    ctx.strokeStyle = '#88CCFF'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(6, 6, 3, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillRect(5, 5, 2, 2);
+  });
+  generateWeaponIcon(scene, 'stat_damage', '#FF6644', (ctx, s) => {
+    // Explosion burst
+    ctx.beginPath();
+    ctx.moveTo(6, 0); ctx.lineTo(7, 4); ctx.lineTo(11, 3);
+    ctx.lineTo(8, 6); ctx.lineTo(12, 9); ctx.lineTo(8, 8);
+    ctx.lineTo(6, 12); ctx.lineTo(4, 8); ctx.lineTo(0, 9);
+    ctx.lineTo(4, 6); ctx.lineTo(1, 3); ctx.lineTo(5, 4);
+    ctx.closePath(); ctx.fill();
+  });
+
+  // ─── Family icons (6) ─────────────────────────────────────────────
+  generateWeaponIcon(scene, 'family_projectile', '#88CCFF', (ctx, s) => {
+    // Arrow flying right
+    ctx.fillRect(1, 5, 8, 2);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.moveTo(11, 6); ctx.lineTo(8, 3); ctx.lineTo(8, 9);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#6699CC'; ctx.fillRect(1, 4, 2, 1); ctx.fillRect(1, 7, 2, 1);
+  });
+  generateWeaponIcon(scene, 'family_magic', '#AA44FF', (ctx, s) => {
+    // Arcane circle
+    ctx.strokeStyle = '#AA44FF'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#DD88FF';
+    ctx.fillRect(5, 5, 2, 2);
+    ctx.fillRect(5, 1, 2, 1); ctx.fillRect(5, 10, 2, 1);
+    ctx.fillRect(1, 5, 1, 2); ctx.fillRect(10, 5, 1, 2);
+  });
+  generateWeaponIcon(scene, 'family_melee', '#FF8844', (ctx, s) => {
+    // Crossed swords
+    ctx.fillStyle = '#CCCCCC';
+    ctx.fillRect(1, 1, 2, 8); ctx.fillRect(9, 1, 2, 8);
+    ctx.fillStyle = '#FF8844';
+    ctx.fillRect(0, 8, 4, 2); ctx.fillRect(8, 8, 4, 2);
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(1, 10, 2, 2); ctx.fillRect(9, 10, 2, 2);
+  });
+  generateWeaponIcon(scene, 'family_aura', '#44DDFF', (ctx, s) => {
+    // Radiating rings
+    ctx.strokeStyle = '#44DDFF'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(6, 6, 3, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(6, 6, 1, 0, Math.PI * 2); ctx.stroke();
+  });
+  generateWeaponIcon(scene, 'family_support', '#44FF88', (ctx, s) => {
+    // Healing cross with sparkle
+    ctx.fillRect(4, 1, 4, 10);
+    ctx.fillRect(1, 4, 10, 4);
+    ctx.fillStyle = '#88FFAA'; ctx.fillRect(5, 5, 2, 2);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 2, 1, 1); ctx.fillRect(2, 5, 1, 1);
+  });
+  generateWeaponIcon(scene, 'family_summoning', '#FF69B4', (ctx, s) => {
+    // Summoning circle
+    ctx.strokeStyle = '#FF69B4'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.stroke();
+    // Inner triangle
+    ctx.beginPath();
+    ctx.moveTo(6, 1); ctx.lineTo(10, 9); ctx.lineTo(2, 9); ctx.closePath(); ctx.stroke();
+    ctx.fillStyle = '#FFAADD'; ctx.fillRect(5, 5, 2, 2);
+  });
+
+  // ─── Special icons (3) ────────────────────────────────────────────
+  generateWeaponIcon(scene, 'icon_awakening', '#FFAA00', (ctx, s) => {
+    // Flame burst / awakening fire
+    ctx.fillStyle = '#FF6600';
+    ctx.fillRect(3, 4, 6, 6);
+    ctx.fillRect(4, 2, 4, 3);
+    ctx.fillStyle = '#FFAA00';
+    ctx.fillRect(4, 3, 4, 5);
+    ctx.fillStyle = '#FFDD44';
+    ctx.fillRect(5, 4, 2, 3);
+    ctx.fillRect(5, 1, 2, 3);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(5, 0, 2, 2);
+    // Side flames
+    ctx.fillStyle = '#FF6600';
+    ctx.fillRect(1, 5, 2, 3); ctx.fillRect(9, 5, 2, 3);
+    ctx.fillStyle = '#FFAA00';
+    ctx.fillRect(0, 6, 2, 1); ctx.fillRect(10, 6, 2, 1);
+  });
+  generateWeaponIcon(scene, 'icon_malus', '#CC4444', (ctx, s) => {
+    // Skull
+    ctx.fillRect(3, 2, 6, 6);
+    ctx.fillRect(4, 1, 4, 1);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(4, 3, 2, 2); ctx.fillRect(7, 3, 2, 2);
+    ctx.fillStyle = '#CC4444';
+    ctx.fillRect(5, 6, 2, 1);
+    // Jaw
+    ctx.fillStyle = '#AA3333'; ctx.fillRect(4, 8, 4, 2);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(4, 8, 1, 1); ctx.fillRect(6, 8, 1, 1); ctx.fillRect(8, 8, 1, 1);
+  });
+  generateWeaponIcon(scene, 'stat_synergy', '#FFAA44', (ctx, s) => {
+    // Interlinked rings
+    ctx.strokeStyle = '#FFAA44'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(4, 6, 3, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(8, 6, 3, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#FFDD88'; ctx.fillRect(5, 5, 2, 2);
+  });
+
   // Job icons (14x14)
   generateJobIconTextures(scene);
 
@@ -324,8 +616,9 @@ function generateWeaponIcon(
   draw: (ctx: CanvasRenderingContext2D, s: number) => void,
 ): void {
   const s = 12;
-  const canvas = scene.textures.createCanvas(key, s, s)!;
+  const canvas = scene.textures.createCanvas(key, s * SPRITE_SCALE, s * SPRITE_SCALE)!;
   const ctx = canvas.context;
+  ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
   ctx.fillStyle = color;
   draw(ctx, s);
   canvas.refresh();
@@ -333,8 +626,9 @@ function generateWeaponIcon(
 
 function generateGroundTile(scene: Phaser.Scene): void {
   const T = 64;
-  const canvas = scene.textures.createCanvas('ground_tile', T, T)!;
+  const canvas = scene.textures.createCanvas('ground_tile', T * SPRITE_SCALE, T * SPRITE_SCALE)!;
   const ctx = canvas.context;
+  ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
 
   // Dark ground base
   ctx.fillStyle = '#1a1a2e';
@@ -367,8 +661,9 @@ function generateGroundTile(scene: Phaser.Scene): void {
 
 function generateChestTexture(scene: Phaser.Scene, key: string, highlight: string, body: string): void {
   const s = 14;
-  const canvas = scene.textures.createCanvas(key, s, s)!;
+  const canvas = scene.textures.createCanvas(key, s * SPRITE_SCALE, s * SPRITE_SCALE)!;
   const ctx = canvas.context;
+  ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
 
   // Chest body
   ctx.fillStyle = body;
@@ -403,8 +698,9 @@ function generateJobIcon(
   draw: (ctx: CanvasRenderingContext2D) => void,
 ): void {
   const s = 14;
-  const canvas = scene.textures.createCanvas(key, s, s)!;
+  const canvas = scene.textures.createCanvas(key, s * SPRITE_SCALE, s * SPRITE_SCALE)!;
   const ctx = canvas.context;
+  ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
   ctx.fillStyle = color;
   draw(ctx);
   canvas.refresh();
@@ -609,56 +905,69 @@ function generateSkillIconTextures(scene: Phaser.Scene): void {
     ctx.fillStyle = '#4169E1'; ctx.fillRect(4, 10, 4, 2);
     ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 1, 1, 1);
   });
-  // Highwind: lance with wind trails
-  generateWeaponIcon(scene, 'skill_highwind', '#4169E1', (ctx) => {
-    ctx.fillRect(5, 0, 2, 10);
+  // Dragon Dive: diving lance with flames
+  generateWeaponIcon(scene, 'skill_dragon_dive', '#4169E1', (ctx) => {
+    // Downward lance
+    ctx.fillRect(5, 0, 2, 8);
     ctx.fillStyle = '#88AAFF';
     ctx.beginPath();
-    ctx.moveTo(6, 0); ctx.lineTo(3, 4); ctx.lineTo(9, 4); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#4169E1'; ctx.fillRect(4, 10, 4, 2);
-    // Wind trails
-    ctx.fillStyle = '#AACCFF';
-    ctx.fillRect(0, 5, 3, 1); ctx.fillRect(1, 7, 3, 1); ctx.fillRect(9, 6, 3, 1);
+    ctx.moveTo(6, 10); ctx.lineTo(3, 6); ctx.lineTo(9, 6); ctx.closePath(); ctx.fill();
+    // Flames on impact
+    ctx.fillStyle = '#FF6600';
+    ctx.fillRect(2, 9, 3, 2); ctx.fillRect(7, 9, 3, 2);
+    ctx.fillStyle = '#FFAA00';
+    ctx.fillRect(3, 8, 2, 2); ctx.fillRect(7, 8, 2, 2);
+    ctx.fillStyle = '#FFDD44';
+    ctx.fillRect(4, 10, 1, 1); ctx.fillRect(7, 10, 1, 1);
   });
 
   // ── Ninja skills ────────────────────────────────────────────────────
-  // Shadow Step: footprint with shadow
-  generateWeaponIcon(scene, 'skill_shadow_step', '#9400D3', (ctx) => {
-    // Shadow figure dash
-    ctx.fillRect(3, 2, 3, 5);
-    ctx.fillRect(4, 1, 2, 1);
-    ctx.fillRect(3, 7, 2, 3);
-    ctx.fillRect(5, 7, 2, 3);
-    // After-image trail
-    ctx.fillStyle = 'rgba(148,0,211,0.4)';
-    ctx.fillRect(7, 2, 3, 5);
-    ctx.fillRect(8, 1, 2, 1);
-    ctx.fillStyle = 'rgba(148,0,211,0.2)';
-    ctx.fillRect(10, 3, 2, 4);
+  // Katon: fire cone jutsu
+  generateWeaponIcon(scene, 'skill_katon', '#FF4400', (ctx) => {
+    // Fire cone shape expanding right
+    ctx.fillStyle = '#FF6600';
+    ctx.beginPath();
+    ctx.moveTo(2, 5); ctx.lineTo(11, 1); ctx.lineTo(11, 11); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#FFAA00';
+    ctx.beginPath();
+    ctx.moveTo(3, 5); ctx.lineTo(10, 2); ctx.lineTo(10, 10); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#FFDD44';
+    ctx.beginPath();
+    ctx.moveTo(4, 5); ctx.lineTo(8, 3); ctx.lineTo(8, 9); ctx.closePath(); ctx.fill();
+    // Core
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(3, 5, 2, 2);
   });
-  // Dual Strike: crossed blades
-  generateWeaponIcon(scene, 'skill_dual_strike', '#9400D3', (ctx) => {
-    ctx.strokeStyle = '#BB44FF'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(1, 1); ctx.lineTo(11, 11); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(11, 1); ctx.lineTo(1, 11); ctx.stroke();
-    ctx.fillStyle = '#DDAAFF';
-    ctx.fillRect(5, 5, 2, 2);
+  // Raiton: chain lightning jutsu
+  generateWeaponIcon(scene, 'skill_raiton', '#FFFF44', (ctx) => {
+    // Lightning bolt
+    ctx.fillStyle = '#FFFF44';
+    ctx.beginPath();
+    ctx.moveTo(7, 0); ctx.lineTo(3, 5); ctx.lineTo(6, 5);
+    ctx.lineTo(4, 12); ctx.lineTo(10, 5); ctx.lineTo(7, 5);
+    ctx.lineTo(9, 0); ctx.closePath(); ctx.fill();
+    // Chain sparks
+    ctx.fillStyle = '#88BBFF';
+    ctx.fillRect(0, 3, 2, 1); ctx.fillRect(10, 7, 2, 1);
+    ctx.fillRect(1, 8, 1, 1); ctx.fillRect(11, 2, 1, 1);
+    // Core
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(5, 4, 2, 2);
   });
-  // Smoke Bomb: grey/purple cloud puff
-  generateWeaponIcon(scene, 'skill_smoke_bomb', '#9400D3', (ctx) => {
-    // Bomb body at bottom
-    ctx.fillStyle = '#444444';
-    ctx.beginPath(); ctx.arc(6, 9, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FF4400'; ctx.fillRect(5, 6, 2, 1); // fuse spark
-    // Smoke cloud puffs
-    ctx.fillStyle = '#887799';
-    ctx.beginPath(); ctx.arc(4, 4, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#776688';
-    ctx.beginPath(); ctx.arc(8, 4, 2.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#998899';
-    ctx.beginPath(); ctx.arc(6, 2, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#AA99AA';
-    ctx.beginPath(); ctx.arc(6, 5, 2, 0, Math.PI * 2); ctx.fill();
+  // Doton: earth zone jutsu
+  generateWeaponIcon(scene, 'skill_doton', '#8B4513', (ctx) => {
+    // Ground zone circle
+    ctx.fillStyle = '#AA6633';
+    ctx.beginPath(); ctx.arc(6, 7, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#664422';
+    ctx.beginPath(); ctx.arc(6, 7, 3, 0, Math.PI * 2); ctx.fill();
+    // Rock spikes
+    ctx.fillStyle = '#CC8844';
+    ctx.fillRect(3, 3, 2, 3); ctx.fillRect(8, 4, 2, 2);
+    ctx.fillRect(5, 2, 2, 2);
+    // Slow swirl
+    ctx.fillStyle = '#9400D3';
+    ctx.fillRect(5, 6, 2, 1); ctx.fillRect(7, 7, 1, 1);
   });
 
   // ── Monk skills ─────────────────────────────────────────────────────
@@ -695,33 +1004,41 @@ function generateSkillIconTextures(scene: Phaser.Scene): void {
     ctx.beginPath(); ctx.arc(6, 6, 3, 0, Math.PI * 1.2); ctx.stroke();
     ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 5, 2, 2);
   });
-  // Counter: fist blocking with shield
-  generateWeaponIcon(scene, 'skill_counter', '#FF8C00', (ctx) => {
-    // Blocking arm
-    ctx.fillRect(2, 3, 3, 6);
-    ctx.fillStyle = '#FFAA44'; ctx.fillRect(2, 2, 3, 2);
-    // Shield/guard effect
-    ctx.strokeStyle = '#FFDD00'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(8, 6, 3, -Math.PI * 0.6, Math.PI * 0.6); ctx.stroke();
-    // Spark
-    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(9, 5, 2, 2);
+  // Hadouken: energy ball projectile
+  generateWeaponIcon(scene, 'skill_hadouken', '#FF8C00', (ctx) => {
+    // Energy ball
+    ctx.fillStyle = '#FFAA00';
+    ctx.beginPath(); ctx.arc(7, 6, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFDD44';
+    ctx.beginPath(); ctx.arc(7, 6, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.arc(7, 6, 1, 0, Math.PI * 2); ctx.fill();
+    // Trail
+    ctx.fillStyle = '#FF8800';
+    ctx.fillRect(0, 5, 3, 2);
+    ctx.fillStyle = '#FFAA44';
+    ctx.fillRect(1, 4, 2, 1); ctx.fillRect(1, 7, 2, 1);
   });
 
   // ── Berserker skills ────────────────────────────────────────────────
-  // Rage: angry face/red aura
-  generateWeaponIcon(scene, 'skill_rage', '#DC143C', (ctx) => {
-    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FF4444';
-    ctx.beginPath(); ctx.arc(6, 6, 3, 0, Math.PI * 2); ctx.fill();
-    // Angry eyes
+  // War Cry: AoE stun shockwave
+  generateWeaponIcon(scene, 'skill_war_cry', '#DC143C', (ctx) => {
+    // Shockwave rings
+    ctx.strokeStyle = '#FF4444'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#FF8888';
+    ctx.beginPath(); ctx.arc(6, 6, 3, 0, Math.PI * 2); ctx.stroke();
+    // Center face
+    ctx.fillStyle = '#DC143C';
+    ctx.beginPath(); ctx.arc(6, 6, 2, 0, Math.PI * 2); ctx.fill();
+    // Open mouth (yelling)
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(4, 4, 2, 2); ctx.fillRect(7, 4, 2, 2);
+    ctx.fillRect(5, 5, 2, 1);
     ctx.fillStyle = '#000000';
-    ctx.fillRect(4, 4, 1, 1); ctx.fillRect(8, 4, 1, 1);
-    // Angry brow
-    ctx.strokeStyle = '#AA0000'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(3, 3); ctx.lineTo(5, 4); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(10, 3); ctx.lineTo(8, 4); ctx.stroke();
+    ctx.fillRect(5, 6, 2, 2);
+    // Sound waves
+    ctx.fillStyle = '#FFAAAA';
+    ctx.fillRect(0, 5, 1, 2); ctx.fillRect(11, 5, 1, 2);
   });
   // Frenzy: dual axes spinning
   generateWeaponIcon(scene, 'skill_frenzy', '#DC143C', (ctx) => {
@@ -733,17 +1050,21 @@ function generateSkillIconTextures(scene: Phaser.Scene): void {
     ctx.fillRect(7, 4, 4, 3); ctx.fillRect(6, 5, 5, 1);
     ctx.fillStyle = '#8B4513'; ctx.fillRect(8, 7, 2, 5);
   });
-  // Bloodlust: blood drops with aura
-  generateWeaponIcon(scene, 'skill_bloodlust', '#DC143C', (ctx) => {
-    // Blood drop shape
-    ctx.beginPath();
-    ctx.moveTo(6, 1); ctx.lineTo(9, 6);
-    ctx.arc(6, 7, 3, 0, Math.PI); ctx.lineTo(3, 6);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#FF4444'; ctx.fillRect(5, 4, 2, 2);
-    // Drips
-    ctx.fillStyle = '#AA0022';
-    ctx.fillRect(3, 10, 1, 2); ctx.fillRect(6, 10, 1, 2); ctx.fillRect(9, 10, 1, 2);
+  // Rampage: charging dash
+  generateWeaponIcon(scene, 'skill_rampage', '#DC143C', (ctx) => {
+    // Charging figure silhouette
+    ctx.fillStyle = '#DC143C';
+    ctx.fillRect(7, 3, 3, 5);
+    ctx.fillRect(8, 2, 2, 1);
+    // Legs in running pose
+    ctx.fillRect(7, 8, 2, 3);
+    ctx.fillRect(9, 8, 2, 2);
+    // Speed lines behind
+    ctx.fillStyle = '#FF4444';
+    ctx.fillRect(0, 3, 4, 1); ctx.fillRect(1, 5, 5, 1); ctx.fillRect(0, 7, 4, 1);
+    // Impact ahead
+    ctx.fillStyle = '#FFAA44';
+    ctx.fillRect(11, 4, 1, 3);
   });
 
   // ── Ranger skills ───────────────────────────────────────────────────
@@ -761,17 +1082,21 @@ function generateSkillIconTextures(scene: Phaser.Scene): void {
     ctx.fillStyle = '#CCCCCC';
     ctx.fillRect(10, 5, 2, 1); ctx.fillRect(9, 1, 1, 1); ctx.fillRect(9, 9, 1, 1);
   });
-  // Eagle Eye: eye with crosshair
-  generateWeaponIcon(scene, 'skill_eagle_eye', '#228B22', (ctx) => {
-    ctx.strokeStyle = '#228B22'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(6, 6, 4, 0, Math.PI * 2); ctx.stroke();
-    // Crosshair
-    ctx.fillRect(5, 1, 2, 3); ctx.fillRect(5, 8, 2, 3);
-    ctx.fillRect(1, 5, 3, 2); ctx.fillRect(8, 5, 3, 2);
-    // Eye center
-    ctx.fillStyle = '#44FF44';
-    ctx.beginPath(); ctx.arc(6, 6, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#000000'; ctx.fillRect(5, 5, 2, 2);
+  // Rain of Arrows: arrows falling from sky
+  generateWeaponIcon(scene, 'skill_rain_of_arrows', '#228B22', (ctx) => {
+    // Multiple arrows falling
+    ctx.fillStyle = '#228B22';
+    ctx.fillRect(2, 0, 1, 4); ctx.fillRect(5, 1, 1, 4);
+    ctx.fillRect(8, 0, 1, 4); ctx.fillRect(10, 2, 1, 3);
+    // Arrow tips
+    ctx.fillStyle = '#CCCCCC';
+    ctx.fillRect(2, 4, 1, 2); ctx.fillRect(5, 5, 1, 2);
+    ctx.fillRect(8, 4, 1, 2); ctx.fillRect(10, 5, 1, 2);
+    // Impact zone
+    ctx.fillStyle = '#886644';
+    ctx.fillRect(0, 9, 12, 3);
+    ctx.fillStyle = '#664422';
+    ctx.fillRect(1, 10, 10, 1);
   });
   // Barrage: rain of arrows
   generateWeaponIcon(scene, 'skill_barrage', '#228B22', (ctx) => {
@@ -799,19 +1124,23 @@ function generateSkillIconTextures(scene: Phaser.Scene): void {
     ctx.fillRect(0, 2, 2, 2); ctx.fillRect(10, 1, 2, 2);
     ctx.fillRect(1, 1, 1, 1); ctx.fillRect(11, 0, 1, 1);
   });
-  // Swift Song: boot with music notes
-  generateWeaponIcon(scene, 'skill_swift_song', '#DAA520', (ctx) => {
-    // Music wave
-    ctx.strokeStyle = '#DAA520'; ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(1, 6); ctx.quadraticCurveTo(3, 2, 6, 6);
-    ctx.quadraticCurveTo(9, 10, 11, 6); ctx.stroke();
-    // Notes
-    ctx.fillRect(2, 2, 2, 2); ctx.fillRect(8, 2, 2, 2);
-    ctx.fillRect(3, 1, 1, 2); ctx.fillRect(9, 1, 1, 2);
-    // Speed lines
+  // Crescendo: giant music note projectile
+  generateWeaponIcon(scene, 'skill_crescendo', '#DAA520', (ctx) => {
+    // Giant note head
+    ctx.fillStyle = '#DAA520';
+    ctx.beginPath(); ctx.arc(4, 8, 3, 0, Math.PI * 2); ctx.fill();
+    // Note stem
+    ctx.fillRect(7, 1, 2, 8);
+    // Note flag
     ctx.fillStyle = '#FFDD88';
-    ctx.fillRect(0, 8, 3, 1); ctx.fillRect(1, 10, 4, 1);
+    ctx.fillRect(9, 1, 2, 3);
+    ctx.fillRect(10, 3, 1, 2);
+    // Sparkle
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(3, 7, 2, 2);
+    // Sound wave
+    ctx.fillStyle = '#FFDD88';
+    ctx.fillRect(0, 5, 1, 1); ctx.fillRect(11, 4, 1, 1);
   });
   // Requiem: skull with music notes
   generateWeaponIcon(scene, 'skill_requiem', '#DAA520', (ctx) => {
@@ -1114,17 +1443,22 @@ function generateSkillIconTextures(scene: Phaser.Scene): void {
     ctx.fillStyle = '#FF88AA';
     ctx.fillRect(1, 2, 2, 2); ctx.fillRect(9, 4, 2, 2);
   });
-  // Iai Strike: quick-draw slash line
-  generateWeaponIcon(scene, 'skill_iai_strike', '#B22222', (ctx) => {
-    // Slash arc
+  // Blade Storm: rotary slashes around player
+  generateWeaponIcon(scene, 'skill_blade_storm', '#B22222', (ctx) => {
+    // Spinning slash arcs
     ctx.strokeStyle = '#FF4444'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(6, 6, 5, -Math.PI * 0.7, Math.PI * 0.3); ctx.stroke();
-    // Blade flash
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(9, 2, 2, 1); ctx.fillRect(10, 3, 1, 2);
-    // Center focus point
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 0.7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(6, 6, 5, Math.PI, Math.PI * 1.7); ctx.stroke();
+    // Inner arcs
+    ctx.strokeStyle = '#FFAAAA'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(6, 6, 3, Math.PI * 0.5, Math.PI * 1.2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(6, 6, 3, Math.PI * 1.5, Math.PI * 2.2); ctx.stroke();
+    // Center
     ctx.fillStyle = '#B22222';
     ctx.fillRect(5, 5, 2, 2);
+    // Blade tips
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(10, 7, 1, 1); ctx.fillRect(1, 4, 1, 1);
   });
   // Zantetsuken: ultimate cleave slash
   generateWeaponIcon(scene, 'skill_zantetsuken', '#B22222', (ctx) => {
@@ -1141,14 +1475,454 @@ function generateSkillIconTextures(scene: Phaser.Scene): void {
     ctx.fillStyle = '#B22222';
     ctx.fillRect(8, 2, 3, 1); ctx.fillRect(9, 1, 1, 3);
   });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // MISSING BASE SKILL ICONS
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // Sacred Orbit (Paladin): shields orbiting player
+  generateWeaponIcon(scene, 'skill_sacred_orbit', '#FFD700', (ctx) => {
+    ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.stroke();
+    // Orbiting shields
+    ctx.fillStyle = '#FFEE88';
+    ctx.fillRect(5, 0, 2, 2); ctx.fillRect(10, 5, 2, 2);
+    ctx.fillRect(5, 10, 2, 2); ctx.fillRect(0, 5, 2, 2);
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath(); ctx.arc(6, 6, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 5, 2, 2);
+  });
+  // Dual Strike (Ninja): crossed blades
+  generateWeaponIcon(scene, 'skill_dual_strike', '#9400D3', (ctx) => {
+    ctx.fillStyle = '#CCCCCC';
+    // Blade 1 diagonal
+    ctx.fillRect(2, 1, 2, 8);
+    // Blade 2 diagonal
+    ctx.fillRect(8, 1, 2, 8);
+    // Cross point
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 4, 2, 2);
+    // Handles
+    ctx.fillStyle = '#9400D3';
+    ctx.fillRect(1, 9, 3, 2); ctx.fillRect(8, 9, 3, 2);
+    // Slash lines
+    ctx.fillStyle = '#FF88FF';
+    ctx.fillRect(4, 2, 1, 1); ctx.fillRect(7, 2, 1, 1);
+  });
+  // Shadow Step (Ninja): dash afterimage
+  generateWeaponIcon(scene, 'skill_shadow_step', '#9400D3', (ctx) => {
+    // Ghost figure (faded)
+    ctx.fillStyle = 'rgba(148,0,211,0.3)';
+    ctx.fillRect(1, 3, 3, 5); ctx.fillRect(2, 2, 2, 1);
+    // Main figure
+    ctx.fillStyle = '#9400D3';
+    ctx.fillRect(7, 3, 3, 5); ctx.fillRect(8, 2, 2, 1);
+    // Speed lines
+    ctx.fillStyle = '#BB66FF';
+    ctx.fillRect(4, 4, 2, 1); ctx.fillRect(5, 6, 2, 1);
+    // Dash arrow
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(11, 5, 1, 2);
+  });
+  // Smoke Bomb (Ninja): cloud of smoke
+  generateWeaponIcon(scene, 'skill_smoke_bomb', '#9400D3', (ctx) => {
+    ctx.fillStyle = '#886699';
+    ctx.beginPath(); ctx.arc(6, 7, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#AA88BB';
+    ctx.beginPath(); ctx.arc(4, 6, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(8, 6, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#CCAADD';
+    ctx.beginPath(); ctx.arc(6, 5, 2, 0, Math.PI * 2); ctx.fill();
+    // Shuriken in center
+    ctx.fillStyle = '#9400D3'; ctx.fillRect(5, 5, 2, 2);
+  });
+  // Swift Song (Bard): music notes with wind
+  generateWeaponIcon(scene, 'skill_swift_song', '#DAA520', (ctx) => {
+    // Note 1
+    ctx.fillStyle = '#DAA520';
+    ctx.beginPath(); ctx.arc(3, 8, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(5, 2, 2, 7);
+    ctx.fillRect(7, 2, 2, 2);
+    // Speed lines
+    ctx.fillStyle = '#FFDD88';
+    ctx.fillRect(0, 3, 2, 1); ctx.fillRect(0, 6, 3, 1); ctx.fillRect(0, 9, 2, 1);
+    // Wind swirl
+    ctx.fillStyle = '#88EEFF';
+    ctx.fillRect(9, 4, 2, 1); ctx.fillRect(10, 6, 2, 1);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // MASTERY SKILL ICONS
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ── Paladin Mastery ──
+  // Hallowed Ground: holy zone with radiance
+  generateWeaponIcon(scene, 'skill_hallowed_ground', '#FFD700', (ctx) => {
+    ctx.fillStyle = '#FFEE88';
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath(); ctx.arc(6, 6, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(5, 3, 2, 6); ctx.fillRect(3, 5, 6, 2);
+    ctx.fillRect(5, 5, 2, 2);
+  });
+  // Clemency: healing hand
+  generateWeaponIcon(scene, 'skill_clemency', '#FFD700', (ctx) => {
+    ctx.fillStyle = '#FFFFCC';
+    ctx.fillRect(3, 2, 6, 7);
+    ctx.fillStyle = '#44FF88';
+    ctx.fillRect(5, 3, 2, 5); ctx.fillRect(3, 5, 6, 2);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 5, 2, 2);
+    // Sparkles
+    ctx.fillStyle = '#FFEE88';
+    ctx.fillRect(1, 1, 1, 1); ctx.fillRect(10, 2, 1, 1); ctx.fillRect(2, 10, 1, 1);
+  });
+
+  // ── Dark Knight Mastery ──
+  // Soul Eater: dark maw consuming
+  generateWeaponIcon(scene, 'skill_soul_eater', '#8B0000', (ctx) => {
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#440000';
+    ctx.beginPath(); ctx.arc(6, 6, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FF0000';
+    ctx.fillRect(4, 5, 1, 2); ctx.fillRect(7, 5, 1, 2);
+    // Drain swirl
+    ctx.fillStyle = '#FF4444';
+    ctx.fillRect(1, 2, 2, 1); ctx.fillRect(9, 9, 2, 1);
+  });
+  // Living Dead: skull with resurrection
+  generateWeaponIcon(scene, 'skill_living_dead', '#8B0000', (ctx) => {
+    ctx.fillRect(3, 2, 6, 5);
+    ctx.fillRect(4, 1, 4, 1);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(4, 3, 2, 2); ctx.fillRect(7, 3, 2, 2);
+    ctx.fillStyle = '#8B0000'; ctx.fillRect(5, 6, 2, 1);
+    // Glow of undeath
+    ctx.fillStyle = '#FF4444';
+    ctx.fillRect(3, 8, 6, 2);
+    ctx.fillStyle = '#FFAA00';
+    ctx.fillRect(5, 9, 2, 2);
+  });
+
+  // ── Dragoon Mastery ──
+  // Stardiver: diving lance with star
+  generateWeaponIcon(scene, 'skill_stardiver', '#4169E1', (ctx) => {
+    ctx.fillRect(5, 3, 2, 7);
+    ctx.fillStyle = '#88AAFF';
+    ctx.beginPath(); ctx.moveTo(6, 11); ctx.lineTo(3, 7); ctx.lineTo(9, 7); ctx.closePath(); ctx.fill();
+    // Star burst on impact
+    ctx.fillStyle = '#FFDD44';
+    ctx.fillRect(5, 0, 2, 2); ctx.fillRect(2, 1, 2, 1); ctx.fillRect(8, 1, 2, 1);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 0, 2, 1);
+  });
+  // Nastrond: dragon breath cone
+  generateWeaponIcon(scene, 'skill_nastrond', '#4169E1', (ctx) => {
+    // Dragon head
+    ctx.fillStyle = '#4169E1'; ctx.fillRect(1, 4, 3, 4);
+    // Breath cone
+    ctx.fillStyle = '#FF4400';
+    ctx.beginPath(); ctx.moveTo(4, 5); ctx.lineTo(11, 1); ctx.lineTo(11, 11); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#FFAA00';
+    ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(10, 3); ctx.lineTo(10, 9); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#FFDD44';
+    ctx.beginPath(); ctx.moveTo(6, 5); ctx.lineTo(9, 4); ctx.lineTo(9, 8); ctx.closePath(); ctx.fill();
+  });
+
+  // ── Monk Mastery ──
+  // Forbidden Chakra: mega energy fist
+  generateWeaponIcon(scene, 'skill_forbidden_chakra', '#FF8C00', (ctx) => {
+    ctx.fillStyle = '#FFAA33'; ctx.fillRect(3, 3, 6, 5);
+    ctx.fillStyle = '#FFCC44';
+    ctx.fillRect(3, 2, 2, 2); ctx.fillRect(5, 2, 2, 2); ctx.fillRect(7, 2, 2, 2);
+    // Massive energy glow
+    ctx.fillStyle = '#44BBFF';
+    ctx.beginPath(); ctx.arc(5, 5, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#88DDFF';
+    ctx.beginPath(); ctx.arc(5, 5, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(4, 4, 2, 2);
+  });
+  // Phantom Rush: speed afterimages
+  generateWeaponIcon(scene, 'skill_phantom_rush', '#FF8C00', (ctx) => {
+    // Ghost figures (fading)
+    ctx.fillStyle = 'rgba(255,140,0,0.2)'; ctx.fillRect(0, 4, 2, 4);
+    ctx.fillStyle = 'rgba(255,140,0,0.4)'; ctx.fillRect(3, 4, 2, 4);
+    ctx.fillStyle = 'rgba(255,140,0,0.7)'; ctx.fillRect(6, 4, 2, 4);
+    ctx.fillStyle = '#FF8C00'; ctx.fillRect(9, 3, 3, 5); ctx.fillRect(10, 2, 2, 1);
+    // Speed lines
+    ctx.fillStyle = '#FFDD44';
+    ctx.fillRect(0, 3, 4, 1); ctx.fillRect(1, 8, 5, 1);
+  });
+
+  // ── Berserker Mastery ──
+  // Inner Beast: beast head with healing
+  generateWeaponIcon(scene, 'skill_inner_beast', '#DC143C', (ctx) => {
+    ctx.fillRect(3, 3, 6, 5);
+    ctx.fillRect(2, 4, 8, 3);
+    // Fangs
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(4, 7, 1, 2); ctx.fillRect(7, 7, 1, 2);
+    // Eyes
+    ctx.fillStyle = '#FFDD00'; ctx.fillRect(4, 4, 1, 1); ctx.fillRect(7, 4, 1, 1);
+    // Heal glow
+    ctx.fillStyle = '#44FF88';
+    ctx.fillRect(0, 9, 3, 2); ctx.fillRect(9, 9, 3, 2);
+  });
+  // Fell Cleave: massive downward slash
+  generateWeaponIcon(scene, 'skill_fell_cleave', '#DC143C', (ctx) => {
+    // Axe head wide
+    ctx.fillRect(0, 1, 12, 4); ctx.fillRect(1, 0, 10, 1);
+    // Handle
+    ctx.fillStyle = '#8B4513'; ctx.fillRect(5, 5, 2, 7);
+    // Impact lines
+    ctx.fillStyle = '#FF8888';
+    ctx.fillRect(0, 5, 2, 1); ctx.fillRect(10, 5, 2, 1);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 0, 2, 1);
+  });
+
+  // ── Ranger Mastery ──
+  // Sidewinder: homing snake arrow
+  generateWeaponIcon(scene, 'skill_sidewinder', '#228B22', (ctx) => {
+    // Curved arrow path
+    ctx.strokeStyle = '#228B22'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(6, 6, 4, -Math.PI * 0.3, Math.PI * 0.8); ctx.stroke();
+    // Arrow tip
+    ctx.fillStyle = '#CCCCCC'; ctx.fillRect(9, 7, 2, 2);
+    // Poison drip
+    ctx.fillStyle = '#88FF44';
+    ctx.fillRect(3, 9, 1, 2); ctx.fillRect(5, 10, 1, 1);
+    // Target reticle
+    ctx.fillStyle = '#FF4444'; ctx.fillRect(10, 3, 2, 1); ctx.fillRect(11, 2, 1, 3);
+  });
+  // Empyreal Arrow: radiant piercing arrow
+  generateWeaponIcon(scene, 'skill_empyreal_arrow', '#228B22', (ctx) => {
+    // Arrow shaft
+    ctx.fillRect(1, 5, 9, 2);
+    // Radiant tip
+    ctx.fillStyle = '#FFDD44';
+    ctx.beginPath(); ctx.moveTo(12, 6); ctx.lineTo(9, 3); ctx.lineTo(9, 9); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(10, 5, 2, 2);
+    // Pierce through marks
+    ctx.fillStyle = '#44AAFF';
+    ctx.fillRect(0, 4, 1, 1); ctx.fillRect(0, 7, 1, 1);
+  });
+
+  // ── Bard Mastery ──
+  // Finale: explosive music crescendo
+  generateWeaponIcon(scene, 'skill_finale', '#DAA520', (ctx) => {
+    // Explosion burst
+    ctx.fillStyle = '#DAA520';
+    ctx.beginPath();
+    ctx.moveTo(6, 0); ctx.lineTo(7, 4); ctx.lineTo(11, 3);
+    ctx.lineTo(8, 6); ctx.lineTo(12, 9); ctx.lineTo(8, 8);
+    ctx.lineTo(6, 12); ctx.lineTo(4, 8); ctx.lineTo(0, 9);
+    ctx.lineTo(4, 6); ctx.lineTo(1, 3); ctx.lineTo(5, 4);
+    ctx.closePath(); ctx.fill();
+    // Music notes in center
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 5, 2, 2);
+    ctx.fillStyle = '#FFEE88'; ctx.fillRect(4, 4, 1, 1); ctx.fillRect(7, 7, 1, 1);
+  });
+
+  // ── Black Mage Mastery ──
+  // Flare: massive fire explosion
+  generateWeaponIcon(scene, 'skill_flare', '#FF4400', (ctx) => {
+    ctx.fillStyle = '#FF2200';
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FF6600';
+    ctx.beginPath(); ctx.arc(6, 6, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFAA00';
+    ctx.beginPath(); ctx.arc(6, 6, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.arc(6, 6, 1, 0, Math.PI * 2); ctx.fill();
+  });
+  // Freeze: ice prison
+  generateWeaponIcon(scene, 'skill_freeze', '#4488FF', (ctx) => {
+    ctx.fillStyle = '#88CCFF';
+    ctx.fillRect(2, 2, 8, 8);
+    ctx.fillStyle = '#AADDFF'; ctx.fillRect(3, 3, 6, 6);
+    ctx.fillStyle = '#DDEEFF'; ctx.fillRect(4, 4, 4, 4);
+    // Ice cracks
+    ctx.fillStyle = '#4488FF';
+    ctx.fillRect(5, 2, 2, 8); ctx.fillRect(2, 5, 8, 2);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 5, 2, 2);
+  });
+
+  // ── White Mage Mastery ──
+  // Benediction: divine full heal
+  generateWeaponIcon(scene, 'skill_benediction', '#FFFFFF', (ctx) => {
+    ctx.fillStyle = '#FFFFCC';
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#44FF88';
+    ctx.fillRect(4, 1, 4, 10); ctx.fillRect(1, 4, 10, 4);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(5, 5, 2, 2);
+    ctx.fillRect(5, 2, 2, 1); ctx.fillRect(2, 5, 1, 2);
+    ctx.fillRect(9, 5, 1, 2); ctx.fillRect(5, 9, 2, 1);
+  });
+  // Asylum: healing dome
+  generateWeaponIcon(scene, 'skill_asylum', '#FFFFFF', (ctx) => {
+    // Dome
+    ctx.strokeStyle = '#44FF88'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(6, 8, 5, Math.PI, 0); ctx.stroke();
+    ctx.fillStyle = 'rgba(68,255,136,0.3)';
+    ctx.beginPath(); ctx.arc(6, 8, 5, Math.PI, 0); ctx.fill();
+    // Cross inside
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(5, 4, 2, 5); ctx.fillRect(3, 6, 6, 2);
+    // Ground
+    ctx.fillStyle = '#44FF88'; ctx.fillRect(1, 8, 10, 1);
+  });
+
+  // ── Summoner Mastery ──
+  // Phoenix: fire bird
+  generateWeaponIcon(scene, 'skill_phoenix', '#FF6600', (ctx) => {
+    ctx.fillStyle = '#FF4400';
+    ctx.fillRect(4, 4, 4, 4);
+    // Wings
+    ctx.fillRect(0, 3, 4, 3); ctx.fillRect(8, 3, 4, 3);
+    ctx.fillStyle = '#FFAA00';
+    ctx.fillRect(5, 3, 2, 2);
+    // Head crest
+    ctx.fillStyle = '#FFDD44';
+    ctx.fillRect(5, 1, 2, 3); ctx.fillRect(4, 0, 4, 1);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 0, 2, 1);
+    // Tail
+    ctx.fillStyle = '#FF2200'; ctx.fillRect(5, 8, 2, 3);
+  });
+  // Dreadwyrm: dark dragon
+  generateWeaponIcon(scene, 'skill_dreadwyrm', '#660088', (ctx) => {
+    ctx.fillRect(4, 3, 4, 4);
+    ctx.fillRect(3, 4, 6, 3);
+    // Horns
+    ctx.fillRect(3, 1, 1, 3); ctx.fillRect(8, 1, 1, 3);
+    // Eyes
+    ctx.fillStyle = '#FF4488'; ctx.fillRect(4, 4, 1, 1); ctx.fillRect(7, 4, 1, 1);
+    // Wings
+    ctx.fillStyle = '#660088';
+    ctx.fillRect(0, 4, 3, 2); ctx.fillRect(9, 4, 3, 2);
+    // Dark energy
+    ctx.fillStyle = '#AA44FF';
+    ctx.fillRect(5, 8, 2, 3); ctx.fillRect(4, 9, 4, 1);
+  });
+
+  // ── Time Mage Mastery ──
+  // Time Stop: frozen clock
+  generateWeaponIcon(scene, 'skill_time_stop', '#9370DB', (ctx) => {
+    ctx.strokeStyle = '#9370DB'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.stroke();
+    // Clock hands frozen
+    ctx.fillStyle = '#BB99FF';
+    ctx.fillRect(5, 3, 2, 4); ctx.fillRect(5, 5, 4, 2);
+    // Stop symbol (X)
+    ctx.fillStyle = '#FF4444';
+    ctx.fillRect(3, 3, 1, 1); ctx.fillRect(8, 8, 1, 1);
+    ctx.fillRect(8, 3, 1, 1); ctx.fillRect(3, 8, 1, 1);
+  });
+  // Comet: falling space rocks
+  generateWeaponIcon(scene, 'skill_comet', '#9370DB', (ctx) => {
+    // Main comet
+    ctx.fillStyle = '#884422';
+    ctx.beginPath(); ctx.arc(8, 8, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#AA5533'; ctx.fillRect(7, 7, 2, 2);
+    // Trail
+    ctx.fillStyle = '#BB99FF';
+    ctx.fillRect(2, 2, 4, 2); ctx.fillRect(0, 0, 3, 2);
+    ctx.fillStyle = '#DDBBFF'; ctx.fillRect(4, 4, 2, 2);
+    // Small comet
+    ctx.fillStyle = '#664422';
+    ctx.fillRect(2, 6, 2, 2);
+    ctx.fillStyle = '#BB99FF'; ctx.fillRect(0, 5, 2, 1);
+  });
+
+  // ── Alchemist Mastery ──
+  // Philosopher Stone: golden crystal
+  generateWeaponIcon(scene, 'skill_philosopher_stone', '#FFD700', (ctx) => {
+    ctx.beginPath();
+    ctx.moveTo(6, 0); ctx.lineTo(10, 6); ctx.lineTo(6, 12); ctx.lineTo(2, 6);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#FFEE88'; ctx.fillRect(5, 3, 2, 6);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 4, 1, 2);
+    // Sparkles
+    ctx.fillStyle = '#FFFF88';
+    ctx.fillRect(0, 3, 1, 1); ctx.fillRect(11, 5, 1, 1);
+  });
+  // Mega Potion: big golden potion
+  generateWeaponIcon(scene, 'skill_mega_potion', '#32CD32', (ctx) => {
+    ctx.fillStyle = '#FFD700';
+    ctx.fillRect(4, 0, 4, 3);
+    ctx.fillRect(2, 3, 8, 8);
+    ctx.fillStyle = '#FFEE66'; ctx.fillRect(3, 5, 6, 5);
+    ctx.fillStyle = '#FFFFAA'; ctx.fillRect(4, 6, 3, 2);
+    // Glow
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(4, 6, 1, 1);
+    // Sparkles
+    ctx.fillStyle = '#FFFF88'; ctx.fillRect(1, 4, 1, 1); ctx.fillRect(10, 3, 1, 1);
+  });
+
+  // ── Geomancer Mastery ──
+  // Eruption: fire geyser
+  generateWeaponIcon(scene, 'skill_eruption', '#8B4513', (ctx) => {
+    // Ground
+    ctx.fillRect(0, 8, 12, 4);
+    // Geyser
+    ctx.fillStyle = '#FF4400';
+    ctx.fillRect(4, 2, 4, 7);
+    ctx.fillStyle = '#FFAA00';
+    ctx.fillRect(5, 1, 2, 5);
+    ctx.fillStyle = '#FFDD44';
+    ctx.fillRect(5, 0, 2, 3);
+    // Side flames
+    ctx.fillStyle = '#FF6600';
+    ctx.fillRect(2, 6, 2, 3); ctx.fillRect(8, 6, 2, 3);
+  });
+  // Landslide: rock wave
+  generateWeaponIcon(scene, 'skill_landslide', '#8B4513', (ctx) => {
+    // Rocks sliding
+    ctx.fillRect(1, 5, 3, 3); ctx.fillRect(5, 4, 3, 4);
+    ctx.fillRect(8, 3, 3, 4);
+    ctx.fillStyle = '#AA7744';
+    ctx.fillRect(2, 5, 2, 2); ctx.fillRect(6, 4, 2, 2); ctx.fillRect(9, 3, 2, 2);
+    // Impact lines
+    ctx.fillStyle = '#FFCC88';
+    ctx.fillRect(0, 8, 12, 1);
+    // Stun stars
+    ctx.fillStyle = '#FFDD44';
+    ctx.fillRect(3, 1, 1, 1); ctx.fillRect(7, 0, 1, 1); ctx.fillRect(10, 1, 1, 1);
+  });
+
+  // ── Samurai Mastery ──
+  // Midare Setsugekka: triple slash with petals
+  generateWeaponIcon(scene, 'skill_midare_setsugekka', '#B22222', (ctx) => {
+    // Three diagonal slashes
+    ctx.strokeStyle = '#FF4444'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(10, 8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(11, 5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 3); ctx.lineTo(8, 11); ctx.stroke();
+    // Cherry petals
+    ctx.fillStyle = '#FF88AA';
+    ctx.fillRect(1, 1, 2, 2); ctx.fillRect(9, 2, 2, 1); ctx.fillRect(3, 9, 1, 2);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 4, 2, 2);
+  });
+  // Hissatsu: finishing strike
+  generateWeaponIcon(scene, 'skill_hissatsu', '#B22222', (ctx) => {
+    // Blade
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(5, 0, 2, 8);
+    ctx.fillStyle = '#DDDDDD'; ctx.fillRect(6, 0, 1, 6);
+    // Guard
+    ctx.fillStyle = '#FFD700'; ctx.fillRect(3, 7, 6, 2);
+    // Handle
+    ctx.fillStyle = '#8B4513'; ctx.fillRect(5, 9, 2, 3);
+    // Critical glow
+    ctx.fillStyle = '#FF0000';
+    ctx.fillRect(3, 0, 2, 1); ctx.fillRect(7, 0, 2, 1);
+    ctx.fillRect(2, 1, 1, 1); ctx.fillRect(9, 1, 1, 1);
+  });
 }
 
 export function generateEnvironmentTextures(scene: Phaser.Scene): void {
   // ─── Gravestone (12x14) ─────────────────────────────────────────
   {
     const w = 12, h = 14;
-    const canvas = scene.textures.createCanvas('deco_gravestone', w, h)!;
+    const canvas = scene.textures.createCanvas('deco_gravestone', w * SPRITE_SCALE, h * SPRITE_SCALE)!;
     const ctx = canvas.context;
+    ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
 
     // Stone body
     ctx.fillStyle = '#777788';
@@ -1178,8 +1952,9 @@ export function generateEnvironmentTextures(scene: Phaser.Scene): void {
   // ─── Dead tree (16x20) ─────────────────────────────────────────
   {
     const w = 16, h = 20;
-    const canvas = scene.textures.createCanvas('deco_dead_tree', w, h)!;
+    const canvas = scene.textures.createCanvas('deco_dead_tree', w * SPRITE_SCALE, h * SPRITE_SCALE)!;
     const ctx = canvas.context;
+    ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
 
     // Trunk
     ctx.fillStyle = '#3D2B1F';
@@ -1232,8 +2007,9 @@ export function generateEnvironmentTextures(scene: Phaser.Scene): void {
   // ─── Bones (10x6) ──────────────────────────────────────────────
   {
     const w = 10, h = 6;
-    const canvas = scene.textures.createCanvas('deco_bones', w, h)!;
+    const canvas = scene.textures.createCanvas('deco_bones', w * SPRITE_SCALE, h * SPRITE_SCALE)!;
     const ctx = canvas.context;
+    ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
 
     // Bone 1 (horizontal)
     ctx.fillStyle = '#EEEEDD';
@@ -1265,8 +2041,9 @@ export function generateEnvironmentTextures(scene: Phaser.Scene): void {
   // ─── Skull pile (12x10) ────────────────────────────────────────
   {
     const w = 12, h = 10;
-    const canvas = scene.textures.createCanvas('deco_skull_pile', w, h)!;
+    const canvas = scene.textures.createCanvas('deco_skull_pile', w * SPRITE_SCALE, h * SPRITE_SCALE)!;
     const ctx = canvas.context;
+    ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
 
     // Bottom skulls
     // Skull 1 (left)
@@ -1325,8 +2102,9 @@ export function generateEnvironmentTextures(scene: Phaser.Scene): void {
   // ─── Blood puddle (14x8) ───────────────────────────────────────
   {
     const w = 14, h = 8;
-    const canvas = scene.textures.createCanvas('deco_blood_puddle', w, h)!;
+    const canvas = scene.textures.createCanvas('deco_blood_puddle', w * SPRITE_SCALE, h * SPRITE_SCALE)!;
     const ctx = canvas.context;
+    ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
 
     // Main puddle shape (dark red ellipse)
     ctx.fillStyle = '#5A0A0A';
@@ -1360,8 +2138,9 @@ export function generateEnvironmentTextures(scene: Phaser.Scene): void {
   // ─── Cobweb (12x12) ────────────────────────────────────────────
   {
     const w = 12, h = 12;
-    const canvas = scene.textures.createCanvas('deco_cobweb', w, h)!;
+    const canvas = scene.textures.createCanvas('deco_cobweb', w * SPRITE_SCALE, h * SPRITE_SCALE)!;
     const ctx = canvas.context;
+    ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
 
     ctx.strokeStyle = 'rgba(220, 220, 220, 0.6)';
     ctx.lineWidth = 1;
@@ -1433,8 +2212,9 @@ export function generateEnvironmentTextures(scene: Phaser.Scene): void {
   {
     const frameW = 6, frameH = 12;
     const frames = 2;
-    const canvas = scene.textures.createCanvas('deco_torch', frameW * frames, frameH)!;
+    const canvas = scene.textures.createCanvas('deco_torch', frameW * frames * SPRITE_SCALE, frameH * SPRITE_SCALE)!;
     const ctx = canvas.context;
+    ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
 
     for (let f = 0; f < frames; f++) {
       const ox = f * frameW;
@@ -1491,7 +2271,7 @@ export function generateEnvironmentTextures(scene: Phaser.Scene): void {
     // Register individual frames for spritesheet animation
     const texture = scene.textures.get('deco_torch');
     for (let f = 0; f < frames; f++) {
-      texture.add(f, 0, f * frameW, 0, frameW, frameH);
+      texture.add(f, 0, f * frameW * SPRITE_SCALE, 0, frameW * SPRITE_SCALE, frameH * SPRITE_SCALE);
     }
   }
 }
