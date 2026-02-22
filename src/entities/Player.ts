@@ -144,6 +144,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       supportEffectiveness: 0,
       summonFamilyDamage: 0,
       summonFamilyCooldown: 0,
+      damageReflect: 0,
       // Range & visual scaling
       rangeMultiplier: 1,
       projectileScaleMultiplier: 1,
@@ -315,6 +316,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const rechargeTime = this.dashRechargeTime * (1 - this.playerState.modifiers.dashRechargeReduction);
     this.dashRechargeTimer += delta;
+    // Emit recharge progress to HUD
+    if (this.dashCharges < maxCharges) {
+      EventBus.emit(EVENTS.PLAYER_DASH_RECHARGE_TICK, this.dashRechargeTimer / rechargeTime, this.dashCharges, maxCharges);
+    }
     if (this.dashRechargeTimer >= rechargeTime) {
       this.dashRechargeTimer -= rechargeTime;
       this.dashCharges = Math.min(maxCharges, this.dashCharges + 1);

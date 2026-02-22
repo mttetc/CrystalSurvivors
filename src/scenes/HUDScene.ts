@@ -43,6 +43,7 @@ export class HUDScene extends Phaser.Scene {
   private kills = 0;
   private dashCharges = 2;
   private maxDashCharges = 2;
+  private dashRechargeProgress = 0;
 
   // Enhancement tracking - unique icons with levels
   private enhancements: Map<string, HUDEnhancement> = new Map();
@@ -78,9 +79,9 @@ export class HUDScene extends Phaser.Scene {
     this.hpBar = this.add.graphics();
 
     // HP number
-    this.hpText = this.add.text(132, GAME_HEIGHT - 26, '', {
+    this.hpText = this.add.text(196, GAME_HEIGHT - 34, '', {
       ...textStyle,
-      fontSize: '20px',
+      fontSize: '22px',
       color: '#CCCCCC',
     }).setResolution(16);
 
@@ -88,7 +89,7 @@ export class HUDScene extends Phaser.Scene {
     this.xpBar = this.add.graphics();
 
     // XP text
-    this.xpText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 5, '', {
+    this.xpText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 8, '', {
       ...textStyle,
       fontSize: '18px',
       color: '#88AAFF',
@@ -132,9 +133,9 @@ export class HUDScene extends Phaser.Scene {
 
     // Dash charges display (near the HP bar)
     this.dashGfx = this.add.graphics();
-    this.dashText = this.add.text(8, GAME_HEIGHT - 40, 'Dash', {
+    this.dashText = this.add.text(8, GAME_HEIGHT - 70, 'Dash', {
       ...textStyle,
-      fontSize: '18px',
+      fontSize: '20px',
       color: '#66CCFF',
     }).setResolution(16);
     this.drawDashCharges();
@@ -180,6 +181,14 @@ export class HUDScene extends Phaser.Scene {
     });
 
     EventBus.on(EVENTS.PLAYER_DASHED, (charges: number, maxCharges: number) => {
+      this.dashCharges = charges;
+      this.maxDashCharges = maxCharges;
+      this.dashRechargeProgress = 0;
+      this.drawDashCharges();
+    });
+
+    EventBus.on(EVENTS.PLAYER_DASH_RECHARGE_TICK, (progress: number, charges: number, maxCharges: number) => {
+      this.dashRechargeProgress = progress;
       this.dashCharges = charges;
       this.maxDashCharges = maxCharges;
       this.drawDashCharges();
@@ -348,17 +357,25 @@ export class HUDScene extends Phaser.Scene {
 
   private drawDashCharges(): void {
     this.dashGfx.clear();
-    const startX = 56;
-    const y = GAME_HEIGHT - 36;
-    const circleRadius = 6;
-    const gap = 18;
+    const startX = 8;
+    const y = GAME_HEIGHT - 56;
+    const circleRadius = 9;
+    const gap = 24;
 
     for (let i = 0; i < this.maxDashCharges; i++) {
-      const cx = startX + i * gap;
+      const cx = startX + circleRadius + i * gap;
       if (i < this.dashCharges) {
         // Filled circle for available charge
         this.dashGfx.fillStyle(0x66CCFF);
         this.dashGfx.fillCircle(cx, y, circleRadius);
+      } else if (i === this.dashCharges && this.dashRechargeProgress > 0) {
+        // Cooldown fill: arc from top, clockwise
+        this.dashGfx.fillStyle(0x66CCFF, 0.4);
+        this.dashGfx.slice(cx, y, circleRadius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * this.dashRechargeProgress, false);
+        this.dashGfx.fillPath();
+        // Dim border
+        this.dashGfx.lineStyle(1, 0x66CCFF, 0.6);
+        this.dashGfx.strokeCircle(cx, y, circleRadius);
       } else {
         // Empty circle for used charge
         this.dashGfx.lineStyle(1, 0x336688);
@@ -369,9 +386,9 @@ export class HUDScene extends Phaser.Scene {
 
   private drawHP(): void {
     this.hpBar.clear();
-    const barWidth = 120;
-    const barHeight = 10;
-    const x = 8, y = GAME_HEIGHT - 20;
+    const barWidth = 180;
+    const barHeight = 18;
+    const x = 8, y = GAME_HEIGHT - 28;
 
     // Background
     this.hpBar.fillStyle(0x333333);
@@ -394,8 +411,8 @@ export class HUDScene extends Phaser.Scene {
   private drawXP(): void {
     this.xpBar.clear();
     const barWidth = GAME_WIDTH - 16;
-    const barHeight = 8;
-    const x = 8, y = GAME_HEIGHT - 8;
+    const barHeight = 14;
+    const x = 8, y = GAME_HEIGHT - 12;
 
     // Background
     this.xpBar.fillStyle(0x222233);

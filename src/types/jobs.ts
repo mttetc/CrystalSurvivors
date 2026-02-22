@@ -1,4 +1,4 @@
-import { JobId, JobSkillId, MasterySkillId, SkillFamily } from '../constants';
+import { JobId, JobSkillId, MasterySkillId, Rarity, SkillFamily } from '../constants';
 import { PlayerStatModifiers } from './enhancements';
 
 export interface JobPassiveTier {
@@ -28,6 +28,7 @@ export interface JobSkillDef {
   name: string;
   type: 'modifier' | 'active';
   family: SkillFamily;
+  minRarity?: Rarity;
   levels: JobSkillLevel[];
 }
 

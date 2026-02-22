@@ -58,24 +58,25 @@ interface RarityBracket {
   rare: number;
   epic: number;
   legendary: number;
+  mythic: number;
 }
 
 const LEVELUP_RARITY_BRACKETS: RarityBracket[] = [
-  { minLevel: 30, common: 0.60, rare: 0.27, epic: 0.10, legendary: 0.03 },
-  { minLevel: 25, common: 0.67, rare: 0.24, epic: 0.07, legendary: 0.02 },
-  { minLevel: 20, common: 0.74, rare: 0.20, epic: 0.05, legendary: 0.01 },
-  { minLevel: 15, common: 0.80, rare: 0.16, epic: 0.04, legendary: 0.00 },
-  { minLevel: 10, common: 0.87, rare: 0.11, epic: 0.02, legendary: 0.00 },
-  { minLevel: 5,  common: 0.93, rare: 0.06, epic: 0.01, legendary: 0.00 },
-  { minLevel: 1,  common: 0.98, rare: 0.02, epic: 0.00, legendary: 0.00 },
+  { minLevel: 30, common: 0.58, rare: 0.26, epic: 0.10, legendary: 0.04, mythic: 0.02 },
+  { minLevel: 25, common: 0.65, rare: 0.23, epic: 0.07, legendary: 0.035, mythic: 0.015 },
+  { minLevel: 20, common: 0.73, rare: 0.19, epic: 0.05, legendary: 0.02, mythic: 0.01 },
+  { minLevel: 15, common: 0.79, rare: 0.16, epic: 0.04, legendary: 0.005, mythic: 0.005 },
+  { minLevel: 10, common: 0.87, rare: 0.11, epic: 0.02, legendary: 0.00, mythic: 0.00 },
+  { minLevel: 5,  common: 0.93, rare: 0.06, epic: 0.01, legendary: 0.00, mythic: 0.00 },
+  { minLevel: 1,  common: 0.98, rare: 0.02, epic: 0.00, legendary: 0.00, mythic: 0.00 },
 ];
 
 // Chest drops add bonuses on top of levelup rates
-const CHEST_BONUS = { rare: 0.04, epic: 0.02, legendary: 0.005 };
+const CHEST_BONUS = { rare: 0.04, epic: 0.02, legendary: 0.005, mythic: 0.002 };
 // Elite drops are even better
-const ELITE_BONUS = { rare: 0.06, epic: 0.03, legendary: 0.01 };
+const ELITE_BONUS = { rare: 0.06, epic: 0.03, legendary: 0.01, mythic: 0.005 };
 
-function getRarityRates(playerLevel: number, source: 'levelup' | 'chest' | 'elite'): { common: number; rare: number; epic: number; legendary: number } {
+function getRarityRates(playerLevel: number, source: 'levelup' | 'chest' | 'elite'): { common: number; rare: number; epic: number; legendary: number; mythic: number } {
   let bracket = LEVELUP_RARITY_BRACKETS[LEVELUP_RARITY_BRACKETS.length - 1];
   for (const b of LEVELUP_RARITY_BRACKETS) {
     if (playerLevel >= b.minLevel) {
@@ -84,37 +85,46 @@ function getRarityRates(playerLevel: number, source: 'levelup' | 'chest' | 'elit
     }
   }
 
-  let { common, rare, epic, legendary } = bracket;
+  let { common, rare, epic, legendary, mythic } = bracket;
 
   if (source === 'chest') {
     rare += CHEST_BONUS.rare;
     epic += CHEST_BONUS.epic;
     legendary += CHEST_BONUS.legendary;
-    common = Math.max(0, 1 - rare - epic - legendary);
+    mythic += CHEST_BONUS.mythic;
+    common = Math.max(0, 1 - rare - epic - legendary - mythic);
   } else if (source === 'elite') {
     rare += ELITE_BONUS.rare;
     epic += ELITE_BONUS.epic;
     legendary += ELITE_BONUS.legendary;
-    common = Math.max(0, 1 - rare - epic - legendary);
+    mythic += ELITE_BONUS.mythic;
+    common = Math.max(0, 1 - rare - epic - legendary - mythic);
   }
 
-  return { common, rare, epic, legendary };
+  return { common, rare, epic, legendary, mythic };
 }
 
 function rollRarity(playerLevel: number, source: 'levelup' | 'chest' | 'elite'): Rarity {
   const rates = getRarityRates(playerLevel, source);
   const roll = Math.random();
-  if (roll < rates.legendary) return Rarity.LEGENDARY;
-  if (roll < rates.legendary + rates.epic) return Rarity.EPIC;
-  if (roll < rates.legendary + rates.epic + rates.rare) return Rarity.RARE;
+  if (roll < rates.mythic) return Rarity.MYTHIC;
+  if (roll < rates.mythic + rates.legendary) return Rarity.LEGENDARY;
+  if (roll < rates.mythic + rates.legendary + rates.epic) return Rarity.EPIC;
+  if (roll < rates.mythic + rates.legendary + rates.epic + rates.rare) return Rarity.RARE;
   return Rarity.COMMON;
 }
+
+export const RARITY_ORDER: Record<Rarity, number> = {
+  [Rarity.COMMON]: 0, [Rarity.RARE]: 1, [Rarity.EPIC]: 2,
+  [Rarity.LEGENDARY]: 3, [Rarity.MYTHIC]: 4,
+};
 
 export const RARITY_MULTIPLIERS: Record<Rarity, number> = {
   [Rarity.COMMON]: 0.5,
   [Rarity.RARE]: 0.8,
   [Rarity.EPIC]: 1.2,
   [Rarity.LEGENDARY]: 1.6,
+  [Rarity.MYTHIC]: 2.0,
 };
 
 export const RARITY_COLORS: Record<Rarity, string> = {
@@ -122,6 +132,7 @@ export const RARITY_COLORS: Record<Rarity, string> = {
   [Rarity.RARE]: '#4488FF',
   [Rarity.EPIC]: '#AA44FF',
   [Rarity.LEGENDARY]: '#FFAA00',
+  [Rarity.MYTHIC]: '#FF1144',
 };
 
 export const RARITY_NAMES: Record<Rarity, string> = {
@@ -129,6 +140,7 @@ export const RARITY_NAMES: Record<Rarity, string> = {
   [Rarity.RARE]: 'Rare',
   [Rarity.EPIC]: 'Epic',
   [Rarity.LEGENDARY]: 'Legendary',
+  [Rarity.MYTHIC]: 'Mythic',
 };
 
 export class EnhancementManager {
@@ -276,7 +288,13 @@ export class EnhancementManager {
 
     switch (cat) {
       case EnhancementCategory.JOB_SKILL: {
-        const skills = this.getUpgradableJobSkills();
+        const allSkills = this.getUpgradableJobSkills();
+        // Filter skills by minRarity - only show skills appropriate for this rarity
+        const skills = allSkills.filter(sid => {
+          const sDef = JOB_SKILL_DEFS[sid];
+          if (sDef.minRarity && RARITY_ORDER[rarity] < RARITY_ORDER[sDef.minRarity]) return false;
+          return true;
+        });
         if (skills.length === 0) return null;
         const skillId = skills[Math.floor(Math.random() * skills.length)];
         const def = JOB_SKILL_DEFS[skillId];
@@ -293,7 +311,12 @@ export class EnhancementManager {
         };
       }
       case EnhancementCategory.MASTERY_SKILL: {
-        const mSkills = this.getUpgradableMasterySkills();
+        const allMSkills = this.getUpgradableMasterySkills();
+        const mSkills = allMSkills.filter(sid => {
+          const sDef = MASTERY_SKILL_DEFS[sid];
+          if (sDef.minRarity && RARITY_ORDER[rarity] < RARITY_ORDER[sDef.minRarity]) return false;
+          return true;
+        });
         if (mSkills.length === 0) return null;
         const mSkillId = mSkills[Math.floor(Math.random() * mSkills.length)];
         const mDef = MASTERY_SKILL_DEFS[mSkillId];
@@ -314,7 +337,8 @@ export class EnhancementManager {
         if (weapons.length === 0) return null;
         const id = weapons[Math.floor(Math.random() * weapons.length)];
         const def = WEAPON_DEFS[id];
-        const startLv = rarity === Rarity.LEGENDARY ? 4
+        const startLv = rarity === Rarity.MYTHIC ? 5
+          : rarity === Rarity.LEGENDARY ? 4
           : rarity === Rarity.EPIC ? 3
           : rarity === Rarity.RARE ? 2 : 1;
         const lvText = startLv > 1 ? ` (Lv${startLv})` : '';

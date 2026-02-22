@@ -73,6 +73,7 @@ export interface PlayerStatModifiers {
   supportEffectiveness: number;
   summonFamilyDamage: number;
   summonFamilyCooldown: number;
+  damageReflect: number;           // Carbuncle reflect %
   // Range & visual scaling (Phase 5)
   rangeMultiplier: number;             // 1.0 base, affects radius/range
   projectileScaleMultiplier: number;   // 1.0 base, visual scale for projectiles

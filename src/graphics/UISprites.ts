@@ -1313,6 +1313,183 @@ function generateSkillIconTextures(scene: Phaser.Scene): void {
     ctx.fillRect(5, 9, 2, 2); ctx.fillRect(6, 10, 1, 2);
   });
 
+  // Ramuh: old man with lightning bolt
+  generateWeaponIcon(scene, 'skill_ramuh', '#FFDD44', (ctx) => {
+    // Head
+    ctx.fillStyle = '#DDDDDD';
+    ctx.fillRect(4, 1, 4, 4);
+    // Beard
+    ctx.fillStyle = '#AAAAAA';
+    ctx.fillRect(4, 5, 4, 3);
+    ctx.fillRect(5, 8, 2, 1);
+    // Lightning bolt
+    ctx.fillStyle = '#FFDD00';
+    ctx.fillRect(9, 0, 2, 3); ctx.fillRect(8, 2, 2, 2);
+    ctx.fillRect(9, 4, 2, 3); ctx.fillRect(10, 6, 1, 3);
+    // Glow
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(10, 1, 1, 1); ctx.fillRect(9, 5, 1, 1);
+  });
+  // Titan: rock fist
+  generateWeaponIcon(scene, 'skill_titan', '#AA7744', (ctx) => {
+    // Fist
+    ctx.fillStyle = '#8B6633';
+    ctx.fillRect(2, 3, 8, 6);
+    ctx.fillRect(3, 2, 6, 2);
+    // Knuckles
+    ctx.fillStyle = '#AA8844';
+    ctx.fillRect(2, 3, 2, 2); ctx.fillRect(4, 3, 2, 2);
+    ctx.fillRect(6, 3, 2, 2); ctx.fillRect(8, 3, 2, 2);
+    // Cracks
+    ctx.fillStyle = '#665522';
+    ctx.fillRect(5, 5, 1, 3); ctx.fillRect(7, 4, 1, 2);
+    // Ground debris
+    ctx.fillStyle = '#AA7744';
+    ctx.fillRect(1, 10, 10, 2);
+  });
+  // Carbuncle: small fox creature in emerald
+  generateWeaponIcon(scene, 'skill_carbuncle', '#44DD88', (ctx) => {
+    // Body
+    ctx.fillStyle = '#33BB66';
+    ctx.fillRect(3, 5, 6, 4);
+    // Head
+    ctx.fillRect(4, 3, 4, 3);
+    // Ears
+    ctx.fillStyle = '#44DD88';
+    ctx.fillRect(4, 1, 2, 3); ctx.fillRect(6, 1, 2, 3);
+    // Gem on forehead
+    ctx.fillStyle = '#00FF88';
+    ctx.fillRect(5, 3, 2, 1);
+    // Eyes
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(4, 4, 1, 1); ctx.fillRect(7, 4, 1, 1);
+    // Tail
+    ctx.fillStyle = '#33BB66';
+    ctx.fillRect(1, 6, 2, 1); ctx.fillRect(0, 5, 2, 1);
+    // Sparkles
+    ctx.fillStyle = '#88FFBB';
+    ctx.fillRect(10, 2, 1, 1); ctx.fillRect(1, 3, 1, 1);
+  });
+  // Leviathan: sea serpent wave
+  generateWeaponIcon(scene, 'skill_leviathan', '#4488FF', (ctx) => {
+    // Serpent body wave
+    ctx.fillStyle = '#3366CC';
+    ctx.fillRect(0, 5, 3, 3); ctx.fillRect(2, 3, 3, 3);
+    ctx.fillRect(4, 5, 3, 3); ctx.fillRect(6, 3, 3, 3);
+    ctx.fillRect(8, 5, 3, 3);
+    // Head
+    ctx.fillStyle = '#4488FF';
+    ctx.fillRect(9, 3, 3, 3);
+    // Eye
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(10, 4, 1, 1);
+    // Water splash
+    ctx.fillStyle = '#88CCFF';
+    ctx.fillRect(0, 8, 2, 1); ctx.fillRect(3, 9, 2, 1);
+    ctx.fillRect(7, 8, 2, 1); ctx.fillRect(10, 9, 1, 1);
+  });
+  // Odin: dark knight with sword
+  generateWeaponIcon(scene, 'skill_odin', '#8844AA', (ctx) => {
+    // Horse/rider silhouette
+    ctx.fillStyle = '#6622AA';
+    ctx.fillRect(3, 3, 6, 5);
+    ctx.fillRect(4, 2, 4, 2);
+    // Helmet horns
+    ctx.fillStyle = '#8844AA';
+    ctx.fillRect(3, 0, 1, 3); ctx.fillRect(8, 0, 1, 3);
+    // Sword (zantetsuken)
+    ctx.fillStyle = '#CCCCFF';
+    ctx.fillRect(10, 1, 1, 8);
+    ctx.fillRect(9, 2, 1, 1); ctx.fillRect(11, 2, 1, 1);
+    // Sword glow
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(10, 3, 1, 1);
+    // Dark cape
+    ctx.fillStyle = '#441188';
+    ctx.fillRect(2, 5, 2, 4); ctx.fillRect(1, 7, 1, 3);
+  });
+  // Alexander: castle fortress in gold
+  generateWeaponIcon(scene, 'skill_alexander', '#FFD700', (ctx) => {
+    // Castle body
+    ctx.fillStyle = '#CCAA44';
+    ctx.fillRect(2, 4, 8, 6);
+    // Towers
+    ctx.fillStyle = '#DDBB55';
+    ctx.fillRect(2, 1, 3, 4); ctx.fillRect(7, 1, 3, 4);
+    // Tower tops
+    ctx.fillStyle = '#FFD700';
+    ctx.fillRect(3, 0, 1, 2); ctx.fillRect(8, 0, 1, 2);
+    // Gate
+    ctx.fillStyle = '#665522';
+    ctx.fillRect(4, 7, 4, 3);
+    // Holy light
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(5, 2, 2, 2);
+    ctx.fillStyle = '#FFFFAA';
+    ctx.fillRect(5, 5, 2, 2);
+  });
+  // Diabolos: dark bat wings
+  generateWeaponIcon(scene, 'skill_diabolos', '#8844CC', (ctx) => {
+    // Wings
+    ctx.fillStyle = '#6622AA';
+    ctx.fillRect(0, 3, 4, 4); ctx.fillRect(8, 3, 4, 4);
+    ctx.fillRect(1, 2, 3, 2); ctx.fillRect(8, 2, 3, 2);
+    // Wing tips
+    ctx.fillStyle = '#5511AA';
+    ctx.fillRect(0, 2, 1, 2); ctx.fillRect(11, 2, 1, 2);
+    // Body
+    ctx.fillStyle = '#7733BB';
+    ctx.fillRect(4, 3, 4, 5);
+    // Head
+    ctx.fillRect(5, 1, 2, 3);
+    // Eyes
+    ctx.fillStyle = '#FF4444';
+    ctx.fillRect(5, 2, 1, 1); ctx.fillRect(6, 2, 1, 1);
+    // Dark sphere
+    ctx.fillStyle = '#440088';
+    ctx.fillRect(5, 9, 2, 2);
+    ctx.fillStyle = '#6600CC';
+    ctx.fillRect(4, 10, 4, 1);
+  });
+  // Knights of the Round: circle of swords
+  generateWeaponIcon(scene, 'skill_knights_of_the_round', '#FF1144', (ctx) => {
+    // Circle border
+    ctx.strokeStyle = '#CC0033'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.stroke();
+    // Swords arranged in circle (simplified as lines radiating from center)
+    ctx.fillStyle = '#CCCCFF';
+    ctx.fillRect(5, 0, 2, 3); // top
+    ctx.fillRect(5, 9, 2, 3); // bottom
+    ctx.fillRect(0, 5, 3, 2); // left
+    ctx.fillRect(9, 5, 3, 2); // right
+    // Diagonal swords
+    ctx.fillRect(1, 1, 2, 2); ctx.fillRect(9, 1, 2, 2);
+    ctx.fillRect(1, 9, 2, 2); ctx.fillRect(9, 9, 2, 2);
+    // Center crown
+    ctx.fillStyle = '#FFD700';
+    ctx.fillRect(5, 5, 2, 2);
+    // Red glow
+    ctx.fillStyle = '#FF1144';
+    ctx.fillRect(4, 4, 1, 1); ctx.fillRect(7, 4, 1, 1);
+    ctx.fillRect(4, 7, 1, 1); ctx.fillRect(7, 7, 1, 1);
+  });
+  // Eden: white/gold ring
+  generateWeaponIcon(scene, 'skill_eden', '#FFFFFF', (ctx) => {
+    // Outer ring
+    ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(6, 6, 5, 0, Math.PI * 2); ctx.stroke();
+    // Inner ring
+    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(6, 6, 3, 0, Math.PI * 2); ctx.stroke();
+    // Center star
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(5, 5, 2, 2);
+    // Light rays
+    ctx.fillStyle = '#FFFFAA';
+    ctx.fillRect(5, 1, 2, 2); ctx.fillRect(5, 9, 2, 2);
+    ctx.fillRect(1, 5, 2, 2); ctx.fillRect(9, 5, 2, 2);
+  });
+
   // ── Time Mage skills ────────────────────────────────────────────────
   // Haste: clock with speed lines
   generateWeaponIcon(scene, 'skill_haste', '#9370DB', (ctx) => {

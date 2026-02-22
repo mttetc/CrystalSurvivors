@@ -41,7 +41,7 @@ export const GEM_LARGE_XP = 10;
 export const GEM_SMALL_CHANCE = 0.70;
 export const GEM_MEDIUM_CHANCE = 0.25;
 // Large = remaining 5%
-export const HEALTH_DROP_CHANCE = 0.05;
+export const HEALTH_DROP_CHANCE = 0.03;
 export const HEALTH_DROP_AMOUNT = 15;
 
 // ─── Skill Families ─────────────────────────────────────────────────
@@ -119,7 +119,15 @@ export enum JobSkillId {
   // Summoner
   IFRIT = 'ifrit',
   SHIVA = 'shiva',
+  RAMUH = 'ramuh',
+  TITAN = 'titan',
+  CARBUNCLE = 'carbuncle',
+  LEVIATHAN = 'leviathan',
+  ODIN = 'odin',
+  ALEXANDER = 'alexander',
   BAHAMUT = 'bahamut',
+  DIABOLOS = 'diabolos',
+  KNIGHTS_OF_THE_ROUND = 'knights_of_the_round',
   // Time Mage
   HASTE = 'haste',
   SLOW_FIELD = 'slow_field',
@@ -173,6 +181,7 @@ export enum MasterySkillId {
   // Summoner
   PHOENIX = 'phoenix',
   DREADWYRM = 'dreadwyrm',
+  EDEN = 'eden',
   // Time Mage
   TIME_STOP = 'time_stop',
   COMET = 'comet',
@@ -286,6 +295,7 @@ export enum Rarity {
   RARE = 'rare',
   EPIC = 'epic',
   LEGENDARY = 'legendary',
+  MYTHIC = 'mythic',
 }
 
 // ─── Scenes ─────────────────────────────────────────────────────────
@@ -333,6 +343,7 @@ export const EVENTS = {
   SWARM_INCOMING: 'swarm-incoming',
   RESET_WEAPON_COOLDOWNS: 'reset-weapon-cooldowns',
   SYNERGY_SKILL_UPGRADE: 'synergy-skill-upgrade',
+  PLAYER_DASH_RECHARGE_TICK: 'player_dash_recharge_tick',
 } as const;
 
 // ─── Depths ─────────────────────────────────────────────────────────

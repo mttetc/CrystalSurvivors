@@ -9,14 +9,18 @@ import { EventBus } from './EventBus';
 
 const AURA_SKILLS = new Set<string>([JobSkillId.CONSECRATE, MasterySkillId.REQUIEM]);
 const PERIODIC_AOE_SKILLS = new Set<string>([
-  JobSkillId.CHI_BURST, JobSkillId.HOLY, JobSkillId.BAHAMUT,
+  JobSkillId.CHI_BURST, JobSkillId.HOLY,
   JobSkillId.METEOR, JobSkillId.GUST, JobSkillId.QUAKE,
+  JobSkillId.RAMUH, JobSkillId.TITAN, JobSkillId.LEVIATHAN,
+  JobSkillId.ODIN, JobSkillId.DIABOLOS,
+  JobSkillId.KNIGHTS_OF_THE_ROUND,
   // Mastery AoE skills
   MasterySkillId.SOUL_EATER, MasterySkillId.INNER_BEAST, MasterySkillId.FELL_CLEAVE,
   MasterySkillId.FLARE, MasterySkillId.DREADWYRM, MasterySkillId.ERUPTION,
   MasterySkillId.LANDSLIDE, MasterySkillId.STARDIVER, MasterySkillId.FINALE,
-  MasterySkillId.COMET, MasterySkillId.MIDARE_SETSUGEKKA,
+  MasterySkillId.COMET, MasterySkillId.MIDARE_SETSUGEKKA, MasterySkillId.EDEN,
 ]);
+const LASER_SKILLS = new Set<string>([JobSkillId.BAHAMUT, JobSkillId.ALEXANDER]);
 const JUMP_SKILLS = new Set<string>([JobSkillId.JUMP]);
 const BARRAGE_SKILLS = new Set<string>([JobSkillId.BARRAGE]);
 const FAMILIAR_SKILLS = new Set<string>([JobSkillId.IFRIT, JobSkillId.SHIVA, MasterySkillId.PHOENIX]);
@@ -250,6 +254,8 @@ export class JobSkillManager {
         this.updateAura(skillId, params, delta);
       } else if (PERIODIC_AOE_SKILLS.has(skillId)) {
         this.updatePeriodicAoE(skillId, params, delta);
+      } else if (LASER_SKILLS.has(skillId)) {
+        this.updateLaser(skillId, params, delta);
       } else if (JUMP_SKILLS.has(skillId)) {
         this.updateJump(skillId, params, delta);
       } else if (BARRAGE_SKILLS.has(skillId)) {
@@ -616,63 +622,6 @@ export class JobSkillManager {
         this.drawAdditiveGlow(cx, cy, radius * 0.4, 0xFFFFCC, 0.6, 200);
         break;
 
-      case JobSkillId.BAHAMUT: {
-        color = 0xFF4444;
-
-        // Dragon swoops in from above
-        const dragon = this.scene.add.image(cx, cy - 40, 'bahamut_dragon');
-        dragon.setDepth(DEPTHS.EFFECTS + 2);
-        dragon.setScale(0);
-        dragon.setTint(0xFF4444);
-        dragon.setAlpha(0.9);
-
-        this.scene.tweens.add({
-          targets: dragon,
-          y: cy,
-          scaleX: 3,
-          scaleY: 3,
-          duration: 300,
-          ease: 'Back.easeOut',
-          onComplete: () => {
-            this.scene.tweens.add({
-              targets: dragon,
-              alpha: 0,
-              scaleX: 4,
-              scaleY: 4,
-              duration: 500,
-              onComplete: () => dragon.destroy(),
-            });
-          },
-        });
-
-        // White flash on impact
-        const bahaFlash = this.scene.add.graphics();
-        bahaFlash.setDepth(DEPTHS.EFFECTS + 1);
-        bahaFlash.fillStyle(0xFFFFFF, 0.5);
-        bahaFlash.fillCircle(cx, cy, radius * 0.4);
-        this.scene.tweens.add({
-          targets: bahaFlash,
-          alpha: 0,
-          duration: 200,
-          onComplete: () => bahaFlash.destroy(),
-        });
-
-        // Fire explosion rings
-        this.drawExpandingRing(cx, cy, 10, radius, color, 500);
-        this.drawExpandingRing(cx, cy, 5, radius * 0.7, 0xFF8800, 350);
-        this.drawPulse(cx, cy, radius, 0xFF6600, 0.7, 400);
-        this.drawImpactParticles(cx, cy, 0xFF6644, 12, 80, 400);
-        this.drawPulse(cx, cy, radius * 0.3, 0xFFAA44, 0.9, 200);
-
-        // Camera shake for mega flare
-        this.scene.cameras.main.shake(200, 0.008);
-
-        // Large orange-red additive glow flash on impact
-        this.drawAdditiveGlow(cx, cy, radius, 0xFF4400, 0.4, 500);
-        this.drawAdditiveGlow(cx, cy, radius * 0.5, 0xFF6600, 0.5, 300);
-        break;
-      }
-
       case JobSkillId.METEOR: {
         // Random position near player
         const angle = Math.random() * Math.PI * 2;
@@ -709,6 +658,83 @@ export class JobSkillManager {
         // Camera micro-shake for ground impact feel
         this.scene.cameras.main.shake(100, 0.004);
         break;
+
+      case JobSkillId.RAMUH:
+        color = 0xFFDD44;
+        // Lightning bolt from sky
+        this.drawExpandingRing(cx, cy, 5, radius, 0xFFDD44, 300);
+        this.drawPulse(cx, cy, radius * 0.6, 0xFFFFFF, 1.0, 150);
+        this.drawImpactParticles(cx, cy, 0xFFFF88, 10, 80, 300);
+        this.drawAdditiveGlow(cx, cy, radius * 0.5, 0xFFFFFF, 0.6, 200);
+        this.scene.cameras.main.shake(100, 0.005);
+        break;
+
+      case JobSkillId.TITAN:
+        color = 0x8B6633;
+        this.drawPulse(cx, cy, radius, 0xAA7744, 0.8, 400);
+        this.drawExpandingRing(cx, cy, radius * 0.2, radius, 0x8B4513, 350);
+        this.drawExpandingRing(cx, cy, 5, radius * 0.6, 0xBB9944, 300);
+        this.drawImpactParticles(cx, cy, 0xAA7744, 12, 60, 350);
+        this.scene.cameras.main.shake(150, 0.006);
+        break;
+
+      case JobSkillId.LEVIATHAN:
+        color = 0x4488FF;
+        this.drawExpandingRing(cx, cy, 10, radius, 0x4488FF, 500);
+        this.drawExpandingRing(cx, cy, 5, radius * 0.8, 0x88CCFF, 400);
+        this.drawPulse(cx, cy, radius, 0x2266CC, 0.6, 400);
+        this.drawImpactParticles(cx, cy, 0x88CCFF, 12, 100, 400);
+        break;
+
+      case JobSkillId.ODIN: {
+        color = 0x8844AA;
+        // Dark purple slash line
+        this.drawExpandingRing(cx, cy, 5, radius, 0x8844AA, 300);
+        this.drawPulse(cx, cy, radius * 0.4, 0xCCCCFF, 1.0, 150);
+        this.drawImpactParticles(cx, cy, 0xAA66CC, 8, 90, 300);
+        this.drawAdditiveGlow(cx, cy, radius * 0.3, 0xCCCCFF, 0.5, 200);
+        break;
+      }
+
+      case JobSkillId.DIABOLOS: {
+        color = 0x7733BB;
+        // Dark gravity sphere
+        this.drawPulse(cx, cy, radius, 0x440088, 0.8, 500);
+        this.drawExpandingRing(cx, cy, radius, 5, 0x8844CC, 400); // Imploding ring
+        this.drawImpactParticles(cx, cy, 0x6600CC, 10, 60, 400);
+        this.drawAdditiveGlow(cx, cy, radius * 0.6, 0x440088, 0.5, 500);
+        break;
+      }
+
+      case JobSkillId.KNIGHTS_OF_THE_ROUND: {
+        color = 0xFF1144;
+        // 13 rapid sequential strikes in a circle
+        const strikeCount = params.strikeCount ?? 13;
+        for (let s = 0; s < strikeCount; s++) {
+          const angle = (s / strikeCount) * Math.PI * 2;
+          const sx = cx + Math.cos(angle) * radius * 0.6;
+          const sy = cy + Math.sin(angle) * radius * 0.6;
+          this.scene.time.delayedCall(s * 80, () => {
+            this.drawPulse(sx, sy, 25, 0xFFDD44, 0.9, 200);
+            this.drawImpactParticles(sx, sy, 0xFFCC44, 3, 30, 200);
+          });
+        }
+        this.drawExpandingRing(cx, cy, 5, radius, 0xFF1144, 600);
+        this.scene.cameras.main.shake(300, 0.008);
+        break;
+      }
+
+      case MasterySkillId.EDEN:
+        color = 0xFFFFFF;
+        // Massive white expanding ring
+        this.drawExpandingRing(cx, cy, 10, radius, 0xFFFFFF, 600);
+        this.drawExpandingRing(cx, cy, 5, radius * 0.7, 0xFFDD88, 500);
+        this.drawPulse(cx, cy, radius, 0xFFFFFF, 0.6, 500);
+        this.drawImpactParticles(cx, cy, 0xFFFFAA, 16, 120, 500);
+        this.drawAdditiveGlow(cx, cy, radius, 0xFFFFFF, 0.4, 600);
+        this.drawAdditiveGlow(cx, cy, radius * 0.5, 0xFFDD88, 0.5, 400);
+        this.scene.cameras.main.shake(250, 0.01);
+        break;
     }
 
     // Apply effects to enemies in radius
@@ -720,18 +746,178 @@ export class JobSkillManager {
         EventBus.emit(EVENTS.ENEMY_HIT, enemy, damage);
       }
 
-      // Stun (HOLY, QUAKE)
+      // Stun (HOLY, QUAKE, TITAN)
       if (stunDuration > 0) {
         enemy.applyStun(stunDuration);
       }
 
-      // Gust repulsion: push enemies away
-      if (skillId === JobSkillId.GUST) {
+      // Gust/Leviathan repulsion: push enemies away
+      if (skillId === JobSkillId.GUST || skillId === JobSkillId.LEVIATHAN) {
         const dx = enemy.x - cx;
         const dy = enemy.y - cy;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
         const pushForce = 250;
         enemy.setVelocity((dx / dist) * pushForce, (dy / dist) * pushForce);
+      }
+
+      // Odin execute: % instant kill on low HP enemies
+      if (skillId === JobSkillId.ODIN) {
+        const threshold = params.executeThreshold ?? 0.20;
+        const hpRatio = enemy.currentHP / Math.max(1, enemy.maxHP);
+        if (hpRatio < threshold && Math.random() < threshold) {
+          enemy.takeDamage(9999, false);
+        }
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LASER SKILLS (BAHAMUT, ALEXANDER)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private updateLaser(skillId: string, params: Record<string, number>, delta: number): void {
+    const cooldown = this.getEffectiveCooldown(params.cooldown ?? 10000);
+    const elapsed = this.addTimer(skillId, delta);
+    if (elapsed < cooldown) return;
+    this.setTimer(skillId, elapsed - cooldown);
+
+    const beamWidth = params.beamWidth ?? 30;
+    const beamLength = params.beamLength ?? 400;
+    const damage = params.damage ?? 20;
+    const px = this.player.x;
+    const py = this.player.y;
+
+    // Determine direction: toward densest enemy cluster
+    let bestAngle = Math.random() * Math.PI * 2;
+    let bestCount = 0;
+    const children = this.enemyGroup.getChildren() as Enemy[];
+
+    // Sample 8 directions, pick the one with most enemies
+    for (let i = 0; i < 8; i++) {
+      const testAngle = (i / 8) * Math.PI * 2;
+      let count = 0;
+      for (const e of children) {
+        if (!e.active) continue;
+        const ex = e.x - px;
+        const ey = e.y - py;
+        // Project onto beam direction
+        const cosA = Math.cos(testAngle);
+        const sinA = Math.sin(testAngle);
+        const along = ex * cosA + ey * sinA;
+        const perp = Math.abs(-ex * sinA + ey * cosA);
+        if (along > 0 && along < beamLength && perp < beamWidth) {
+          count++;
+        }
+      }
+      if (count > bestCount) {
+        bestCount = count;
+        bestAngle = testAngle;
+      }
+    }
+
+    const cosA = Math.cos(bestAngle);
+    const sinA = Math.sin(bestAngle);
+    const endX = px + cosA * beamLength;
+    const endY = py + sinA * beamLength;
+
+    // Determine colors based on skill
+    let coreColor = 0xFFFFFF;
+    let edgeColor = 0x4488FF;
+    let particleColor = 0x88BBFF;
+
+    if (skillId === JobSkillId.ALEXANDER) {
+      coreColor = 0xFFFFDD;
+      edgeColor = 0xFFD700;
+      particleColor = 0xFFEE88;
+    }
+
+    // Visual: beam expanding then fading
+    const beamGfx = this.scene.add.graphics();
+    beamGfx.setDepth(DEPTHS.EFFECTS + 2);
+
+    // Draw beam (wide rectangle rotated)
+    const drawBeam = (alpha: number, width: number) => {
+      beamGfx.clear();
+      // Edge glow
+      beamGfx.lineStyle(width + 8, edgeColor, alpha * 0.4);
+      beamGfx.lineBetween(px, py, endX, endY);
+      // Core beam
+      beamGfx.lineStyle(width, coreColor, alpha);
+      beamGfx.lineBetween(px, py, endX, endY);
+      // Inner bright core
+      beamGfx.lineStyle(Math.max(2, width * 0.3), 0xFFFFFF, alpha);
+      beamGfx.lineBetween(px, py, endX, endY);
+    };
+
+    // Expand phase (100ms)
+    const expandDuration = 100;
+    const lingerDuration = 300;
+    const fadeDuration = 300;
+
+    this.scene.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: expandDuration,
+      onUpdate: (tween) => {
+        const t = tween.getValue() ?? 0;
+        drawBeam(0.9, beamWidth * t);
+      },
+      onComplete: () => {
+        // Linger phase
+        this.scene.tweens.addCounter({
+          from: 1,
+          to: 0,
+          duration: fadeDuration,
+          delay: lingerDuration,
+          onUpdate: (tween) => {
+            drawBeam(tween.getValue() ?? 0, beamWidth);
+          },
+          onComplete: () => beamGfx.destroy(),
+        });
+      },
+    });
+
+    // Impact particles along beam
+    for (let d = 30; d < beamLength; d += 50) {
+      const ix = px + cosA * d;
+      const iy = py + sinA * d;
+      this.drawImpactParticles(ix, iy, particleColor, 3, 20, 300);
+    }
+
+    // Camera shake
+    this.scene.cameras.main.shake(200, 0.008);
+
+    // Additive glow at origin
+    this.drawAdditiveGlow(px, py, 40, coreColor, 0.5, 300);
+
+    // Dragon silhouette for Bahamut
+    if (skillId === JobSkillId.BAHAMUT && this.scene.textures.exists('bahamut_dragon')) {
+      const dragon = this.scene.add.image(px, py, 'bahamut_dragon');
+      dragon.setDepth(DEPTHS.EFFECTS + 3);
+      dragon.setScale(2);
+      dragon.setTint(0x4488FF);
+      dragon.setAlpha(0.8);
+      dragon.setRotation(bestAngle);
+      this.scene.tweens.add({
+        targets: dragon,
+        alpha: 0,
+        scaleX: 3,
+        scaleY: 3,
+        duration: 500,
+        onComplete: () => dragon.destroy(),
+      });
+    }
+
+    // Damage: all enemies within the beam rectangle
+    for (const enemy of children) {
+      if (!enemy.active) continue;
+      const ex = enemy.x - px;
+      const ey = enemy.y - py;
+      const along = ex * cosA + ey * sinA;
+      const perp = Math.abs(-ex * sinA + ey * cosA);
+      if (along > -10 && along < beamLength && perp < beamWidth) {
+        enemy.takeDamage(damage, false);
+        EventBus.emit(EVENTS.ENEMY_HIT, enemy, damage);
       }
     }
   }

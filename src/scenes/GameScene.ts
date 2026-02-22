@@ -684,14 +684,14 @@ export class GameScene extends Phaser.Scene {
   // ─── Pause / Resume ───────────────────────────────────────────────
   public pauseGame(): void {
     this.isPaused = true;
-    this.physics.pause();
-    this.waveManager.pause();
+    this.physics?.pause();
+    this.waveManager?.pause();
   }
 
   public resumeGame(): void {
     this.isPaused = false;
-    this.physics.resume();
-    this.waveManager.resume();
+    this.physics?.resume();
+    this.waveManager?.resume();
   }
 
   // ─── Splitter death handling ──────────────────────────────────────

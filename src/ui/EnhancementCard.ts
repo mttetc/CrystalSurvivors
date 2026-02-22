@@ -40,6 +40,7 @@ export class EnhancementCardUI {
     // Background with rarity-tinted color
     const bgTint = isAwakening ? 0x2E1828
       : isMalus ? 0x2E1818
+      : card.rarity === Rarity.MYTHIC ? 0x2E0A0A
       : card.rarity === Rarity.LEGENDARY ? 0x2A2218
       : card.rarity === Rarity.EPIC ? 0x1E1A2E
       : card.rarity === Rarity.RARE ? 0x1A1E2E
@@ -244,7 +245,8 @@ export class EnhancementCardUI {
 
   public setSelected(selected: boolean): void {
     this.border.setAlpha(selected ? 1 : 0);
-    const rarityBg = this.card.rarity === Rarity.LEGENDARY ? 0x3A3228
+    const rarityBg = this.card.rarity === Rarity.MYTHIC ? 0x3E1A1A
+      : this.card.rarity === Rarity.LEGENDARY ? 0x3A3228
       : this.card.rarity === Rarity.EPIC ? 0x2E2A3E
       : this.card.rarity === Rarity.RARE ? 0x2A2E3E
       : 0x2A2A4E;
