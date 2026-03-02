@@ -5,7 +5,7 @@ export function xpRequired(level: number): number {
 }
 
 export function scaleHP(baseHP: number, wave: number): number {
-  return Math.floor(baseHP * (1 + SCALE_HP_PER_WAVE * (wave - 1)));
+  return Math.floor(baseHP * 2 * (1 + SCALE_HP_PER_WAVE * (wave - 1)));
 }
 
 export function scaleSpeed(baseSpeed: number, wave: number): number {

@@ -4,6 +4,7 @@ import { BaseWeapon } from './BaseWeapon';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { EventBus } from '../systems/EventBus';
+import { playImpactFX, playSlashFX, showWeaponInHand } from './fxHelper';
 
 export class SacredShield extends BaseWeapon {
   private bashSide = 0;
@@ -37,75 +38,18 @@ export class SacredShield extends BaseWeapon {
       const endX = this.player.x + Math.cos(bashAngle) * bashDist;
       const endY = this.player.y + Math.sin(bashAngle) * bashDist;
 
-      // Shield sprite thrust forward
-      const shield = this.scene.add.image(this.player.x, this.player.y, 'weapon_shield');
-      shield.setScale(2.2 * meleeScale);
-      shield.setDepth(DEPTHS.EFFECTS);
-      shield.setRotation(bashAngle + Math.PI / 2);
-      shield.setAlpha(1);
+      // Show weapon in hand facing attack direction
+      showWeaponInHand(this.scene, this.player, bashAngle, this.id, 250);
 
-      this.scene.tweens.add({
-        targets: shield,
-        x: endX,
-        y: endY,
-        scaleX: 2.8 * meleeScale,
-        scaleY: 2.8 * meleeScale,
-        duration: 100,
-        ease: 'Back.easeOut',
-        onComplete: () => {
-          // White impact flash on shield
-          shield.setTint(0xFFFFFF);
+      // Player attack animation
+      this.showAttackSprite(bashAngle);
 
-          // Golden impact sparks at bash point
-          for (let i = 0; i < 4; i++) {
-            const spark = this.scene.add.image(endX, endY, 'shield_spark');
-            spark.setDepth(DEPTHS.EFFECTS + 1);
-            spark.setScale(0.8);
-            const spreadAngle = bashAngle + (Math.random() - 0.5) * 1.2;
-            const spreadDist = (8 + Math.random() * 12) * SPRITE_SCALE;
+      // Shield bash slash FX at bash point
+      const fxScale = this.getMeleeFXScale();
+      playSlashFX(this.scene, endX, endY, bashAngle, 'fx_slash', fxScale * 1.8, 0xFFDD00, 250);
 
-            this.scene.tweens.add({
-              targets: spark,
-              x: endX + Math.cos(spreadAngle) * spreadDist,
-              y: endY + Math.sin(spreadAngle) * spreadDist,
-              alpha: 0,
-              scaleX: 0.2,
-              scaleY: 0.2,
-              duration: 180 + Math.random() * 100,
-              ease: 'Power2',
-              onComplete: () => spark.destroy(),
-            });
-          }
-
-          // Golden additive glow on impact
-          const impactGlow = this.scene.add.graphics();
-          impactGlow.setBlendMode(Phaser.BlendModes.ADD);
-          impactGlow.setDepth(DEPTHS.EFFECTS - 1);
-          impactGlow.fillStyle(0xFFDD00, 0.35);
-          impactGlow.fillCircle(endX, endY, 9 * SPRITE_SCALE * meleeScale);
-          impactGlow.fillStyle(0xFFFFFF, 0.2);
-          impactGlow.fillCircle(endX, endY, 5 * SPRITE_SCALE * meleeScale);
-
-          this.scene.tweens.add({
-            targets: impactGlow,
-            alpha: 0,
-            duration: 200,
-            ease: 'Quad.easeOut',
-            onComplete: () => impactGlow.destroy(),
-          });
-
-          // Retract shield
-          this.scene.tweens.add({
-            targets: shield,
-            alpha: 0,
-            scaleX: 1.5 * meleeScale,
-            scaleY: 1.5 * meleeScale,
-            duration: 150,
-            ease: 'Power2',
-            onComplete: () => shield.destroy(),
-          });
-        },
-      });
+      // Shield impact FX using golden magic shield sprite
+      playImpactFX(this.scene, endX, endY, bashAngle, 'fx_shield_yellow', fxScale * 2.5, 0xFFDD00, 250);
 
       // Damage enemies in frontal cone
       const arcSpan = 1.0;
@@ -125,7 +69,6 @@ export class SacredShield extends BaseWeapon {
           enemy.takeDamage(damage);
           EventBus.emit(EVENTS.ENEMY_HIT, enemy, damage, enchant.id, enchant.tier, this.id);
 
-          // Knockback push
           const pushAngle = Math.atan2(enemy.y - this.player.y, enemy.x - this.player.x);
           enemy.setVelocity(
             Math.cos(pushAngle) * KNOCKBACK_VELOCITY * 1.2,

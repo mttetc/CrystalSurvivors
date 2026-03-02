@@ -89,16 +89,21 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.setVisible(true);
     this.setAlpha(1);
 
-    // Elite enemies are bigger and glow
+    // Scale sprites from native pixel size to game size
     if (elite) {
-      this.setScale(1.5);
+      this.setScale(SPRITE_SCALE * 1.5);
       this.setTint(0xFF4444);
     } else {
-      this.setScale(1);
+      this.setScale(SPRITE_SCALE);
     }
 
-    this.body!.setSize(this.def.size - SPRITE_SCALE, this.def.size - SPRITE_SCALE);
-    this.body!.setOffset(SPRITE_SCALE / 2, SPRITE_SCALE / 2);
+    // Body in LOCAL (texture) coords — scale is applied automatically by Phaser
+    // Regular monsters: 16x16 texture. Bosses: 48x48 or 50x50 texture.
+    const texW = this.def.isBoss ? (this.enemyType === EnemyType.HIVEMIND ? 50 : 48) : 16;
+    const bodySize = Math.floor(texW * 0.8);
+    const bodyOffset = Math.floor((texW - bodySize) / 2);
+    this.body!.setSize(bodySize, bodySize);
+    this.body!.setOffset(bodyOffset, bodyOffset);
 
     // Reset state
     this.behaviorTimer = 0;
@@ -232,10 +237,19 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     // Animation
     this.animTimer += delta;
-    if (this.animTimer >= 300) {
+    if (this.animTimer >= 200) {
       this.animTimer = 0;
-      this.animFrame = this.animFrame === 0 ? 1 : 0;
-      this.setFrame(this.animFrame);
+      if (this.def.isBoss) {
+        // Bosses: single-row strip, frames are sequential (0,1,2...)
+        const maxFrames = this.enemyType === EnemyType.HIVEMIND ? 5 : 12;
+        this.animFrame = (this.animFrame + 1) % maxFrames;
+        this.setFrame(this.animFrame);
+      } else {
+        // Regular monsters: column-major (4 cols × 4 rows)
+        // Use column 0 (DOWN-facing), cycle through rows
+        this.animFrame = (this.animFrame + 1) % 4;
+        this.setFrame(this.animFrame * 4); // col 0: frames 0, 4, 8, 12
+      }
     }
 
     // Behavior - handled by GameScene for access to player ref
@@ -275,17 +289,17 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private spawnFlameParticle(): void {
     if (!this.scene || !this.active) return;
     const offsetX = (Math.random() - 0.5) * 8;
-    const flame = this.scene.add.rectangle(
-      this.x + offsetX, this.y - 6,
-      3, 3, 0xFF6600,
-    );
+    const tex = this.scene.textures.exists('fx_spark') ? 'fx_spark' : 'fx_circle_spark';
+    const flame = this.scene.add.sprite(this.x + offsetX, this.y - 6, tex, 0);
     flame.setDepth(DEPTHS.EFFECTS);
+    flame.setScale(0.2);
+    flame.setTint(0xFF6600);
+    flame.setBlendMode(Phaser.BlendModes.ADD);
     this.scene.tweens.add({
       targets: flame,
       y: flame.y - 10,
       alpha: 0,
-      scaleX: 0.3,
-      scaleY: 0.3,
+      scale: 0.05,
       duration: 300,
       onComplete: () => flame.destroy(),
     });
@@ -294,11 +308,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private spawnPoisonDrip(): void {
     if (!this.scene || !this.active) return;
     const offsetX = (Math.random() - 0.5) * 6;
-    const drip = this.scene.add.rectangle(
-      this.x + offsetX, this.y + 4,
-      2, 2, 0x44CC44,
-    );
+    const tex = this.scene.textures.exists('fx_spark') ? 'fx_spark' : 'fx_circle_spark';
+    const drip = this.scene.add.sprite(this.x + offsetX, this.y + 4, tex, 0);
     drip.setDepth(DEPTHS.EFFECTS);
+    drip.setScale(0.15);
+    drip.setTint(0x44CC44);
     this.scene.tweens.add({
       targets: drip,
       y: drip.y + 8,

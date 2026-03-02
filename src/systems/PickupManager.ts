@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  EVENTS, GEM_SMALL_CHANCE, GEM_MEDIUM_CHANCE, HEALTH_DROP_CHANCE,
+  EVENTS, GEM_SMALL_CHANCE, GEM_MEDIUM_CHANCE, GEM_LARGE_CHANCE, HEALTH_DROP_CHANCE,
   WORLD_WIDTH, WORLD_HEIGHT, SPRITE_SCALE,
 } from '../constants';
 import { Player } from '../entities/Player';
@@ -47,18 +47,21 @@ export class PickupManager {
   }
 
   private onEnemyKilled(_type: string, x: number, y: number, _xpValue: number, _isBoss: boolean): void {
-    // Determine gem type
+    // Determine gem type — 4 tiers: green(common) → yellow(uncommon) → purple(rare) → red(epic)
     const roll = Math.random();
     let type: PickupType;
+    const nonHealth = 1 - HEALTH_DROP_CHANCE;
 
     if (roll < HEALTH_DROP_CHANCE) {
       type = PickupType.HEALTH;
-    } else if (roll < HEALTH_DROP_CHANCE + GEM_SMALL_CHANCE * (1 - HEALTH_DROP_CHANCE)) {
+    } else if (roll < HEALTH_DROP_CHANCE + GEM_SMALL_CHANCE * nonHealth) {
       type = PickupType.GEM_SMALL;
-    } else if (roll < HEALTH_DROP_CHANCE + (GEM_SMALL_CHANCE + GEM_MEDIUM_CHANCE) * (1 - HEALTH_DROP_CHANCE)) {
+    } else if (roll < HEALTH_DROP_CHANCE + (GEM_SMALL_CHANCE + GEM_MEDIUM_CHANCE) * nonHealth) {
       type = PickupType.GEM_MEDIUM;
-    } else {
+    } else if (roll < HEALTH_DROP_CHANCE + (GEM_SMALL_CHANCE + GEM_MEDIUM_CHANCE + GEM_LARGE_CHANCE) * nonHealth) {
       type = PickupType.GEM_LARGE;
+    } else {
+      type = PickupType.GEM_MEGA;
     }
 
     const pickup = this.pickupGroup.getFirstDead(false) as Pickup | null;

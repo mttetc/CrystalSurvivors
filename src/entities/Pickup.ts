@@ -1,18 +1,31 @@
 import Phaser from 'phaser';
-import { DEPTHS, GEM_SMALL_XP, GEM_MEDIUM_XP, GEM_LARGE_XP, HEALTH_DROP_AMOUNT } from '../constants';
+import { DEPTHS, GEM_SMALL_XP, GEM_MEDIUM_XP, GEM_LARGE_XP, GEM_MEGA_XP, HEALTH_DROP_AMOUNT, SPRITE_SCALE } from '../constants';
 
 export enum PickupType {
   GEM_SMALL = 'gem_small',
   GEM_MEDIUM = 'gem_medium',
   GEM_LARGE = 'gem_large',
+  GEM_MEGA = 'gem_mega',
   HEALTH = 'health_heart',
   MAGNET = 'magnet_pickup',
 }
+
+// Pickup texture keys — gems use Ninja Adventure Resource sprites (14–16px)
+// green = common, yellow = uncommon, purple = rare, red = epic
+const PICKUP_TEXTURE_MAP: Record<PickupType, string> = {
+  [PickupType.GEM_SMALL]: 'item_gem_green',
+  [PickupType.GEM_MEDIUM]: 'item_gem_yellow',
+  [PickupType.GEM_LARGE]: 'item_gem_purple',
+  [PickupType.GEM_MEGA]: 'item_gem_red',
+  [PickupType.HEALTH]: 'heart_pickup',
+  [PickupType.MAGNET]: 'chest_small',
+};
 
 const PICKUP_VALUES: Record<PickupType, number> = {
   [PickupType.GEM_SMALL]: GEM_SMALL_XP,
   [PickupType.GEM_MEDIUM]: GEM_MEDIUM_XP,
   [PickupType.GEM_LARGE]: GEM_LARGE_XP,
+  [PickupType.GEM_MEGA]: GEM_MEGA_XP,
   [PickupType.HEALTH]: HEALTH_DROP_AMOUNT,
   [PickupType.MAGNET]: 0, // no direct value, triggers collect-all
 };
@@ -23,10 +36,14 @@ export class Pickup extends Phaser.Physics.Arcade.Sprite {
   public isBeingAttracted = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'gem_small');
+    super(scene, x, y, 'item_gem_green');
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setDepth(DEPTHS.PICKUPS);
+    this.setScale(SPRITE_SCALE);
+    // Fixed body size for reliable overlap detection (texture sizes vary)
+    (this.body as Phaser.Physics.Arcade.Body).setSize(14, 14);
+    (this.body as Phaser.Physics.Arcade.Body).setOffset(1, 1);
     this.setActive(false);
     this.setVisible(false);
   }
@@ -34,7 +51,7 @@ export class Pickup extends Phaser.Physics.Arcade.Sprite {
   public spawn(x: number, y: number, type: PickupType): void {
     this.pickupType = type;
     this.value = PICKUP_VALUES[type];
-    this.setTexture(type);
+    this.setTexture(PICKUP_TEXTURE_MAP[type]);
     this.setPosition(x, y);
     this.setActive(true);
     this.setVisible(true);

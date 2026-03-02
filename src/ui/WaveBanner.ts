@@ -10,12 +10,12 @@ export class WaveBanner {
     this.scene = scene;
     this.text = scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, '', {
       fontSize: '32px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+      fontFamily: 'NinjaFont, "Trebuchet MS", Verdana, sans-serif',
       color: '#FFFFFF',
       stroke: '#000000',
       strokeThickness: 6,
       fontStyle: 'bold',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0).setResolution(16);
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(300).setAlpha(0).setResolution(2);
 
     EventBus.on(EVENTS.WAVE_STARTED, this.onWaveStarted, this);
     EventBus.on(EVENTS.BOSS_SPAWNED, this.onBossSpawned, this);

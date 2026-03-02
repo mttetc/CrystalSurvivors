@@ -7,7 +7,9 @@ import { EventBus } from '../systems/EventBus';
 
 export class EarthRod extends BaseWeapon {
   private damageTimer = 0;
-  private auraGraphics: Phaser.GameObjects.Graphics | null = null;
+  private auraSprite: Phaser.GameObjects.Sprite | null = null;
+  private auraAnimTimer = 0;
+  private auraFrame = 0;
 
   constructor(scene: Phaser.Scene, player: Player) {
     super(scene, player, WeaponId.EARTH_ROD);
@@ -19,26 +21,33 @@ export class EarthRod extends BaseWeapon {
     const tickInterval = stats.cooldown ?? 500;
     const aoeScale = this.getAoeScale();
 
-    // Draw persistent aura visual
-    if (!this.auraGraphics) {
-      this.auraGraphics = this.scene.add.graphics();
-      this.auraGraphics.setDepth(DEPTHS.EFFECTS - 1);
+    // Persistent aura using magic circle sprite
+    if (!this.auraSprite) {
+      this.auraSprite = this.scene.add.sprite(this.player.x, this.player.y, 'fx_circle_orange', 0);
+      this.auraSprite.setDepth(DEPTHS.EFFECTS - 1);
+      this.auraSprite.setAlpha(0.4);
+      this.auraSprite.setTint(0x8B6513);
     }
 
-    // Update aura position - brown-green earth aura
-    this.auraGraphics.clear();
+    // Update aura position and animate
     const visualRadius = radius * aoeScale;
-    this.auraGraphics.lineStyle(1 * SPRITE_SCALE, 0x8B4513, 0.3);
-    this.auraGraphics.strokeCircle(this.player.x, this.player.y, visualRadius);
-    this.auraGraphics.fillStyle(0x654321, 0.1);
-    this.auraGraphics.fillCircle(this.player.x, this.player.y, visualRadius);
+    const auraScale = (visualRadius / 16) * SPRITE_SCALE;
+    this.auraSprite.setPosition(this.player.x, this.player.y);
+    this.auraSprite.setScale(auraScale);
+
+    this.auraAnimTimer += delta;
+    if (this.auraAnimTimer >= 200) {
+      this.auraAnimTimer = 0;
+      this.auraFrame = (this.auraFrame + 1) % 4;
+      this.auraSprite.setFrame(this.auraFrame);
+    }
 
     // Accumulate damage timer
     this.damageTimer += delta;
     if (this.damageTimer < tickInterval) return;
     this.damageTimer -= tickInterval;
 
-    // Gentle repulsion: push enemies outward every frame (garlic-like)
+    // Gentle repulsion
     const pushForce = 30 * SPRITE_SCALE;
     const children = enemies.getChildren() as Enemy[];
     for (const enemy of children) {
@@ -47,13 +56,13 @@ export class EarthRod extends BaseWeapon {
       const dy = enemy.y - this.player.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > 0 && dist <= radius) {
-        const strength = pushForce * (1 - dist / radius); // stronger near center
+        const strength = pushForce * (1 - dist / radius);
         enemy.x += (dx / dist) * strength * (delta / 1000);
         enemy.y += (dy / dist) * strength * (delta / 1000);
       }
     }
 
-    // Deal damage to all enemies in radius
+    // Deal damage
     const damage = this.getDamage();
     const enchant = this.getEnchant();
 
@@ -66,29 +75,40 @@ export class EarthRod extends BaseWeapon {
       }
     }
 
-    // Pulse visual on damage tick - earthy brown pulse
-    const pulse = this.scene.add.graphics();
+    // Pulse visual — rock spike FX on damage tick
+    const pulse = this.scene.add.sprite(this.player.x, this.player.y, 'fx_rock', 0);
     pulse.setDepth(DEPTHS.EFFECTS);
-    pulse.lineStyle(2 * SPRITE_SCALE, 0x8B4513, 0.5);
-    pulse.strokeCircle(this.player.x, this.player.y, radius * aoeScale);
+    pulse.setScale(aoeScale * 2);
+    pulse.setTint(0x8B4513);
+    pulse.setAlpha(0.6);
+
+    let pFrame = 0;
+    const pulseAnim = this.scene.time.addEvent({
+      delay: 50,
+      repeat: 5,
+      callback: () => {
+        pFrame++;
+        if (pulse.active) pulse.setFrame(Math.min(pFrame, 13));
+      },
+    });
 
     this.scene.tweens.add({
       targets: pulse,
       alpha: 0,
-      duration: 300,
+      duration: 400,
       ease: 'Quad.easeOut',
-      onComplete: () => pulse.destroy(),
+      onComplete: () => { pulseAnim.destroy(); pulse.destroy(); },
     });
   }
 
   protected fire(): void {
-    // EarthRod doesn't use the fire() cooldown pattern - it's always active via update()
+    // EarthRod doesn't use the fire() cooldown pattern
   }
 
   public destroy(): void {
-    if (this.auraGraphics) {
-      this.auraGraphics.destroy();
-      this.auraGraphics = null;
+    if (this.auraSprite) {
+      this.auraSprite.destroy();
+      this.auraSprite = null;
     }
   }
 }

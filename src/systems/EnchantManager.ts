@@ -4,6 +4,7 @@ import { ENCHANT_DEFS } from '../data/enchants';
 import { Enemy } from '../entities/Enemy';
 import { Player } from '../entities/Player';
 import { EventBus } from './EventBus';
+import { spawnLine, spawnCircleZone, spawnFlash, playImpactFX } from '../weapons/fxHelper';
 
 export class EnchantManager {
   private scene: Phaser.Scene;
@@ -86,20 +87,8 @@ export class EnchantManager {
             nearest.applyStun(400 + enchantTier * 200);
           }
 
-          // Visual arc
-          const gfx = this.scene.add.graphics();
-          gfx.setDepth(DEPTHS.EFFECTS);
-          gfx.lineStyle(1, 0xFFDD44, 0.6);
-          gfx.beginPath();
-          gfx.moveTo(current.x, current.y);
-          gfx.lineTo(nearest.x, nearest.y);
-          gfx.stroke();
-          this.scene.tweens.add({
-            targets: gfx,
-            alpha: 0,
-            duration: 150,
-            onComplete: () => gfx.destroy(),
-          });
+          // Visual arc — lightning line between enemies
+          spawnLine(this.scene, current.x, current.y, nearest.x, nearest.y, 0xFFDD44, 150, 0.6);
 
           current = nearest;
         }
@@ -111,17 +100,8 @@ export class EnchantManager {
         const explodeDmg = Math.floor(damage * tier.explosionDamagePercent);
         const radius = tier.explosionRadius;
 
-        // Visual
-        const circle = this.scene.add.circle(enemy.x, enemy.y, radius, 0xFF8800, 0.3);
-        circle.setDepth(DEPTHS.EFFECTS);
-        this.scene.tweens.add({
-          targets: circle,
-          alpha: 0,
-          scaleX: 1.5,
-          scaleY: 1.5,
-          duration: 300,
-          onComplete: () => circle.destroy(),
-        });
+        // Visual — explosion burst
+        playImpactFX(this.scene, enemy.x, enemy.y, 0, 'fx_explosion', radius / 20, 0xFF8800, 300);
 
         // Damage
         const children = this.enemyGroup.getChildren() as Enemy[];
@@ -146,8 +126,12 @@ export class EnchantManager {
         const cloudDmg = tier.cloudDamage;
         const cloudDur = tier.cloudDuration;
 
-        const cloud = this.scene.add.circle(cloudX, cloudY, cloudRadius, 0x44AA44, 0.25);
+        const tex = this.scene.textures.exists('fx_circle_orange') ? 'fx_circle_orange' : 'fx_circle_spark';
+        const cloud = this.scene.add.sprite(cloudX, cloudY, tex, 0);
         cloud.setDepth(DEPTHS.EFFECTS - 1);
+        cloud.setScale((cloudRadius * 2) / 32);
+        cloud.setTint(0x44AA44);
+        cloud.setAlpha(0.25);
 
         let elapsed = 0;
         const tickInterval = 500;

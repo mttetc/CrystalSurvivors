@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WeaponId, EnchantId, SPRITE_SCALE } from '../constants';
+import { WeaponId, EnchantId, SPRITE_SCALE, DEPTHS, Direction } from '../constants';
 import { WeaponLevelStats } from '../types';
 import { WEAPON_DEFS } from '../data/weapons';
 import { ENCHANT_DEFS } from '../data/enchants';
@@ -53,6 +53,11 @@ export abstract class BaseWeapon {
     return this.player.playerState.modifiers.meleeScaleMultiplier;
   }
 
+  /** Get combined melee FX scale (meleeScale + rangeMultiplier for visuals that should grow with range) */
+  public getMeleeFXScale(): number {
+    return this.player.playerState.modifiers.meleeScaleMultiplier * this.player.playerState.modifiers.rangeMultiplier;
+  }
+
   /** Get AoE scale multiplier for visual scaling */
   public getAoeScale(): number {
     return this.player.playerState.modifiers.aoeScaleMultiplier;
@@ -102,6 +107,34 @@ export abstract class BaseWeapon {
   }
 
   protected abstract fire(time: number, enemies: Phaser.Physics.Arcade.Group): void;
+
+  /** Temporarily swap the player's texture to Attack.png at the correct direction */
+  protected showAttackSprite(angle: number): void {
+    const walkKey = this.player.texture.key;
+    const attackKey = `${walkKey}_attack`;
+    if (!this.scene.textures.exists(attackKey)) return;
+
+    // Map angle to direction column: col 0=DOWN, col 1=UP, col 2=LEFT, col 3=RIGHT
+    const DIR_TO_COL = [0, 2, 3, 1]; // DOWN→0, LEFT→2, RIGHT→3, UP→1
+    let dir: Direction;
+    const deg = ((angle * 180 / Math.PI) % 360 + 360) % 360;
+    if (deg >= 315 || deg < 45) dir = Direction.RIGHT;
+    else if (deg >= 45 && deg < 135) dir = Direction.DOWN;
+    else if (deg >= 135 && deg < 225) dir = Direction.LEFT;
+    else dir = Direction.UP;
+
+    const frame = DIR_TO_COL[dir]; // Attack.png: 4 cols × 1 row
+
+    // Swap the player's own texture to attack spritesheet
+    this.player.setTexture(attackKey, frame);
+
+    // Revert to walk texture after 200ms
+    this.scene.time.delayedCall(200, () => {
+      if (this.player.active && this.player.texture.key === attackKey) {
+        this.player.setTexture(walkKey);
+      }
+    });
+  }
 
   protected findNearestEnemy(enemies: Phaser.Physics.Arcade.Group, maxRange = 400 * SPRITE_SCALE): Enemy | null {
     let nearest: Enemy | null = null;

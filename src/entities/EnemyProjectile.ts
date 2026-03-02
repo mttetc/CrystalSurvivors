@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { DEPTHS } from '../constants';
+import { DEPTHS, SPRITE_SCALE } from '../constants';
 
 export class EnemyProjectile extends Phaser.Physics.Arcade.Sprite {
   public damage = 0;
@@ -7,15 +7,16 @@ export class EnemyProjectile extends Phaser.Physics.Arcade.Sprite {
   public maxLifetime = 3000;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'enemy_bullet');
+    super(scene, x, y, 'shuriken');
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setDepth(DEPTHS.PROJECTILES);
+    this.setScale(SPRITE_SCALE);
     this.setActive(false);
     this.setVisible(false);
   }
 
-  public fire(x: number, y: number, vx: number, vy: number, damage: number, texture = 'enemy_bullet'): void {
+  public fire(x: number, y: number, vx: number, vy: number, damage: number, texture = 'shuriken'): void {
     this.setTexture(texture);
     this.setPosition(x, y);
     this.setActive(true);

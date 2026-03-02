@@ -1,13 +1,13 @@
 import Phaser from 'phaser';
-import { DEPTHS, EnchantId, WeaponId } from '../constants';
+import { DEPTHS, EnchantId, WeaponId, SPRITE_SCALE } from '../constants';
 
 // Glow config per projectile texture key
 const PROJECTILE_GLOW_CONFIG: Record<string, { color: number; alpha: number; radiusMultiplier: number }> = {
-  fireball:  { color: 0xFF4400, alpha: 0.35, radiusMultiplier: 2.0 },
-  holy_orb:  { color: 0xFFDD44, alpha: 0.3,  radiusMultiplier: 2.0 },
-  ether_orb: { color: 0x9933FF, alpha: 0.3,  radiusMultiplier: 2.0 },
-  flask:     { color: 0x33FF44, alpha: 0.25, radiusMultiplier: 1.5 },
-  bullet:    { color: 0xFFDD00, alpha: 0.25, radiusMultiplier: 1.3 },
+  fireball:       { color: 0xFF4400, alpha: 0.35, radiusMultiplier: 2.0 },
+  energyball:     { color: 0xFFDD44, alpha: 0.3,  radiusMultiplier: 2.0 },
+  big_energyball: { color: 0x9933FF, alpha: 0.3,  radiusMultiplier: 2.0 },
+  item_bomb:      { color: 0x33FF44, alpha: 0.25, radiusMultiplier: 1.5 },
+  kunai:          { color: 0xFFDD00, alpha: 0.25, radiusMultiplier: 1.3 },
 };
 
 export class Projectile extends Phaser.Physics.Arcade.Sprite {
@@ -25,17 +25,17 @@ export class Projectile extends Phaser.Physics.Arcade.Sprite {
   public poisonOnHit = false;
   private hitEnemies: Set<number> = new Set();
 
-  // Persistent glow graphics that follows the projectile
-  private glowGfx: Phaser.GameObjects.Graphics | null = null;
-  private glowConfig: { color: number; alpha: number; radius: number } | null = null;
+  // Persistent glow sprite that follows the projectile
+  private glowSprite: Phaser.GameObjects.Sprite | null = null;
 
   public static enemyGroup: Phaser.Physics.Arcade.Group | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'bullet');
+    super(scene, x, y, 'kunai');
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setDepth(DEPTHS.PROJECTILES);
+    this.setScale(SPRITE_SCALE);
     this.setActive(false);
     this.setVisible(false);
   }
@@ -80,41 +80,34 @@ export class Projectile extends Phaser.Physics.Arcade.Sprite {
   }
 
   private setupGlow(texture: string): void {
-    // Destroy previous glow if any
     this.destroyGlow();
 
     const cfg = PROJECTILE_GLOW_CONFIG[texture];
     if (!cfg) return;
 
-    // Estimate projectile radius from display size (half of the larger dimension)
     const baseRadius = Math.max(this.displayWidth, this.displayHeight) * 0.5;
     const glowRadius = Math.max(baseRadius * cfg.radiusMultiplier, 6);
 
-    this.glowConfig = { color: cfg.color, alpha: cfg.alpha, radius: glowRadius };
-
-    this.glowGfx = this.scene.add.graphics();
-    this.glowGfx.setBlendMode(Phaser.BlendModes.ADD);
-    this.glowGfx.setDepth(DEPTHS.PROJECTILES - 1);
-    this.drawGlow();
+    const tex = this.scene.textures.exists('fx_circle_spark') ? 'fx_circle_spark' : 'fx_circle_orange';
+    this.glowSprite = this.scene.add.sprite(this.x, this.y, tex, 0);
+    this.glowSprite.setBlendMode(Phaser.BlendModes.ADD);
+    this.glowSprite.setDepth(DEPTHS.PROJECTILES - 1);
+    this.glowSprite.setScale((glowRadius * 2) / 32);
+    this.glowSprite.setTint(cfg.color);
+    this.glowSprite.setAlpha(cfg.alpha);
   }
 
-  private drawGlow(): void {
-    if (!this.glowGfx || !this.glowConfig) return;
-    this.glowGfx.clear();
-    // Outer soft glow
-    this.glowGfx.fillStyle(this.glowConfig.color, this.glowConfig.alpha * 0.4);
-    this.glowGfx.fillCircle(this.x, this.y, this.glowConfig.radius);
-    // Inner brighter core
-    this.glowGfx.fillStyle(this.glowConfig.color, this.glowConfig.alpha);
-    this.glowGfx.fillCircle(this.x, this.y, this.glowConfig.radius * 0.5);
+  private updateGlowPosition(): void {
+    if (this.glowSprite) {
+      this.glowSprite.setPosition(this.x, this.y);
+    }
   }
 
   private destroyGlow(): void {
-    if (this.glowGfx) {
-      this.glowGfx.destroy();
-      this.glowGfx = null;
+    if (this.glowSprite) {
+      this.glowSprite.destroy();
+      this.glowSprite = null;
     }
-    this.glowConfig = null;
   }
 
   update(_time: number, delta: number): void {
@@ -156,7 +149,7 @@ export class Projectile extends Phaser.Physics.Arcade.Sprite {
     }
 
     // Update glow position to follow projectile
-    this.drawGlow();
+    this.updateGlowPosition();
 
     // Off-world check
     if (this.x < -50 || this.x > 3050 || this.y < -50 || this.y > 3050) {

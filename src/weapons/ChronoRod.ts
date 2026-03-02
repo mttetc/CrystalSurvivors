@@ -17,12 +17,23 @@ export class ChronoRod extends BaseWeapon {
     const enchant = this.getEnchant();
     const aoeScale = this.getAoeScale();
 
-    // Visual: expanding time distortion ring
-    const ring = this.scene.add.sprite(this.player.x, this.player.y, 'nova_ring');
+    // Visual: expanding time distortion ring using magic circle sprite
+    const ring = this.scene.add.sprite(this.player.x, this.player.y, 'fx_circle_white', 0);
     ring.setDepth(DEPTHS.EFFECTS);
     ring.setAlpha(0.8);
     ring.setTint(0x9966FF);
     ring.setScale(0.5);
+
+    // Animate frames
+    let ringFrame = 0;
+    const ringAnim = this.scene.time.addEvent({
+      delay: 80,
+      repeat: 3,
+      callback: () => {
+        ringFrame++;
+        if (ring.active) ring.setFrame(Math.min(ringFrame, 3));
+      },
+    });
 
     this.scene.tweens.add({
       targets: ring,
@@ -31,21 +42,32 @@ export class ChronoRod extends BaseWeapon {
       alpha: 0,
       duration: 500,
       ease: 'Quad.easeOut',
-      onComplete: () => ring.destroy(),
+      onComplete: () => { ringAnim.destroy(); ring.destroy(); },
     });
 
-    // Inner glow ring
-    const glow = this.scene.add.graphics();
-    glow.setDepth(DEPTHS.EFFECTS);
-    glow.lineStyle(3 * SPRITE_SCALE, 0xCC99FF, 0.6);
-    glow.strokeCircle(this.player.x, this.player.y, radius * 0.3 * aoeScale);
+    // Inner spirit FX
+    const spirit = this.scene.add.sprite(this.player.x, this.player.y, 'fx_spirit_blue', 0);
+    spirit.setDepth(DEPTHS.EFFECTS);
+    spirit.setAlpha(0.6);
+    spirit.setTint(0xCC99FF);
+    spirit.setScale(aoeScale * 1.5);
+
+    let sFrame = 0;
+    const spiritAnim = this.scene.time.addEvent({
+      delay: 80,
+      repeat: 4,
+      callback: () => {
+        sFrame++;
+        if (spirit.active) spirit.setFrame(Math.min(sFrame, 4));
+      },
+    });
 
     this.scene.tweens.add({
-      targets: glow,
+      targets: spirit,
       alpha: 0,
       duration: 500,
       ease: 'Quad.easeOut',
-      onComplete: () => glow.destroy(),
+      onComplete: () => { spiritAnim.destroy(); spirit.destroy(); },
     });
 
     // Damage and slow enemies in range
@@ -56,21 +78,17 @@ export class ChronoRod extends BaseWeapon {
       if (dist <= radius) {
         enemy.takeDamage(damage);
 
-        // Apply slow effect: reduce velocity temporarily
-        const origSpeed = enemy.body?.velocity.length() ?? 0;
         const dx = enemy.x - this.player.x;
         const dy = enemy.y - this.player.y;
         const d = Math.sqrt(dx * dx + dy * dy) || 1;
 
-        // Light knockback
         enemy.setVelocity(
           (dx / d) * KNOCKBACK_VELOCITY * 0.5,
           (dy / d) * KNOCKBACK_VELOCITY * 0.5,
         );
 
-        // Slow: tint enemy purple and reduce speed for 1.5 seconds
+        // Slow: tint enemy purple for 1.5 seconds
         enemy.setTint(0x9966FF);
-        const slowMultiplier = 0.4;
         const enemyRef = enemy;
         this.scene.time.delayedCall(1500, () => {
           if (enemyRef.active) {

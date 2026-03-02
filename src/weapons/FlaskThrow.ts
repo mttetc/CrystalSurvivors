@@ -4,6 +4,7 @@ import { BaseWeapon } from './BaseWeapon';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { EventBus } from '../systems/EventBus';
+import { playImpactFX } from './fxHelper';
 
 export class FlaskThrow extends BaseWeapon {
   constructor(scene: Phaser.Scene, player: Player) {
@@ -54,12 +55,15 @@ export class FlaskThrow extends BaseWeapon {
       const arcHeight = Math.min(80 * SPRITE_SCALE, dist * 0.35);
 
       // --- Flask sprite (Image, not physics body) ---
-      const flask = this.scene.add.image(startX, startY, 'flask');
+      const flask = this.scene.add.image(startX, startY, 'item_bomb');
       flask.setDepth(DEPTHS.PROJECTILES);
 
-      // --- Shadow on the ground ---
-      const shadow = this.scene.add.ellipse(startX, startY, 8 * SPRITE_SCALE, 4 * SPRITE_SCALE, 0x000000, 0.35);
+      // --- Shadow on the ground (small dark sprite) ---
+      const shadow = this.scene.add.image(startX, startY, 'fx_smoke_circular', 0);
       shadow.setDepth(DEPTHS.GROUND + 1);
+      shadow.setScale(0.6);
+      shadow.setTint(0x000000);
+      shadow.setAlpha(0.35);
 
       // --- Shadow tween: moves linearly toward target on the ground ---
       this.scene.tweens.add({
@@ -121,20 +125,8 @@ export class FlaskThrow extends BaseWeapon {
     enemies: Phaser.Physics.Arcade.Group,
     weaponLevel: number,
   ): void {
-    // --- Green explosion ring: expand + fade ---
-    const ring = this.scene.add.circle(x, y, 4 * SPRITE_SCALE, 0x44FF44, 0.8);
-    ring.setDepth(DEPTHS.EFFECTS);
-    const visualRadius = aoeRadius;
-
-    this.scene.tweens.add({
-      targets: ring,
-      scaleX: visualRadius / (4 * SPRITE_SCALE),
-      scaleY: visualRadius / (4 * SPRITE_SCALE),
-      alpha: 0,
-      duration: 300,
-      ease: 'Quad.easeOut',
-      onComplete: () => ring.destroy(),
-    });
+    // --- Green explosion FX ---
+    playImpactFX(this.scene, x, y, 0, 'fx_explosion', 1.5, 0x44FF44, 400);
 
     // --- Damage enemies in radius ---
     const children = enemies.getChildren() as Enemy[];
@@ -173,8 +165,11 @@ export class FlaskThrow extends BaseWeapon {
     enemies: Phaser.Physics.Arcade.Group,
   ): void {
     const puddleRadius = aoeRadius * 0.7;
-    const puddle = this.scene.add.circle(x, y, puddleRadius, 0x22AA22, 0.45);
+    const puddle = this.scene.add.sprite(x, y, 'fx_circle_orange', 0);
     puddle.setDepth(DEPTHS.GROUND + 2);
+    puddle.setTint(0x22AA22);
+    puddle.setScale(puddleRadius / 16);
+    puddle.setAlpha(0.45);
 
     const puddleDuration = 3000; // 3 seconds
     const tickInterval = 500;    // damage tick every 500ms

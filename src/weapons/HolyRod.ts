@@ -43,7 +43,7 @@ export class HolyRod extends BaseWeapon {
         sp.x, sp.y,
         Math.cos(angle) * speed,
         Math.sin(angle) * speed,
-        'holy_orb',
+        'energyball',
         this.getDamage(),
         this.getEffectivePierce(),
         this.getEffectiveDamageRetention(),

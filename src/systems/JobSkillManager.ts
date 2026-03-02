@@ -4,6 +4,7 @@ import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { JOB_SKILL_DEFS, MASTERY_SKILL_DEFS } from '../data/jobs';
 import { EventBus } from './EventBus';
+import { spawnFX, spawnCircleZone, spawnFlash, spawnRing, spawnLine, spawnParticleBurst } from '../weapons/fxHelper';
 
 // ─── Skill category classification ──────────────────────────────────────────
 
@@ -71,11 +72,11 @@ export class JobSkillManager {
   // Cooldown accumulators per skill (ms elapsed since last trigger)
   private skillTimers: Map<string, number> = new Map();
 
-  // Persistent aura graphics (redrawn each frame)
-  private auraGraphics: Map<string, Phaser.GameObjects.Graphics> = new Map();
+  // Persistent aura sprites (repositioned each frame)
+  private auraGraphics: Map<string, Phaser.GameObjects.GameObject> = new Map();
 
   // Familiar state
-  private familiarGraphics: Map<string, Phaser.GameObjects.Graphics> = new Map();
+  private familiarGraphics: Map<string, Phaser.GameObjects.Sprite> = new Map();
   private familiarAngles: Map<string, number> = new Map();
   private familiarAttackTimers: Map<string, number> = new Map();
 
@@ -84,19 +85,19 @@ export class JobSkillManager {
   private isChargingJump = false;
   private jumpChargeTimer = 0;
   private jumpChargeDuration = 1000; // 1s charge before jump
-  private jumpChargeGfx: Phaser.GameObjects.Graphics | null = null;
+  private jumpChargeGfx: Phaser.GameObjects.Sprite | null = null;
   private jumpTimer = 0;
   private jumpDuration = 900; // ms in the air
   private jumpSkillId: string = '';
   private jumpParams: Record<string, number> = {};
   private jumpOriginX = 0;
   private jumpOriginY = 0;
-  private jumpShadowGfx: Phaser.GameObjects.Graphics | null = null;
+  private jumpShadowGfx: Phaser.GameObjects.Sprite | null = null;
 
   // Trail zones: { x, y, damage, remaining, tickTimer }
   private trailZones: Array<{
     x: number; y: number; damage: number; remaining: number;
-    tickTimer: number; graphics: Phaser.GameObjects.Graphics;
+    tickTimer: number; graphics: Phaser.GameObjects.Sprite;
   }> = [];
 
   // Lock cooldown: minimum free-movement gap between position-locking skills
@@ -109,14 +110,14 @@ export class JobSkillManager {
   private dragonDiveAimTimer = 0;
   private dragonDiveTargetX = 0;
   private dragonDiveTargetY = 0;
-  private dragonDiveAimGfx: Phaser.GameObjects.Graphics | null = null;
+  private dragonDiveAimGfx: Phaser.GameObjects.Sprite | null = null;
   private dragonDiveTimer = 0;
   private dragonDiveDuration = 700; // ms in the air
   private dragonDiveSkillId = '';
   private dragonDiveParams: Record<string, number> = {};
   private dragonDiveOriginX = 0;
   private dragonDiveOriginY = 0;
-  private dragonDiveShadowGfx: Phaser.GameObjects.Graphics | null = null;
+  private dragonDiveShadowGfx: Phaser.GameObjects.Sprite | null = null;
 
   // Rampage charge state
   private isCharging = false;
@@ -132,13 +133,13 @@ export class JobSkillManager {
   private bladeStormTimer = 0;
   private bladeStormSkillId = '';
   private bladeStormParams: Record<string, number> = {};
-  private bladeStormGfx: Phaser.GameObjects.Graphics | null = null;
+  private bladeStormGfx: Phaser.GameObjects.Sprite | null = null;
   private bladeStormHitTimer = 0;
 
   // Ground zone state (Doton - persistent zones)
   private groundZones: Array<{
     x: number; y: number; damage: number; slowPercent: number;
-    remaining: number; tickTimer: number; graphics: Phaser.GameObjects.Graphics;
+    remaining: number; tickTimer: number; graphics: Phaser.GameObjects.Sprite;
   }> = [];
 
   // Darkness internal cooldown to avoid spam
@@ -356,16 +357,21 @@ export class JobSkillManager {
   // ─── Helper: visual pulse effect ────────────────────────────────────────
 
   private drawPulse(x: number, y: number, radius: number, color: number, alpha = 0.6, duration = 300): void {
-    const gfx = this.scene.add.graphics();
-    gfx.setDepth(DEPTHS.EFFECTS);
-    gfx.lineStyle(2, color, alpha);
-    gfx.strokeCircle(x, y, radius);
+    const textureKey = this.scene.textures.exists('fx_circle_orange') ? 'fx_circle_orange' : null;
+    if (!textureKey) return;
+    const sprite = this.scene.add.sprite(x, y, textureKey, 0);
+    sprite.setDepth(DEPTHS.EFFECTS);
+    sprite.setTint(color);
+    sprite.setAlpha(alpha);
+    sprite.setScale(radius / 16);
     this.scene.tweens.add({
-      targets: gfx,
+      targets: sprite,
       alpha: 0,
+      scaleX: (radius * 1.3) / 16,
+      scaleY: (radius * 1.3) / 16,
       duration,
       ease: 'Quad.easeOut',
-      onComplete: () => gfx.destroy(),
+      onComplete: () => sprite.destroy(),
     });
   }
 
@@ -375,36 +381,21 @@ export class JobSkillManager {
     x: number, y: number, startRadius: number, endRadius: number,
     color: number, duration = 400,
   ): void {
-    const gfx = this.scene.add.graphics();
-    gfx.setDepth(DEPTHS.EFFECTS);
-    const progress = { t: 0 };
+    const textureKey = this.scene.textures.exists('fx_circle_spark') ? 'fx_circle_spark' : 'fx_circle_orange';
+    if (!this.scene.textures.exists(textureKey)) return;
+    const sprite = this.scene.add.sprite(x, y, textureKey, 0);
+    sprite.setDepth(DEPTHS.EFFECTS);
+    sprite.setTint(color);
+    sprite.setAlpha(0.8);
+    sprite.setScale(startRadius / 16);
     this.scene.tweens.add({
-      targets: progress,
-      t: 1,
+      targets: sprite,
+      alpha: 0,
+      scaleX: endRadius / 16,
+      scaleY: endRadius / 16,
       duration,
       ease: 'Quad.easeOut',
-      onUpdate: () => {
-        gfx.clear();
-        const r = Phaser.Math.Linear(startRadius, endRadius, progress.t);
-        const a = 1 - progress.t;
-
-        // Outer ring (dim, wider, slightly ahead)
-        const outerR = r * 1.15;
-        gfx.lineStyle(1, color, a * 0.3);
-        gfx.strokeCircle(x, y, outerR);
-
-        // Inner ring (bright, thicker)
-        gfx.lineStyle(2, color, a * 0.9);
-        gfx.strokeCircle(x, y, r);
-
-        // Core fill (very faint, fades fast)
-        if (progress.t < 0.4) {
-          const fillAlpha = (0.4 - progress.t) * 0.3;
-          gfx.fillStyle(color, fillAlpha);
-          gfx.fillCircle(x, y, r * 0.6);
-        }
-      },
-      onComplete: () => gfx.destroy(),
+      onComplete: () => sprite.destroy(),
     });
   }
 
@@ -413,43 +404,28 @@ export class JobSkillManager {
   private drawImpactParticles(
     x: number, y: number, color: number, count = 6, speed = 50, duration = 300,
   ): void {
-    const gfx = this.scene.add.graphics();
-    gfx.setDepth(DEPTHS.EFFECTS + 1);
-    const particles: { px: number; py: number; vx: number; vy: number }[] = [];
-    for (let i = 0; i < count; i++) {
+    const textureKey = this.scene.textures.exists('fx_spark') ? 'fx_spark' : null;
+    if (!textureKey) return;
+    for (let i = 0; i < Math.min(count, 8); i++) {
       const angle = (Math.PI * 2 / count) * i + (Math.random() - 0.5) * 0.5;
       const spd = speed * (0.6 + Math.random() * 0.8);
-      particles.push({
-        px: x, py: y,
-        vx: Math.cos(angle) * spd,
-        vy: Math.sin(angle) * spd,
+      const spark = this.scene.add.sprite(x, y, textureKey, Math.floor(Math.random() * 4));
+      spark.setDepth(DEPTHS.EFFECTS + 1);
+      spark.setTint(color);
+      spark.setAlpha(0.8);
+      spark.setScale(0.5);
+      this.scene.tweens.add({
+        targets: spark,
+        x: x + Math.cos(angle) * spd * (duration / 1000),
+        y: y + Math.sin(angle) * spd * (duration / 1000),
+        alpha: 0,
+        scaleX: 0.1,
+        scaleY: 0.1,
+        duration,
+        ease: 'Quad.easeOut',
+        onComplete: () => spark.destroy(),
       });
     }
-    const progress = { t: 0 };
-    this.scene.tweens.add({
-      targets: progress,
-      t: 1,
-      duration,
-      ease: 'Quad.easeOut',
-      onUpdate: () => {
-        gfx.clear();
-        const dt = 0.016;
-        for (const p of particles) {
-          p.px += p.vx * dt;
-          p.py += p.vy * dt;
-          const alpha = (1 - progress.t) * 0.9;
-          const size = Math.max(1, 2 * (1 - progress.t));
-          gfx.fillStyle(color, alpha);
-          gfx.fillRect(Math.floor(p.px), Math.floor(p.py), size, size);
-          // Bright white center for first half
-          if (progress.t < 0.5) {
-            gfx.fillStyle(0xFFFFFF, alpha * 0.6);
-            gfx.fillRect(Math.floor(p.px), Math.floor(p.py), 1, 1);
-          }
-        }
-      },
-      onComplete: () => gfx.destroy(),
-    });
   }
 
   // ─── Helper: additive glow flash (creates bloom-like effect) ────────────
@@ -457,21 +433,20 @@ export class JobSkillManager {
   private drawAdditiveGlow(
     x: number, y: number, radius: number, color: number, alpha = 0.35, duration = 400,
   ): void {
-    const gfx = this.scene.add.graphics();
-    gfx.setBlendMode(Phaser.BlendModes.ADD);
-    gfx.setDepth(DEPTHS.EFFECTS - 1);
-    // Outer soft glow
-    gfx.fillStyle(color, alpha * 0.4);
-    gfx.fillCircle(x, y, radius);
-    // Inner bright core
-    gfx.fillStyle(color, alpha);
-    gfx.fillCircle(x, y, radius * 0.5);
+    const textureKey = this.scene.textures.exists('fx_circle_spark') ? 'fx_circle_spark' : 'fx_circle_orange';
+    if (!this.scene.textures.exists(textureKey)) return;
+    const sprite = this.scene.add.sprite(x, y, textureKey, 0);
+    sprite.setBlendMode(Phaser.BlendModes.ADD);
+    sprite.setDepth(DEPTHS.EFFECTS - 1);
+    sprite.setTint(color);
+    sprite.setAlpha(alpha);
+    sprite.setScale(radius / 16);
     this.scene.tweens.add({
-      targets: gfx,
+      targets: sprite,
       alpha: 0,
       duration,
       ease: 'Quad.easeOut',
-      onComplete: () => gfx.destroy(),
+      onComplete: () => sprite.destroy(),
     });
   }
 
@@ -489,14 +464,14 @@ export class JobSkillManager {
     const color = skillId === JobSkillId.CONSECRATE ? 0xFFD700 : 0xDAA520;
     const fillColor = skillId === JobSkillId.CONSECRATE ? 0xFFDD44 : 0xCC9922;
 
-    // Draw persistent aura around player with pulsing & segmented circle
-    let gfx = this.auraGraphics.get(skillId);
-    if (!gfx) {
-      gfx = this.scene.add.graphics();
-      gfx.setDepth(DEPTHS.EFFECTS - 1);
-      this.auraGraphics.set(skillId, gfx);
+    // Draw persistent aura around player using sprites
+    let auraSprite = this.auraGraphics.get(skillId) as Phaser.GameObjects.Sprite | undefined;
+    if (!auraSprite) {
+      auraSprite = this.scene.add.sprite(this.player.x, this.player.y, 'fx_circle_orange', 0);
+      auraSprite.setDepth(DEPTHS.EFFECTS - 1);
+      auraSprite.setTint(fillColor);
+      this.auraGraphics.set(skillId, auraSprite);
     }
-    gfx.clear();
 
     // Subtle pulsing: radius oscillates based on time
     const pulsePhase = (Date.now() % 2000) / 2000; // 0..1 over 2 seconds
@@ -505,59 +480,28 @@ export class JobSkillManager {
 
     // Inner fill with slight pulse in alpha
     const fillAlpha = 0.06 + Math.sin(pulsePhase * Math.PI * 2) * 0.03;
-    gfx.fillStyle(fillColor, fillAlpha);
-    gfx.fillCircle(this.player.x, this.player.y, displayRadius);
+    auraSprite.setPosition(this.player.x, this.player.y);
+    auraSprite.setScale((displayRadius * 2) / 32);
+    auraSprite.setAlpha(fillAlpha);
 
-    // Segmented/dashed outer circle for a magical look
-    const segments = 16;
-    const gapRatio = 0.3; // 30% of each segment is a gap
-    const segmentAngle = (Math.PI * 2) / segments;
-    const arcAngle = segmentAngle * (1 - gapRatio);
-    // Slowly rotate the segments over time
+    // Slowly rotate the sprite over time
     const rotationOffset = (Date.now() % 6000) / 6000 * Math.PI * 2;
-
-    gfx.lineStyle(1.5, color, 0.4);
-    for (let i = 0; i < segments; i++) {
-      const startAngle = rotationOffset + i * segmentAngle;
-      gfx.beginPath();
-      gfx.arc(this.player.x, this.player.y, displayRadius, startAngle, startAngle + arcAngle);
-      gfx.strokePath();
-    }
-
-    // Inner ring (dimmer, rotates opposite direction)
-    const innerRadius = displayRadius * 0.7;
-    const innerRotation = -rotationOffset * 0.6;
-    gfx.lineStyle(1, color, 0.2);
-    for (let i = 0; i < 12; i++) {
-      const startAngle = innerRotation + i * (Math.PI * 2 / 12);
-      const innerArc = (Math.PI * 2 / 12) * 0.6;
-      gfx.beginPath();
-      gfx.arc(this.player.x, this.player.y, innerRadius, startAngle, startAngle + innerArc);
-      gfx.strokePath();
-    }
-
-    // Small rune-like dots at cardinal points
-    const dotCount = 8;
-    gfx.fillStyle(color, 0.35);
-    for (let i = 0; i < dotCount; i++) {
-      const dotAngle = rotationOffset * 0.5 + (Math.PI * 2 / dotCount) * i;
-      const dx = this.player.x + Math.cos(dotAngle) * displayRadius;
-      const dy = this.player.y + Math.sin(dotAngle) * displayRadius;
-      gfx.fillCircle(dx, dy, 1.5);
-    }
+    auraSprite.setRotation(rotationOffset);
 
     // Additive glow layer inside the aura for a subtle bloom effect
-    let auraGlowGfx = this.auraGraphics.get(skillId + '_glow');
-    if (!auraGlowGfx) {
-      auraGlowGfx = this.scene.add.graphics();
-      auraGlowGfx.setBlendMode(Phaser.BlendModes.ADD);
-      auraGlowGfx.setDepth(DEPTHS.EFFECTS - 2);
-      this.auraGraphics.set(skillId + '_glow', auraGlowGfx);
+    let auraGlowSprite = this.auraGraphics.get(skillId + '_glow') as Phaser.GameObjects.Sprite | undefined;
+    if (!auraGlowSprite) {
+      auraGlowSprite = this.scene.add.sprite(this.player.x, this.player.y, 'fx_circle_spark', 0);
+      auraGlowSprite.setBlendMode(Phaser.BlendModes.ADD);
+      auraGlowSprite.setDepth(DEPTHS.EFFECTS - 2);
+      auraGlowSprite.setTint(fillColor);
+      this.auraGraphics.set(skillId + '_glow', auraGlowSprite);
     }
-    auraGlowGfx.clear();
     const glowAlpha = 0.08 + Math.sin(pulsePhase * Math.PI * 2) * 0.04;
-    auraGlowGfx.fillStyle(fillColor, glowAlpha);
-    auraGlowGfx.fillCircle(this.player.x, this.player.y, displayRadius * 0.85);
+    auraGlowSprite.setPosition(this.player.x, this.player.y);
+    auraGlowSprite.setScale((displayRadius * 0.85 * 2) / 32);
+    auraGlowSprite.setAlpha(glowAlpha);
+    auraGlowSprite.setRotation(-rotationOffset * 0.6);
 
     // Accumulate timer
     const elapsed = this.addTimer(skillId, delta);
@@ -656,7 +600,7 @@ export class JobSkillManager {
         this.drawExpandingRing(cx, cy, 5, radius * 0.5, 0xAA7744, 250);
         this.drawImpactParticles(cx, cy, 0xAA6633, 8, 50, 300);
         // Camera micro-shake for ground impact feel
-        this.scene.cameras.main.shake(100, 0.004);
+        // screen shake removed
         break;
 
       case JobSkillId.RAMUH:
@@ -666,7 +610,7 @@ export class JobSkillManager {
         this.drawPulse(cx, cy, radius * 0.6, 0xFFFFFF, 1.0, 150);
         this.drawImpactParticles(cx, cy, 0xFFFF88, 10, 80, 300);
         this.drawAdditiveGlow(cx, cy, radius * 0.5, 0xFFFFFF, 0.6, 200);
-        this.scene.cameras.main.shake(100, 0.005);
+        // screen shake removed
         break;
 
       case JobSkillId.TITAN:
@@ -675,7 +619,7 @@ export class JobSkillManager {
         this.drawExpandingRing(cx, cy, radius * 0.2, radius, 0x8B4513, 350);
         this.drawExpandingRing(cx, cy, 5, radius * 0.6, 0xBB9944, 300);
         this.drawImpactParticles(cx, cy, 0xAA7744, 12, 60, 350);
-        this.scene.cameras.main.shake(150, 0.006);
+        // screen shake removed
         break;
 
       case JobSkillId.LEVIATHAN:
@@ -720,7 +664,7 @@ export class JobSkillManager {
           });
         }
         this.drawExpandingRing(cx, cy, 5, radius, 0xFF1144, 600);
-        this.scene.cameras.main.shake(300, 0.008);
+        // screen shake removed
         break;
       }
 
@@ -733,7 +677,7 @@ export class JobSkillManager {
         this.drawImpactParticles(cx, cy, 0xFFFFAA, 16, 120, 500);
         this.drawAdditiveGlow(cx, cy, radius, 0xFFFFFF, 0.4, 600);
         this.drawAdditiveGlow(cx, cy, radius * 0.5, 0xFFDD88, 0.5, 400);
-        this.scene.cameras.main.shake(250, 0.01);
+        // screen shake removed
         break;
     }
 
@@ -831,51 +775,13 @@ export class JobSkillManager {
       particleColor = 0xFFEE88;
     }
 
-    // Visual: beam expanding then fading
-    const beamGfx = this.scene.add.graphics();
-    beamGfx.setDepth(DEPTHS.EFFECTS + 2);
-
-    // Draw beam (wide rectangle rotated)
-    const drawBeam = (alpha: number, width: number) => {
-      beamGfx.clear();
-      // Edge glow
-      beamGfx.lineStyle(width + 8, edgeColor, alpha * 0.4);
-      beamGfx.lineBetween(px, py, endX, endY);
-      // Core beam
-      beamGfx.lineStyle(width, coreColor, alpha);
-      beamGfx.lineBetween(px, py, endX, endY);
-      // Inner bright core
-      beamGfx.lineStyle(Math.max(2, width * 0.3), 0xFFFFFF, alpha);
-      beamGfx.lineBetween(px, py, endX, endY);
-    };
-
-    // Expand phase (100ms)
-    const expandDuration = 100;
-    const lingerDuration = 300;
-    const fadeDuration = 300;
-
-    this.scene.tweens.addCounter({
-      from: 0,
-      to: 1,
-      duration: expandDuration,
-      onUpdate: (tween) => {
-        const t = tween.getValue() ?? 0;
-        drawBeam(0.9, beamWidth * t);
-      },
-      onComplete: () => {
-        // Linger phase
-        this.scene.tweens.addCounter({
-          from: 1,
-          to: 0,
-          duration: fadeDuration,
-          delay: lingerDuration,
-          onUpdate: (tween) => {
-            drawBeam(tween.getValue() ?? 0, beamWidth);
-          },
-          onComplete: () => beamGfx.destroy(),
-        });
-      },
-    });
+    // Visual: beam using sprite-based lines (edge glow, core, inner core)
+    // Edge glow line
+    spawnLine(this.scene, px, py, endX, endY, edgeColor, 700, 0.4);
+    // Core beam line
+    spawnLine(this.scene, px, py, endX, endY, coreColor, 700, 0.9);
+    // Inner bright core line
+    spawnLine(this.scene, px, py, endX, endY, 0xFFFFFF, 500, 0.8);
 
     // Impact particles along beam
     for (let d = 30; d < beamLength; d += 50) {
@@ -885,14 +791,14 @@ export class JobSkillManager {
     }
 
     // Camera shake
-    this.scene.cameras.main.shake(200, 0.008);
+    // screen shake removed
 
     // Additive glow at origin
     this.drawAdditiveGlow(px, py, 40, coreColor, 0.5, 300);
 
-    // Dragon silhouette for Bahamut
-    if (skillId === JobSkillId.BAHAMUT && this.scene.textures.exists('bahamut_dragon')) {
-      const dragon = this.scene.add.image(px, py, 'bahamut_dragon');
+    // Dragon silhouette for Bahamut (uses boss sprite)
+    if (skillId === JobSkillId.BAHAMUT && this.scene.textures.exists('fx_spirit')) {
+      const dragon = this.scene.add.sprite(px, py, 'fx_spirit', 0);
       dragon.setDepth(DEPTHS.EFFECTS + 3);
       dragon.setScale(2);
       dragon.setTint(0x4488FF);
@@ -946,9 +852,10 @@ export class JobSkillManager {
     // Player slows during charge (can still move a bit)
     this.player.playerState.modifiers.speedMultiplier *= 0.55;
 
-    // Create charge visual
+    // Create charge visual sprite
     if (!this.jumpChargeGfx) {
-      this.jumpChargeGfx = this.scene.add.graphics();
+      this.jumpChargeGfx = this.scene.add.sprite(this.player.x, this.player.y, 'fx_circle_spark', 0);
+      this.jumpChargeGfx.setTint(0x4169E1);
     }
     this.jumpChargeGfx.setDepth(DEPTHS.EFFECTS);
     this.jumpChargeGfx.setAlpha(1);
@@ -962,34 +869,31 @@ export class JobSkillManager {
     this.jumpOriginX = this.player.x;
     this.jumpOriginY = this.player.y;
 
-    // Draw charge-up rings converging on player
+    // Draw charge-up ring converging on player using sprite
     if (this.jumpChargeGfx) {
-      this.jumpChargeGfx.clear();
       const px = this.player.x;
       const py = this.player.y;
 
-      // Converging ring
+      // Converging ring - scale shrinks as progress increases
       const ringRadius = (1 - progress) * 40 * SPRITE_SCALE + 6 * SPRITE_SCALE;
-      this.jumpChargeGfx.lineStyle(2, 0x4169E1, 0.5 + progress * 0.5);
-      this.jumpChargeGfx.strokeCircle(px, py, ringRadius);
+      this.jumpChargeGfx.setPosition(px, py);
+      this.jumpChargeGfx.setScale((ringRadius * 2) / 32);
+      this.jumpChargeGfx.setAlpha(0.5 + progress * 0.5);
 
-      // Inner glow growing
-      const innerRadius = progress * 8 * SPRITE_SCALE;
-      this.jumpChargeGfx.fillStyle(0x6699FF, progress * 0.4);
-      this.jumpChargeGfx.fillCircle(px, py, innerRadius);
-
-      // Dust particles rising from ground
-      for (let i = 0; i < 4; i++) {
-        const angle = (Math.PI * 2 / 4) * i + this.jumpChargeTimer * 0.005;
+      // Spawn occasional dust particles rising from ground
+      if (Math.random() < 0.15) {
+        const angle = Math.random() * Math.PI * 2;
         const dist = ringRadius * 0.8;
         const px2 = px + Math.cos(angle) * dist;
-        const py2 = py + Math.sin(angle) * dist - progress * 10 * SPRITE_SCALE;
-        this.jumpChargeGfx.fillStyle(0x8899AA, 0.5 * (1 - progress * 0.5));
-        this.jumpChargeGfx.fillRect(px2, py2, 2, 2);
+        const py2 = py + Math.sin(angle) * dist;
+        spawnFX(this.scene, px2, py2, 'fx_smoke_circular', {
+          scale: 0.5, tint: 0x8899AA, alpha: 0.5 * (1 - progress * 0.5),
+          duration: 200, depth: DEPTHS.EFFECTS,
+        });
       }
 
       // Player squishes down (crouching to jump)
-      this.player.setScale(1 + progress * 0.1, 1 - progress * 0.2);
+      this.player.setScale(SPRITE_SCALE * (1 + progress * 0.1), SPRITE_SCALE * (1 - progress * 0.2));
     }
 
     // Charge complete -> launch jump
@@ -1001,11 +905,11 @@ export class JobSkillManager {
 
       // Clean up charge gfx
       if (this.jumpChargeGfx) {
-        this.jumpChargeGfx.clear();
+        this.jumpChargeGfx.setAlpha(0);
       }
 
       // Reset scale
-      this.player.setScale(1);
+      this.player.setScale(SPRITE_SCALE);
 
       // Now start the actual jump
       this.isJumping = true;
@@ -1017,7 +921,8 @@ export class JobSkillManager {
       }
 
       if (!this.jumpShadowGfx) {
-        this.jumpShadowGfx = this.scene.add.graphics();
+        this.jumpShadowGfx = this.scene.add.sprite(this.player.x, this.player.y, 'fx_circle_orange', 0);
+        this.jumpShadowGfx.setTint(0x000000);
       }
       this.jumpShadowGfx.setDepth(DEPTHS.GROUND + 1);
       this.jumpShadowGfx.setAlpha(1);
@@ -1055,8 +960,8 @@ export class JobSkillManager {
     this.player.y = this.jumpOriginY + yOffset;
     this.player.x = this.jumpOriginX;
 
-    // Scale slightly at peak for perspective
-    const scale = 1 + heightFactor * 0.4;
+    // Scale slightly at peak for perspective (preserve SPRITE_SCALE)
+    const scale = SPRITE_SCALE * (1 + heightFactor * 0.4);
     this.player.setScale(scale);
 
     // Spinning dive animation during descent
@@ -1067,16 +972,16 @@ export class JobSkillManager {
       this.player.setAngle(0);
     }
 
-    // Draw shadow on the ground (shrinks as player goes higher)
+    // Draw shadow on the ground (shrinks as player goes higher) using sprite
     if (this.jumpShadowGfx) {
-      this.jumpShadowGfx.clear();
       const shadowScale = 1 - heightFactor * 0.5;
       const shadowAlpha = 0.4 * (1 - heightFactor * 0.3);
-      this.jumpShadowGfx.fillStyle(0x000000, shadowAlpha);
-      this.jumpShadowGfx.fillEllipse(
-        this.jumpOriginX, this.jumpOriginY + 2 * SPRITE_SCALE,
-        12 * SPRITE_SCALE * shadowScale, 4 * SPRITE_SCALE * shadowScale,
+      this.jumpShadowGfx.setPosition(this.jumpOriginX, this.jumpOriginY + 2 * SPRITE_SCALE);
+      this.jumpShadowGfx.setScale(
+        (12 * SPRITE_SCALE * shadowScale) / 16,
+        (4 * SPRITE_SCALE * shadowScale) / 16,
       );
+      this.jumpShadowGfx.setAlpha(shadowAlpha);
     }
 
     // Landing
@@ -1085,7 +990,7 @@ export class JobSkillManager {
       this.jumpTimer = 0;
 
       // Restore player
-      this.player.setScale(1);
+      this.player.setScale(SPRITE_SCALE);
       this.player.setAngle(0);
       this.player.x = this.jumpOriginX;
       this.player.y = this.jumpOriginY;
@@ -1098,7 +1003,7 @@ export class JobSkillManager {
 
       // Clean up shadow
       if (this.jumpShadowGfx) {
-        this.jumpShadowGfx.clear();
+        this.jumpShadowGfx.setAlpha(0);
       }
 
       // AoE damage on landing
@@ -1118,41 +1023,11 @@ export class JobSkillManager {
       this.drawExpandingRing(lx, ly, 3, radius * 0.6, 0x6699FF, 300);
       this.drawPulse(lx, ly, radius, 0x88BBFF, 0.9, 400);
 
-      // Impact dust particles
-      const dustGfx = this.scene.add.graphics();
-      dustGfx.setDepth(DEPTHS.EFFECTS);
-      const dustParticles: { x: number; y: number; vx: number; vy: number; life: number }[] = [];
-      for (let i = 0; i < 8; i++) {
-        const angle = (Math.PI * 2 / 8) * i;
-        dustParticles.push({
-          x: lx,
-          y: ly,
-          vx: Math.cos(angle) * 40,
-          vy: Math.sin(angle) * 20 - 15,
-          life: 300,
-        });
-      }
-      const dustTween = { t: 0 };
-      this.scene.tweens.add({
-        targets: dustTween,
-        t: 1,
-        duration: 300,
-        onUpdate: () => {
-          dustGfx.clear();
-          for (const p of dustParticles) {
-            p.x += p.vx * 0.016;
-            p.y += p.vy * 0.016;
-            p.vy += 60 * 0.016; // gravity
-            const alpha = (1 - dustTween.t) * 0.6;
-            dustGfx.fillStyle(0x8899AA, alpha);
-            dustGfx.fillRect(Math.floor(p.x), Math.floor(p.y), 2, 2);
-          }
-        },
-        onComplete: () => dustGfx.destroy(),
-      });
+      // Impact dust particles using sprite-based burst
+      spawnParticleBurst(this.scene, lx, ly, 8, 0x8899AA, 40, 300);
 
       // Strong camera shake on impact
-      this.scene.cameras.main.shake(200, 0.01);
+      // screen shake removed
 
       // Set lock cooldown to ensure free-movement gap
       this.lockCooldown = JobSkillManager.LOCK_GAP;
@@ -1204,7 +1079,7 @@ export class JobSkillManager {
         proj.fire(
           px, py,
           vx, vy,
-          'bullet',   // texture
+          'kunai',    // texture
           damage,
           0,          // pierce
           1,          // damage retention
@@ -1244,101 +1119,25 @@ export class JobSkillManager {
     const fx = this.player.x + Math.cos(angle) * FAMILIAR_ORBIT_RADIUS;
     const fy = this.player.y + Math.sin(angle) * FAMILIAR_ORBIT_RADIUS;
 
-    // Draw familiar
-    let gfx = this.familiarGraphics.get(skillId);
-    if (!gfx) {
-      gfx = this.scene.add.graphics();
-      gfx.setDepth(DEPTHS.EFFECTS);
-      this.familiarGraphics.set(skillId, gfx);
+    // Draw familiar using sprites
+    let familiarSprite = this.familiarGraphics.get(skillId);
+    if (!familiarSprite) {
+      const isIfrit = skillId === JobSkillId.IFRIT;
+      const isPhoenix = skillId === MasterySkillId.PHOENIX;
+      const texKey = isIfrit ? 'fx_flame' : (isPhoenix ? 'fx_flame' : 'fx_ice');
+      const tint = isIfrit ? 0xFF6600 : (isPhoenix ? 0xFF4400 : 0x44AAFF);
+      familiarSprite = this.scene.add.sprite(fx, fy, texKey, 0);
+      familiarSprite.setDepth(DEPTHS.EFFECTS);
+      familiarSprite.setTint(tint);
+      familiarSprite.setScale(1.2);
+      this.familiarGraphics.set(skillId, familiarSprite);
     }
-    gfx.clear();
 
-    if (skillId === JobSkillId.IFRIT) {
-      // ── Ifrit: pixel-art flame shape ──────────────────────────────
-      // Outer glow
-      gfx.fillStyle(0xFF6600, 0.2);
-      gfx.fillCircle(fx, fy, FAMILIAR_SIZE + 4);
-
-      // Flame body (wider at bottom, narrowing at top)
-      // Bottom base (widest)
-      gfx.fillStyle(0xFF4400, 0.9);
-      gfx.fillRect(fx - 4, fy + 2, 8, 3);
-      // Middle
-      gfx.fillRect(fx - 3, fy - 1, 6, 4);
-      // Upper body
-      gfx.fillStyle(0xFF6600, 0.95);
-      gfx.fillRect(fx - 2, fy - 3, 4, 3);
-      // Top narrow
-      gfx.fillStyle(0xFFAA00, 0.95);
-      gfx.fillRect(fx - 1, fy - 5, 2, 3);
-      // Flame tip (flickers using time-based random)
-      const flickerX = ((Date.now() % 400) < 200) ? -1 : 0;
-      gfx.fillStyle(0xFFDD44, 0.9);
-      gfx.fillRect(fx + flickerX, fy - 7, 2, 2);
-      // Second flicker tip (sometimes appears)
-      if ((Date.now() % 600) < 300) {
-        gfx.fillStyle(0xFFEE66, 0.7);
-        gfx.fillRect(fx + 1, fy - 6, 1, 2);
-      }
-      // Inner hot core
-      gfx.fillStyle(0xFFDD44, 0.8);
-      gfx.fillRect(fx - 1, fy - 1, 2, 3);
-      // Ember eyes
-      gfx.fillStyle(0xFFFF00, 1);
-      gfx.fillRect(fx - 2, fy, 1, 1);
-      gfx.fillRect(fx + 1, fy, 1, 1);
-      // Random ember sparks
-      if ((Date.now() % 500) < 250) {
-        gfx.fillStyle(0xFFAA00, 0.6);
-        gfx.fillRect(fx - 4, fy - 2, 1, 1);
-        gfx.fillRect(fx + 3, fy - 3, 1, 1);
-      }
-    } else {
-      // ── Shiva: ice crystal / diamond shape ────────────────────────
-      // Outer frost glow
-      gfx.fillStyle(0x88CCFF, 0.15);
-      gfx.fillCircle(fx, fy, FAMILIAR_SIZE + 4);
-
-      // Main diamond body
-      gfx.fillStyle(0x44AAFF, 0.9);
-      // Draw diamond with rects (pixel-art style)
-      gfx.fillRect(fx - 1, fy - 5, 2, 1);  // top point
-      gfx.fillRect(fx - 2, fy - 4, 4, 1);
-      gfx.fillRect(fx - 3, fy - 3, 6, 1);
-      gfx.fillRect(fx - 4, fy - 2, 8, 1);
-      gfx.fillRect(fx - 4, fy - 1, 8, 2);  // widest center
-      gfx.fillRect(fx - 3, fy + 1, 6, 1);
-      gfx.fillRect(fx - 2, fy + 2, 4, 1);
-      gfx.fillRect(fx - 1, fy + 3, 2, 1);  // bottom point
-
-      // Crystal facet highlights (lighter inner diamond)
-      gfx.fillStyle(0xAADDFF, 0.8);
-      gfx.fillRect(fx - 1, fy - 3, 2, 1);
-      gfx.fillRect(fx - 2, fy - 2, 3, 1);
-      gfx.fillRect(fx - 2, fy - 1, 3, 2);
-
-      // Center sparkle (white)
-      gfx.fillStyle(0xFFFFFF, 0.9);
-      gfx.fillRect(fx - 1, fy - 1, 2, 2);
-
-      // Ice spike arms (extending outward like a snowflake)
-      gfx.fillStyle(0x66BBFF, 0.7);
-      gfx.fillRect(fx - 6, fy, 2, 1);  // left spike
-      gfx.fillRect(fx + 4, fy, 2, 1);  // right spike
-      gfx.fillRect(fx, fy - 7, 1, 2);  // top spike
-      gfx.fillRect(fx, fy + 4, 1, 2);  // bottom spike
-
-      // Twinkling sparkle (alternates position)
-      const sparklePhase = (Date.now() % 800) < 400;
-      gfx.fillStyle(0xFFFFFF, 0.8);
-      if (sparklePhase) {
-        gfx.fillRect(fx - 3, fy - 3, 1, 1);
-        gfx.fillRect(fx + 2, fy + 2, 1, 1);
-      } else {
-        gfx.fillRect(fx + 2, fy - 3, 1, 1);
-        gfx.fillRect(fx - 3, fy + 2, 1, 1);
-      }
-    }
+    // Reposition familiar sprite each frame
+    familiarSprite.setPosition(fx, fy);
+    // Subtle flicker effect via alpha
+    const flickerAlpha = 0.7 + Math.sin(Date.now() * 0.01) * 0.2;
+    familiarSprite.setAlpha(flickerAlpha);
 
     // Attack timer: damage enemies the familiar touches
     const atkTimer = (this.familiarAttackTimers.get(skillId) ?? 0) + delta;
@@ -1379,12 +1178,12 @@ export class JobSkillManager {
     if (elapsed < cooldown) return;
     this.setTimer(skillId, elapsed - cooldown);
 
-    // Drop a damage zone at player's current position
-    const gfx = this.scene.add.graphics();
-    gfx.setDepth(DEPTHS.EFFECTS - 2);
-    gfx.fillStyle(0x8B4513, 0.35);
-    gfx.fillCircle(0, 0, TRAIL_ZONE_RADIUS);
-    gfx.setPosition(this.player.x, this.player.y);
+    // Drop a damage zone at player's current position using sprite
+    const trailSprite = this.scene.add.sprite(this.player.x, this.player.y, 'fx_circle_orange', 0);
+    trailSprite.setDepth(DEPTHS.EFFECTS - 2);
+    trailSprite.setTint(0x8B4513);
+    trailSprite.setAlpha(0.35);
+    trailSprite.setScale((TRAIL_ZONE_RADIUS * 2) / 32);
 
     this.trailZones.push({
       x: this.player.x,
@@ -1392,7 +1191,7 @@ export class JobSkillManager {
       damage,
       remaining: duration,
       tickTimer: 0,
-      graphics: gfx,
+      graphics: trailSprite,
     });
   }
 
@@ -1496,21 +1295,9 @@ export class JobSkillManager {
       }
     }
 
-    // Slash visual: line from player outward
-    const gfx = this.scene.add.graphics();
-    gfx.setDepth(DEPTHS.EFFECTS);
-    gfx.lineStyle(3, 0xB22222, 0.9);
-    gfx.lineBetween(px, py, endX, endY);
-    gfx.lineStyle(5, 0xFF4444, 0.4);
-    gfx.lineBetween(px, py, endX, endY);
-
-    this.scene.tweens.add({
-      targets: gfx,
-      alpha: 0,
-      duration: 250,
-      ease: 'Quad.easeOut',
-      onComplete: () => gfx.destroy(),
-    });
+    // Slash visual: line from player outward using sprite-based lines
+    spawnLine(this.scene, px, py, endX, endY, 0xB22222, 250, 0.9);
+    spawnLine(this.scene, px, py, endX, endY, 0xFF4444, 250, 0.4);
   }
 
   private pointToSegmentDist(
@@ -1553,7 +1340,7 @@ export class JobSkillManager {
       const angles: number[] = [];
       const timers: number[] = [];
       for (let i = 0; i < count; i++) {
-        const img = this.scene.add.image(this.player.x, this.player.y, 'weapon_shield');
+        const img = this.scene.add.sprite(this.player.x, this.player.y, 'fx_shield_yellow', 0);
         img.setScale(1.5);
         img.setDepth(DEPTHS.EFFECTS);
         images.push(img);
@@ -1649,27 +1436,19 @@ export class JobSkillManager {
     // Scale visual with damage (higher level = bigger fireball)
     const fbScale = 0.7 + damage / 25; // 12→1.18, 20→1.5, 30→1.9
 
-    // Create fireball visual
-    const fireball = this.scene.add.graphics();
+    // Create fireball visual using sprite
+    const fireball = this.scene.add.sprite(px, py, 'fx_flame', 0);
     fireball.setDepth(DEPTHS.EFFECTS + 1);
-    fireball.x = px;
-    fireball.y = py;
-
-    // Draw fireball shape (orange core + red glow) - scales with level
-    fireball.fillStyle(0xFFAA00, 0.9);
-    fireball.fillCircle(0, 0, 5 * fbScale);
-    fireball.fillStyle(0xFF4400, 0.5);
-    fireball.fillCircle(0, 0, 8 * fbScale);
+    fireball.setTint(0xFFAA00);
+    fireball.setScale(fbScale);
+    fireball.setAlpha(0.9);
 
     // Muzzle flash at player (scales with level)
-    const flash = this.scene.add.graphics();
-    flash.setDepth(DEPTHS.EFFECTS);
-    flash.fillStyle(0xFF6600, 0.6);
-    flash.fillCircle(px, py, 10 * fbScale);
-    this.scene.tweens.add({
-      targets: flash, alpha: 0, duration: 150,
-      onComplete: () => flash.destroy(),
-    });
+    spawnFlash(this.scene, px, py, 10 * fbScale, 0xFF6600, 150);
+
+    // Store target for explosion callback
+    const fireballTargetX = tx;
+    const fireballTargetY = ty;
 
     // Tween fireball to target position
     this.scene.tweens.add({
@@ -1681,20 +1460,21 @@ export class JobSkillManager {
       onUpdate: () => {
         // Spawn trailing fire particles (reduced frequency for perf)
         if (Math.random() < 0.08) {
-          const trail = this.scene.add.graphics();
-          trail.setDepth(DEPTHS.EFFECTS);
-          trail.fillStyle(0xFF6600, 0.6);
-          trail.fillCircle(fireball.x + (Math.random() - 0.5) * 4 * fbScale, fireball.y + (Math.random() - 0.5) * 4 * fbScale, (2 + Math.random() * 2) * fbScale);
-          this.scene.tweens.add({
-            targets: trail, alpha: 0, duration: 200,
-            onComplete: () => trail.destroy(),
-          });
+          spawnFX(this.scene,
+            fireball.x + (Math.random() - 0.5) * 4 * fbScale,
+            fireball.y + (Math.random() - 0.5) * 4 * fbScale,
+            'fx_smoke_circular', {
+              scale: (0.3 + Math.random() * 0.3) * fbScale,
+              tint: 0xFF6600, alpha: 0.6, duration: 200, depth: DEPTHS.EFFECTS,
+            });
         }
       },
       onComplete: () => {
+        const explosionX = fireball.x;
+        const explosionY = fireball.y;
         fireball.destroy();
         // Explode at impact point
-        this.fireballExplode(fireball.x, fireball.y, radius, damage, burnDamage, burnDuration);
+        this.fireballExplode(explosionX, explosionY, radius, damage, burnDamage, burnDuration);
       },
     });
   }
@@ -1723,7 +1503,7 @@ export class JobSkillManager {
     this.drawPulse(x, y, radius * 0.7, 0xFF6600, 0.8, 300);
     this.drawImpactParticles(x, y, 0xFF4400, 10, 70, 350);
     this.drawAdditiveGlow(x, y, radius * 0.6, 0xFF4400, 0.4, 400);
-    this.scene.cameras.main.shake(80, 0.003);
+    // screen shake removed
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1785,17 +1565,9 @@ export class JobSkillManager {
       this.drawLightningBolt(x + (Math.random() - 0.5) * 16 * scale, topY - 10, x, y, scale * 0.6);
     }
 
-    // Impact flash at ground (scales with power)
-    const flash = this.scene.add.graphics();
-    flash.setDepth(DEPTHS.EFFECTS + 1);
-    flash.fillStyle(0xFFFF44, 0.8);
-    flash.fillCircle(x, y, 8 * scale);
-    flash.fillStyle(0x4488FF, 0.4);
-    flash.fillCircle(x, y, 14 * scale);
-    this.scene.tweens.add({
-      targets: flash, alpha: 0, duration: 250,
-      onComplete: () => flash.destroy(),
-    });
+    // Impact flash at ground (scales with power) using sprites
+    spawnFlash(this.scene, x, y, 8 * scale, 0xFFFF44, 250);
+    spawnFlash(this.scene, x, y, 14 * scale, 0x4488FF, 250);
 
     // Ground scorch (scales with power)
     this.drawPulse(x, y, 10 * scale, 0x4444FF, 0.6, 200);
@@ -1827,12 +1599,15 @@ export class JobSkillManager {
       if (d < nearestDist && d <= radius * 3) { nearestDist = d; cx = enemy.x; cy = enemy.y; }
     }
 
-    const gfx = this.scene.add.graphics();
-    gfx.setDepth(DEPTHS.EFFECTS - 2);
+    const groundSprite = this.scene.add.sprite(cx, cy, 'fx_circle_orange', 0);
+    groundSprite.setDepth(DEPTHS.EFFECTS - 2);
+    groundSprite.setTint(0x554422);
+    groundSprite.setScale((radius * 2) / 32);
+    groundSprite.setAlpha(0.5);
 
     this.groundZones.push({
       x: cx, y: cy, damage, slowPercent: 0.5,
-      remaining: duration, tickTimer: 0, graphics: gfx,
+      remaining: duration, tickTimer: 0, graphics: groundSprite,
     });
 
     // Initial impact visual
@@ -1852,9 +1627,8 @@ export class JobSkillManager {
         continue;
       }
 
-      // Redraw zone visual
+      // Update zone visual using sprite properties
       const alpha = Math.min(1, zone.remaining / 500) * 0.6;
-      zone.graphics.clear();
       // Look up radius from the skill level
       const skillLevels = this.player.playerState.jobSkillLevels;
       const level = skillLevels[MasterySkillId.DOTON] ?? 1;
@@ -1864,37 +1638,21 @@ export class JobSkillManager {
       const time = this.scene.time.now;
       const pulse = 0.5 + 0.15 * Math.sin(time * 0.004);
 
-      // Base zone - darker earth fill
-      zone.graphics.fillStyle(0x554422, alpha * 0.5);
-      zone.graphics.fillCircle(zone.x, zone.y, zoneRadius);
+      // Update sprite alpha and scale with pulse
+      zone.graphics.setAlpha(alpha * pulse);
+      zone.graphics.setScale((zoneRadius * 2) / 32);
+      zone.graphics.setRotation(time * 0.001);
 
-      // Inner swirl pattern (rotating cracks)
-      const crackAlpha = alpha * pulse;
-      zone.graphics.lineStyle(2, 0x8B6914, crackAlpha);
-      for (let c = 0; c < 6; c++) {
-        const angle = (Math.PI * 2 / 6) * c + time * 0.001;
-        const innerR = zoneRadius * 0.3;
-        const outerR = zoneRadius * 0.85;
-        zone.graphics.beginPath();
-        zone.graphics.moveTo(zone.x + Math.cos(angle) * innerR, zone.y + Math.sin(angle) * innerR);
-        zone.graphics.lineTo(zone.x + Math.cos(angle) * outerR, zone.y + Math.sin(angle) * outerR);
-        zone.graphics.strokePath();
-      }
-
-      // Edge ring pulsing
-      zone.graphics.lineStyle(2, 0xAA8833, alpha * pulse);
-      zone.graphics.strokeCircle(zone.x, zone.y, zoneRadius);
-
-      // Dust particles rising (small squares drifting upward)
-      for (let p = 0; p < 5; p++) {
-        const seed = (time * 0.002 + p * 1.3) % 1;
-        const pAngle = (p / 5) * Math.PI * 2 + time * 0.001;
-        const dist = zoneRadius * (0.2 + seed * 0.6);
+      // Spawn occasional dust particle sprites rising from the zone
+      if (Math.random() < 0.05) {
+        const pAngle = Math.random() * Math.PI * 2;
+        const dist = zoneRadius * (0.2 + Math.random() * 0.6);
         const px = zone.x + Math.cos(pAngle) * dist;
-        const py = zone.y + Math.sin(pAngle) * dist - seed * 12;
-        const pAlpha = alpha * (1 - seed) * 0.8;
-        zone.graphics.fillStyle(0xBB9955, pAlpha);
-        zone.graphics.fillRect(px, py, 2, 2);
+        const py = zone.y + Math.sin(pAngle) * dist;
+        spawnFX(this.scene, px, py, 'fx_smoke_circular', {
+          scale: 0.3, tint: 0xBB9955, alpha: alpha * 0.6,
+          duration: 400, depth: DEPTHS.EFFECTS - 1,
+        });
       }
 
       // Damage + slow every 500ms
@@ -1943,7 +1701,7 @@ export class JobSkillManager {
     this.drawExpandingRing(px, py, 10, radius, 0xDC143C, 500);
     this.drawExpandingRing(px, py, 5, radius * 0.7, 0xFF4444, 350);
     this.drawAdditiveGlow(px, py, radius * 0.5, 0xFF4400, 0.35, 400);
-    this.scene.cameras.main.shake(150, 0.006);
+    // screen shake removed
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2063,20 +1821,11 @@ export class JobSkillManager {
           EventBus.emit(EVENTS.ENEMY_HIT, enemy, damage);
         }
 
-        // Arrow impact visual
-        const gfx = this.scene.add.graphics();
-        gfx.setDepth(DEPTHS.EFFECTS);
+        // Arrow impact visual using sprite-based FX
         // Arrow falling line
-        gfx.lineStyle(1, 0x228B22, 0.8);
-        gfx.lineBetween(impactX, impactY - 20, impactX, impactY);
+        spawnLine(this.scene, impactX, impactY - 20, impactX, impactY, 0x228B22, 300, 0.8);
         // Impact spark
-        gfx.fillStyle(0x44AA44, 0.7);
-        gfx.fillCircle(impactX, impactY, 3);
-
-        this.scene.tweens.add({
-          targets: gfx, alpha: 0, duration: 300,
-          onComplete: () => gfx.destroy(),
-        });
+        spawnFlash(this.scene, impactX, impactY, 3, 0x44AA44, 300);
       });
     }
 
@@ -2126,13 +1875,21 @@ export class JobSkillManager {
     };
     const maxLifetime = 2500;
 
-    const projGfx = this.scene.add.graphics();
-    projGfx.setDepth(DEPTHS.EFFECTS);
+    // Projectile sprite
+    const projTexture = isHadouken ? 'energyball' : 'big_energyball';
+    const projSprite = this.scene.add.sprite(px, py, projTexture, 0);
+    projSprite.setDepth(DEPTHS.EFFECTS);
+    projSprite.setScale(projScale * 0.8);
+    projSprite.setTint(color);
+    projSprite.setRotation(aimAngle);
 
-    // Trail graphics (additive blend)
-    const trailGfx = this.scene.add.graphics();
-    trailGfx.setBlendMode(Phaser.BlendModes.ADD);
-    trailGfx.setDepth(DEPTHS.EFFECTS - 1);
+    // Trail glow sprite (additive blend, follows behind)
+    const trailSprite = this.scene.add.sprite(px, py, 'fx_circle_spark', 0);
+    trailSprite.setBlendMode(Phaser.BlendModes.ADD);
+    trailSprite.setDepth(DEPTHS.EFFECTS - 1);
+    trailSprite.setTint(color);
+    trailSprite.setScale(projScale * 0.5);
+    trailSprite.setAlpha(0.3);
 
     // Register a scene update handler for this projectile
     const updateHandler = (_time: number, dt: number) => {
@@ -2146,32 +1903,28 @@ export class JobSkillManager {
         projState.alive = false;
         this.scene.events.off('update', updateHandler);
         this.scene.tweens.add({
-          targets: [projGfx, trailGfx], alpha: 0, duration: 200,
-          onComplete: () => { projGfx.destroy(); trailGfx.destroy(); },
+          targets: [projSprite, trailSprite], alpha: 0, duration: 200,
+          onComplete: () => { projSprite.destroy(); trailSprite.destroy(); },
         });
         return;
       }
 
-      // Redraw projectile at new position
-      projGfx.clear();
-      // Outer glow
-      projGfx.fillStyle(color, 0.7);
-      projGfx.fillCircle(projState.x, projState.y, projSize);
-      // Inner bright core
-      projGfx.fillStyle(glowColor, 0.9);
-      projGfx.fillCircle(projState.x, projState.y, projSize * 0.55);
-      // White hot center
-      projGfx.fillStyle(0xFFFFFF, 0.7);
-      projGfx.fillCircle(projState.x, projState.y, projSize * 0.2);
+      // Reposition projectile sprite
+      projSprite.setPosition(projState.x, projState.y);
 
-      // Trail (fading circles behind)
-      trailGfx.clear();
-      for (let i = 1; i <= 4; i++) {
-        const trailAlpha = (0.25 - i * 0.05);
-        const trailX = projState.x - projState.vx * dtSec * i * 2;
-        const trailY = projState.y - projState.vy * dtSec * i * 2;
-        trailGfx.fillStyle(color, trailAlpha);
-        trailGfx.fillCircle(trailX, trailY, projSize * (1 - i * 0.15));
+      // Trail follows slightly behind
+      trailSprite.setPosition(
+        projState.x - projState.vx * dtSec * 3,
+        projState.y - projState.vy * dtSec * 3,
+      );
+
+      // Spawn occasional trailing particles
+      if (Math.random() < 0.15) {
+        spawnFX(this.scene, projState.x, projState.y, 'fx_smoke_circular', {
+          scale: projScale * 0.3, tint: color, alpha: 0.25,
+          duration: 150, depth: DEPTHS.EFFECTS - 1,
+          blendMode: Phaser.BlendModes.ADD,
+        });
       }
 
       // Hit detection
@@ -2216,7 +1969,8 @@ export class JobSkillManager {
     this.player.playerState.modifiers.speedMultiplier *= 0.6;
 
     if (!this.dragonDiveAimGfx) {
-      this.dragonDiveAimGfx = this.scene.add.graphics();
+      this.dragonDiveAimGfx = this.scene.add.sprite(this.player.x, this.player.y, 'fx_circle_orange', 0);
+      this.dragonDiveAimGfx.setTint(0xFF4400);
     }
     this.dragonDiveAimGfx.setDepth(DEPTHS.EFFECTS);
     this.dragonDiveAimGfx.setAlpha(1);
@@ -2254,90 +2008,38 @@ export class JobSkillManager {
     this.dragonDiveTargetX = Phaser.Math.Clamp(targetX, 20, worldW - 20);
     this.dragonDiveTargetY = Phaser.Math.Clamp(targetY, 20, worldH - 20);
 
-    // Draw aim indicator (appears after short delay)
+    // Draw aim indicator using sprites (appears after short delay)
     if (this.dragonDiveAimGfx && this.dragonDiveAimTimer >= indicatorDelay) {
-      this.dragonDiveAimGfx.clear();
       const px = this.player.x;
       const py = this.player.y;
       const tx = this.dragonDiveTargetX;
       const ty = this.dragonDiveTargetY;
       const pulseAlpha = 0.5 + Math.sin(this.dragonDiveAimTimer * 0.012) * 0.3;
-      const fadeIn = Math.min((this.dragonDiveAimTimer - indicatorDelay) / 150, 1); // fade in over 150ms
+      const fadeIn = Math.min((this.dragonDiveAimTimer - indicatorDelay) / 150, 1);
       const alpha = pulseAlpha * fadeIn;
 
-      // Fire trail particles along the arrow path
-      const arrowDist = Math.sqrt((tx - px) * (tx - px) + (ty - py) * (ty - py));
-      const angle = Math.atan2(ty - py, tx - px);
-      const particleCount = Math.floor(arrowDist / (8 * SPRITE_SCALE));
-      for (let i = 0; i < particleCount; i++) {
-        const t = (i + 0.5) / particleCount;
-        const flicker = Math.sin(this.dragonDiveAimTimer * 0.015 + i * 1.2) * 3 * SPRITE_SCALE;
-        const perpX = -Math.sin(angle) * flicker;
-        const perpY = Math.cos(angle) * flicker;
-        const fx = px + (tx - px) * t + perpX;
-        const fy = py + (ty - py) * t + perpY;
-        const size = (2 + Math.sin(this.dragonDiveAimTimer * 0.02 + i) * 1.5) * SPRITE_SCALE;
-        // Fire gradient: orange core -> red outer
-        const fireAlpha = alpha * (0.4 + 0.4 * Math.sin(this.dragonDiveAimTimer * 0.018 + i * 0.8));
-        this.dragonDiveAimGfx.fillStyle(0xFF6600, fireAlpha);
-        this.dragonDiveAimGfx.fillCircle(fx, fy, size);
-        this.dragonDiveAimGfx.fillStyle(0xFFAA00, fireAlpha * 0.6);
-        this.dragonDiveAimGfx.fillCircle(fx, fy, size * 0.6);
-      }
-
-      // Main arrow line (fiery)
-      this.dragonDiveAimGfx.lineStyle(3, 0xFF4400, alpha);
-      this.dragonDiveAimGfx.beginPath();
-      this.dragonDiveAimGfx.moveTo(px, py);
-      this.dragonDiveAimGfx.lineTo(tx, ty);
-      this.dragonDiveAimGfx.strokePath();
-      // Glow line (wider, fainter)
-      this.dragonDiveAimGfx.lineStyle(6, 0xFF6600, alpha * 0.25);
-      this.dragonDiveAimGfx.beginPath();
-      this.dragonDiveAimGfx.moveTo(px, py);
-      this.dragonDiveAimGfx.lineTo(tx, ty);
-      this.dragonDiveAimGfx.strokePath();
-
-      // Dragon head arrowhead (larger, fiercer)
-      const headLen = 12 * SPRITE_SCALE;
-      this.dragonDiveAimGfx.lineStyle(3, 0xFF4400, alpha);
-      this.dragonDiveAimGfx.beginPath();
-      this.dragonDiveAimGfx.moveTo(tx, ty);
-      this.dragonDiveAimGfx.lineTo(
-        tx - Math.cos(angle - 0.5) * headLen,
-        ty - Math.sin(angle - 0.5) * headLen,
-      );
-      this.dragonDiveAimGfx.moveTo(tx, ty);
-      this.dragonDiveAimGfx.lineTo(
-        tx - Math.cos(angle + 0.5) * headLen,
-        ty - Math.sin(angle + 0.5) * headLen,
-      );
-      this.dragonDiveAimGfx.strokePath();
-
-      // Landing zone: fire circle with expanding/contracting ring
+      // Position the aim sprite at the landing zone
       const landingRadius = 20 * SPRITE_SCALE;
       const ringPulse = 1 + Math.sin(this.dragonDiveAimTimer * 0.01) * 0.15;
-      // Outer fire glow
-      this.dragonDiveAimGfx.fillStyle(0xFF2200, alpha * 0.08);
-      this.dragonDiveAimGfx.fillCircle(tx, ty, landingRadius * 1.5 * ringPulse);
-      // Main landing zone
-      this.dragonDiveAimGfx.lineStyle(2, 0xFF6600, alpha * 0.8);
-      this.dragonDiveAimGfx.strokeCircle(tx, ty, landingRadius * ringPulse);
-      this.dragonDiveAimGfx.fillStyle(0xFF4400, alpha * 0.15);
-      this.dragonDiveAimGfx.fillCircle(tx, ty, landingRadius * ringPulse);
-      // Inner fire core
-      this.dragonDiveAimGfx.fillStyle(0xFFAA00, alpha * 0.25);
-      this.dragonDiveAimGfx.fillCircle(tx, ty, landingRadius * 0.4);
+      this.dragonDiveAimGfx.setPosition(tx, ty);
+      this.dragonDiveAimGfx.setScale((landingRadius * 2 * ringPulse) / 32);
+      this.dragonDiveAimGfx.setAlpha(alpha * 0.4);
 
-      // Dragon wing shapes at landing zone (decorative arcs)
-      const wingAlpha = alpha * 0.3;
-      this.dragonDiveAimGfx.lineStyle(2, 0xFF4400, wingAlpha);
-      this.dragonDiveAimGfx.beginPath();
-      this.dragonDiveAimGfx.arc(tx - 8 * SPRITE_SCALE, ty, 10 * SPRITE_SCALE, -Math.PI * 0.6, Math.PI * 0.6);
-      this.dragonDiveAimGfx.strokePath();
-      this.dragonDiveAimGfx.beginPath();
-      this.dragonDiveAimGfx.arc(tx + 8 * SPRITE_SCALE, ty, 10 * SPRITE_SCALE, Math.PI * 0.4, Math.PI * 1.6);
-      this.dragonDiveAimGfx.strokePath();
+      // Spawn fire trail particles along the path periodically
+      if (Math.random() < 0.3) {
+        const t = Math.random();
+        const trailX = px + (tx - px) * t + (Math.random() - 0.5) * 6 * SPRITE_SCALE;
+        const trailY = py + (ty - py) * t + (Math.random() - 0.5) * 6 * SPRITE_SCALE;
+        spawnFX(this.scene, trailX, trailY, 'fx_flame', {
+          scale: 0.4 + Math.random() * 0.3,
+          tint: 0xFF6600, alpha: alpha * 0.5, duration: 150, depth: DEPTHS.EFFECTS,
+        });
+      }
+
+      // Spawn line indicator along the aim path periodically
+      if (Math.random() < 0.2) {
+        spawnLine(this.scene, px, py, tx, ty, 0xFF4400, 100, alpha * 0.3);
+      }
     }
 
     // Aim phase complete -> start dive
@@ -2349,7 +2051,7 @@ export class JobSkillManager {
 
       // Clean up aim gfx
       if (this.dragonDiveAimGfx) {
-        this.dragonDiveAimGfx.clear();
+        this.dragonDiveAimGfx.setAlpha(0);
       }
 
       // Start the actual dive
@@ -2364,7 +2066,8 @@ export class JobSkillManager {
       }
 
       if (!this.dragonDiveShadowGfx) {
-        this.dragonDiveShadowGfx = this.scene.add.graphics();
+        this.dragonDiveShadowGfx = this.scene.add.sprite(this.player.x, this.player.y, 'fx_circle_orange', 0);
+        this.dragonDiveShadowGfx.setTint(0x000000);
       }
       this.dragonDiveShadowGfx.setDepth(DEPTHS.GROUND + 1);
       this.dragonDiveShadowGfx.setAlpha(1);
@@ -2402,7 +2105,7 @@ export class JobSkillManager {
     this.player.x = groundX;
     this.player.y = groundY + yOffset;
 
-    const scale = 1 + heightFactor * 0.5;
+    const scale = SPRITE_SCALE * (1 + heightFactor * 0.5);
     this.player.setScale(scale);
 
     // Spinning descent with fire tint
@@ -2415,18 +2118,18 @@ export class JobSkillManager {
       this.player.clearTint();
     }
 
-    // Shadow on ground travels toward target
+    // Shadow on ground travels toward target using sprite
     if (this.dragonDiveShadowGfx) {
-      this.dragonDiveShadowGfx.clear();
       const shadowX = Phaser.Math.Linear(this.dragonDiveOriginX, this.dragonDiveTargetX, travelProgress);
       const shadowY = Phaser.Math.Linear(this.dragonDiveOriginY, this.dragonDiveTargetY, travelProgress);
       const shadowScale = 1 - heightFactor * 0.5;
       const shadowAlpha = 0.4 * (1 - heightFactor * 0.3);
-      this.dragonDiveShadowGfx.fillStyle(0x000000, shadowAlpha);
-      this.dragonDiveShadowGfx.fillEllipse(
-        shadowX, shadowY + 2,
-        14 * shadowScale, 5 * shadowScale,
+      this.dragonDiveShadowGfx.setPosition(shadowX, shadowY + 2);
+      this.dragonDiveShadowGfx.setScale(
+        (14 * shadowScale) / 16,
+        (5 * shadowScale) / 16,
       );
+      this.dragonDiveShadowGfx.setAlpha(shadowAlpha);
     }
 
     // Landing
@@ -2434,7 +2137,7 @@ export class JobSkillManager {
       this.isDragonDiving = false;
       this.dragonDiveTimer = 0;
 
-      this.player.setScale(1);
+      this.player.setScale(SPRITE_SCALE);
       this.player.setAngle(0);
       this.player.clearTint();
       // Teleport player to landing position
@@ -2447,7 +2150,7 @@ export class JobSkillManager {
       }
 
       if (this.dragonDiveShadowGfx) {
-        this.dragonDiveShadowGfx.clear();
+        this.dragonDiveShadowGfx.setAlpha(0);
       }
 
       const radius = this.dragonDiveParams.radius ?? 70;
@@ -2474,41 +2177,41 @@ export class JobSkillManager {
       this.drawAdditiveGlow(lx, ly, radius, 0xFF4400, 0.5, 500);
       this.drawImpactParticles(lx, ly, 0xFF4400, 12, 80, 400);
 
-      // Screen flash (brief white overlay)
-      const flashGfx = this.scene.add.graphics();
-      flashGfx.setDepth(DEPTHS.UI - 1);
-      flashGfx.fillStyle(0xFFFFFF, 0.4);
-      flashGfx.fillRect(
-        this.scene.cameras.main.scrollX,
-        this.scene.cameras.main.scrollY,
-        this.scene.cameras.main.width,
-        this.scene.cameras.main.height,
+      // Screen flash (brief white overlay) using sprite
+      const cam = this.scene.cameras.main;
+      const flashSprite = this.scene.add.sprite(
+        cam.scrollX + cam.width / 2,
+        cam.scrollY + cam.height / 2,
+        'fx_circle_white', 0,
       );
+      flashSprite.setDepth(DEPTHS.UI - 1);
+      flashSprite.setScale(Math.max(cam.width, cam.height) / 16);
+      flashSprite.setAlpha(0.4);
+      flashSprite.setTint(0xFFFFFF);
       this.scene.tweens.add({
-        targets: flashGfx, alpha: 0, duration: 150,
-        onComplete: () => flashGfx.destroy(),
+        targets: flashSprite, alpha: 0, duration: 150,
+        onComplete: () => flashSprite.destroy(),
       });
 
-      // Leave flame zone on ground
-      const flameGfx = this.scene.add.graphics();
-      flameGfx.setDepth(DEPTHS.EFFECTS - 2);
-      const flameProgress = { remaining: flameDuration };
+      // Leave flame zone on ground using sprites
       const flameR = radius * 0.8;
-
+      const flameSprite = this.scene.add.sprite(lx, ly, 'fx_circle_orange', 0);
+      flameSprite.setDepth(DEPTHS.EFFECTS - 2);
+      flameSprite.setTint(0xFF4400);
+      flameSprite.setScale((flameR * 2) / 32);
+      flameSprite.setAlpha(0.35);
+      const flameInnerSprite = this.scene.add.sprite(lx, ly, 'fx_circle_spark', 0);
+      flameInnerSprite.setDepth(DEPTHS.EFFECTS - 2);
+      flameInnerSprite.setTint(0xFF8800);
+      flameInnerSprite.setScale((flameR * 0.5 * 2) / 32);
+      flameInnerSprite.setAlpha(0.35 * 0.6);
       this.scene.tweens.add({
-        targets: flameProgress, remaining: 0, duration: flameDuration,
-        onUpdate: () => {
-          flameGfx.clear();
-          const a = Math.max(0, flameProgress.remaining / flameDuration) * 0.35;
-          flameGfx.fillStyle(0xFF4400, a);
-          flameGfx.fillCircle(lx, ly, flameR);
-          flameGfx.fillStyle(0xFF8800, a * 0.6);
-          flameGfx.fillCircle(lx, ly, flameR * 0.5);
-        },
-        onComplete: () => flameGfx.destroy(),
+        targets: [flameSprite, flameInnerSprite], alpha: 0, duration: flameDuration,
+        ease: 'Linear',
+        onComplete: () => { flameSprite.destroy(); flameInnerSprite.destroy(); },
       });
 
-      this.scene.cameras.main.shake(250, 0.012);
+      // screen shake removed
 
       // Set lock cooldown
       this.lockCooldown = JobSkillManager.LOCK_GAP;
@@ -2535,8 +2238,9 @@ export class JobSkillManager {
     this.bladeStormHitTimer = 0;
 
     if (!this.bladeStormGfx) {
-      this.bladeStormGfx = this.scene.add.graphics();
+      this.bladeStormGfx = this.scene.add.sprite(this.player.x, this.player.y, 'fx_circular_slash', 0);
       this.bladeStormGfx.setDepth(DEPTHS.EFFECTS);
+      this.bladeStormGfx.setTint(0xFF4444);
     }
   }
 
@@ -2550,7 +2254,7 @@ export class JobSkillManager {
     if (this.bladeStormTimer >= duration) {
       this.bladeStormActive = false;
       if (this.bladeStormGfx) {
-        this.bladeStormGfx.clear();
+        this.bladeStormGfx.setAlpha(0);
       }
       this.lockCooldown = JobSkillManager.LOCK_GAP;
       return;
@@ -2561,31 +2265,29 @@ export class JobSkillManager {
     const currentAngle = progress * rotSpeed;
     const fadeAlpha = progress > 0.7 ? (1 - progress) / 0.3 : 1;
 
-    // Draw rotating slash arcs
+    // Update rotating slash sprite
     if (this.bladeStormGfx) {
-      this.bladeStormGfx.clear();
       const px = this.player.x;
       const py = this.player.y;
 
-      for (let i = 0; i < slashCount; i++) {
-        const slashAngle = currentAngle + (Math.PI * 2 / slashCount) * i;
-        const sx = px + Math.cos(slashAngle) * radius * 0.8;
-        const sy = py + Math.sin(slashAngle) * radius * 0.8;
-        const ex = px + Math.cos(slashAngle) * radius;
-        const ey = py + Math.sin(slashAngle) * radius;
+      // Reposition and rotate the circular slash sprite
+      this.bladeStormGfx.setPosition(px, py);
+      this.bladeStormGfx.setRotation(currentAngle);
+      this.bladeStormGfx.setScale((radius * 2) / 32);
+      this.bladeStormGfx.setAlpha(fadeAlpha * 0.8);
 
-        // Bright slash line
-        this.bladeStormGfx.lineStyle(2, 0xFF4444, fadeAlpha * 0.9);
-        this.bladeStormGfx.lineBetween(px, py, ex, ey);
-
-        // Slash tip glow
-        this.bladeStormGfx.fillStyle(0xFFAAAA, fadeAlpha * 0.6);
-        this.bladeStormGfx.fillCircle(sx, sy, 2);
+      // Spawn slash line particles at blade tips
+      if (Math.random() < 0.3) {
+        for (let i = 0; i < slashCount; i++) {
+          const slashAngle = currentAngle + (Math.PI * 2 / slashCount) * i;
+          const sx = px + Math.cos(slashAngle) * radius;
+          const sy = py + Math.sin(slashAngle) * radius;
+          spawnFX(this.scene, sx, sy, 'fx_spark', {
+            scale: 0.3, tint: 0xFFAAAA, alpha: fadeAlpha * 0.6,
+            duration: 100, depth: DEPTHS.EFFECTS,
+          });
+        }
       }
-
-      // Center glow
-      this.bladeStormGfx.fillStyle(0xB22222, fadeAlpha * 0.2);
-      this.bladeStormGfx.fillCircle(px, py, radius * 0.3);
     }
 
     // Hit enemies periodically
@@ -2700,10 +2402,7 @@ export class JobSkillManager {
   }
 
   private drawLightningBolt(x1: number, y1: number, x2: number, y2: number, scale = 1): void {
-    const gfx = this.scene.add.graphics();
-    gfx.setDepth(DEPTHS.EFFECTS);
-
-    // Jagged lightning with segments scaling with size
+    // Jagged lightning with segments - draw as a series of sprite-based line segments
     const segments = Math.floor(4 + scale);
     const points: { x: number; y: number }[] = [{ x: x1, y: y1 }];
     const dx = x2 - x1;
@@ -2719,56 +2418,18 @@ export class JobSkillManager {
     }
     points.push({ x: x2, y: y2 });
 
-    // Draw bright core (thicker at higher scale)
-    gfx.lineStyle(Math.max(2, 2 * scale), 0xFFFF44, 0.9);
-    gfx.beginPath();
-    gfx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      gfx.lineTo(points[i].x, points[i].y);
+    // Draw jagged bolt segments as sprite-based lines
+    for (let i = 0; i < points.length - 1; i++) {
+      // Bright core line
+      spawnLine(this.scene, points[i].x, points[i].y, points[i + 1].x, points[i + 1].y, 0xFFFF44, 200, 0.9);
+      // Glow line
+      spawnLine(this.scene, points[i].x, points[i].y, points[i + 1].x, points[i + 1].y, 0x4444FF, 250, 0.3);
     }
-    gfx.strokePath();
 
-    // Draw glow (thicker at higher scale)
-    gfx.lineStyle(Math.max(4, 4 * scale), 0x4444FF, 0.3);
-    gfx.beginPath();
-    gfx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      gfx.lineTo(points[i].x, points[i].y);
-    }
-    gfx.strokePath();
-
-    this.scene.tweens.add({
-      targets: gfx,
-      alpha: 0,
-      duration: 200,
-      ease: 'Quad.easeOut',
-      onComplete: () => gfx.destroy(),
-    });
-
-    // Electric blue additive glow along the bolt path
-    const boltGlow = this.scene.add.graphics();
-    boltGlow.setBlendMode(Phaser.BlendModes.ADD);
-    boltGlow.setDepth(DEPTHS.EFFECTS - 1);
-    // Draw thick soft glow line following the bolt segments
-    boltGlow.lineStyle(8, 0x4488FF, 0.25);
-    boltGlow.beginPath();
-    boltGlow.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      boltGlow.lineTo(points[i].x, points[i].y);
-    }
-    boltGlow.strokePath();
-    // Glow circles at each bolt vertex for extra bloom
+    // Glow flashes at each bolt vertex for extra bloom
     for (const pt of points) {
-      boltGlow.fillStyle(0x4488FF, 0.2);
-      boltGlow.fillCircle(pt.x, pt.y, 6);
+      spawnFlash(this.scene, pt.x, pt.y, 6, 0x4488FF, 250);
     }
-    this.scene.tweens.add({
-      targets: boltGlow,
-      alpha: 0,
-      duration: 250,
-      ease: 'Quad.easeOut',
-      onComplete: () => boltGlow.destroy(),
-    });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2800,18 +2461,10 @@ export class JobSkillManager {
       enemy.applyStun(params.blindDuration ?? 2000);
     }
 
-    // Smoke visual
-    const gfx = this.scene.add.graphics();
-    gfx.setDepth(DEPTHS.EFFECTS);
-    gfx.fillStyle(0x333344, 0.6);
-    gfx.fillCircle(this.player.x, this.player.y, radius);
-    this.scene.tweens.add({
-      targets: gfx,
-      alpha: 0,
-      duration: invulnDuration,
-      ease: 'Quad.easeOut',
-      onComplete: () => gfx.destroy(),
-    });
+    // Smoke visual using sprite
+    spawnCircleZone(this.scene, this.player.x, this.player.y, radius, 0x333344, 0.6, invulnDuration, DEPTHS.EFFECTS);
+    // Additional smoke particles
+    spawnParticleBurst(this.scene, this.player.x, this.player.y, 6, 0x555566, 30, invulnDuration * 0.5);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2855,16 +2508,15 @@ export class JobSkillManager {
           EventBus.emit(EVENTS.ENEMY_HIT, enemy, damage);
         }
 
-        // Purple slash visual
-        const gfx = this.scene.add.graphics();
-        gfx.setDepth(DEPTHS.EFFECTS);
-        gfx.fillStyle(0x9933FF, 0.4);
-        gfx.slice(px, py, radius, slashAngle - 0.4, slashAngle + 0.4, false);
-        gfx.fillPath();
-        this.scene.tweens.add({
-          targets: gfx, alpha: 0, duration: 200,
-          onComplete: () => gfx.destroy(),
-        });
+        // Purple slash visual using sprite
+        spawnFX(this.scene,
+          px + Math.cos(slashAngle) * radius * 0.5,
+          py + Math.sin(slashAngle) * radius * 0.5,
+          'fx_slash', {
+            scale: (radius * 2) / 32,
+            tint: 0x9933FF, alpha: 0.7, duration: 200,
+            rotation: slashAngle, depth: DEPTHS.EFFECTS,
+          });
       });
     }
   }
@@ -2886,19 +2538,11 @@ export class JobSkillManager {
       this.player.playerState.isInvulnerable = false;
     });
 
-    // Golden zone visual
+    // Golden zone visual using sprites
     const radius = params.radius ?? 60;
-    const gfx = this.scene.add.graphics();
-    gfx.setDepth(DEPTHS.EFFECTS - 1);
-    gfx.fillStyle(0xFFDD44, 0.3);
-    gfx.fillCircle(this.player.x, this.player.y, radius);
-    gfx.lineStyle(2, 0xFFDD44, 0.8);
-    gfx.strokeCircle(this.player.x, this.player.y, radius);
-    this.scene.tweens.add({
-      targets: gfx, alpha: 0, duration: duration,
-      ease: 'Linear',
-      onComplete: () => gfx.destroy(),
-    });
+    spawnCircleZone(this.scene, this.player.x, this.player.y, radius, 0xFFDD44, 0.3, duration, DEPTHS.EFFECTS - 1);
+    // Outer ring
+    spawnRing(this.scene, this.player.x, this.player.y, radius, radius * 1.1, 0xFFDD44, duration, 0.8);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2939,15 +2583,8 @@ export class JobSkillManager {
       enemy.applyStun(freezeDuration);
     }
 
-    // Ice field visual
-    const gfx = this.scene.add.graphics();
-    gfx.setDepth(DEPTHS.EFFECTS - 1);
-    gfx.fillStyle(0x88CCFF, 0.4);
-    gfx.fillCircle(this.player.x, this.player.y, radius);
-    this.scene.tweens.add({
-      targets: gfx, alpha: 0, duration: freezeDuration,
-      onComplete: () => gfx.destroy(),
-    });
+    // Ice field visual using sprite
+    spawnCircleZone(this.scene, this.player.x, this.player.y, radius, 0x88CCFF, 0.4, freezeDuration, DEPTHS.EFFECTS - 1);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2967,18 +2604,10 @@ export class JobSkillManager {
     const px = this.player.x;
     const py = this.player.y;
 
-    // Green healing zone visual
-    const gfx = this.scene.add.graphics();
-    gfx.setDepth(DEPTHS.EFFECTS - 1);
-    gfx.fillStyle(0x44FF88, 0.25);
-    gfx.fillCircle(px, py, radius);
-    gfx.lineStyle(2, 0x44FF88, 0.6);
-    gfx.strokeCircle(px, py, radius);
-    this.scene.tweens.add({
-      targets: gfx, alpha: 0, duration: duration,
-      ease: 'Linear',
-      onComplete: () => gfx.destroy(),
-    });
+    // Green healing zone visual using sprites
+    spawnCircleZone(this.scene, px, py, radius, 0x44FF88, 0.25, duration, DEPTHS.EFFECTS - 1);
+    // Outer ring
+    spawnRing(this.scene, px, py, radius, radius * 1.05, 0x44FF88, duration, 0.6);
 
     // Heal ticks
     let ticksRemaining = Math.floor(duration / tickInterval);
@@ -3034,10 +2663,14 @@ export class JobSkillManager {
       this.jumpChargeGfx = null;
     }
 
-    // Destroy dragon dive shadow
+    // Destroy dragon dive graphics
     if (this.dragonDiveShadowGfx) {
       this.dragonDiveShadowGfx.destroy();
       this.dragonDiveShadowGfx = null;
+    }
+    if (this.dragonDiveAimGfx) {
+      this.dragonDiveAimGfx.destroy();
+      this.dragonDiveAimGfx = null;
     }
 
     // Destroy blade storm graphics

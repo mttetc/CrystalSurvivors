@@ -42,7 +42,7 @@ export class CombatManager {
         }
 
         enemy.takeDamage(damage);
-        this.scene.cameras.main.shake(30, 0.002);
+        // screen shake removed
 
         // Track damage
         player.playerState.stats.damageDealt += damage;

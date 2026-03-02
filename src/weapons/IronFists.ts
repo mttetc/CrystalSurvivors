@@ -4,6 +4,7 @@ import { BaseWeapon } from './BaseWeapon';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { EventBus } from '../systems/EventBus';
+import { playImpactFX, showWeaponInHand } from './fxHelper';
 
 export class IronFists extends BaseWeapon {
   private swingAngle = 0;
@@ -31,7 +32,6 @@ export class IronFists extends BaseWeapon {
     }
 
     for (let s = 0; s < swingCount; s++) {
-      // Alternate left/right fist with slight angle offset
       this.lastPunchSide = (this.lastPunchSide + 1) % 2;
       const sideOffset = (this.lastPunchSide === 0 ? -0.15 : 0.15) + s * Math.PI;
       const punchAngle = baseAngle + sideOffset;
@@ -40,65 +40,17 @@ export class IronFists extends BaseWeapon {
       const endX = sp.x + Math.cos(punchAngle) * visualRadius;
       const endY = sp.y + Math.sin(punchAngle) * visualRadius;
 
-      // Fist sprite punching outward
-      const fist = this.scene.add.image(sp.x, sp.y, 'weapon_fist');
-      fist.setScale(1.5 * meleeScale);
-      fist.setDepth(DEPTHS.EFFECTS);
-      fist.setRotation(punchAngle);
-      fist.setAlpha(0.9);
+      // Show weapon in hand facing attack direction
+      showWeaponInHand(this.scene, this.player, punchAngle, this.id, 200);
 
-      this.scene.tweens.add({
-        targets: fist,
-        x: endX,
-        y: endY,
-        scaleX: 2 * meleeScale,
-        scaleY: 2 * meleeScale,
-        duration: 80,
-        ease: 'Back.easeOut',
-        onComplete: () => {
-          // Impact flash at punch landing
-          const impact = this.scene.add.graphics();
-          impact.setDepth(DEPTHS.EFFECTS);
-          impact.fillStyle(0xFFDD00, 0.6);
-          impact.fillCircle(endX, endY, 6 * SPRITE_SCALE * meleeScale);
-          impact.fillStyle(0xFFFFFF, 0.4);
-          impact.fillCircle(endX, endY, 3 * SPRITE_SCALE * meleeScale);
+      // Player attack animation
+      this.showAttackSprite(punchAngle);
 
-          this.scene.tweens.add({
-            targets: impact,
-            alpha: 0,
-            duration: 120,
-            onComplete: () => impact.destroy(),
-          });
+      // Alternate claw FX: single claw for left punch, double claw for right punch
+      const clawFX = this.lastPunchSide === 0 ? 'fx_claw' : 'fx_claw_double';
+      playImpactFX(this.scene, endX, endY, punchAngle, clawFX, this.getMeleeFXScale() * 1.5, 0xFFDD00, 200);
 
-          // Yellow additive glow on impact
-          const impactGlow = this.scene.add.graphics();
-          impactGlow.setBlendMode(Phaser.BlendModes.ADD);
-          impactGlow.setDepth(DEPTHS.EFFECTS - 1);
-          impactGlow.fillStyle(0xFFDD00, 0.3);
-          impactGlow.fillCircle(endX, endY, 8 * SPRITE_SCALE * meleeScale);
-          impactGlow.fillStyle(0xFFFF88, 0.2);
-          impactGlow.fillCircle(endX, endY, 4 * SPRITE_SCALE * meleeScale);
-
-          this.scene.tweens.add({
-            targets: impactGlow,
-            alpha: 0,
-            duration: 180,
-            ease: 'Quad.easeOut',
-            onComplete: () => impactGlow.destroy(),
-          });
-
-          // Fist fades
-          this.scene.tweens.add({
-            targets: fist,
-            alpha: 0,
-            duration: 80,
-            onComplete: () => fist.destroy(),
-          });
-        },
-      });
-
-      // Damage enemies in cone in front of punch (wide for fists)
+      // Damage enemies in cone
       const arcSpan = 0.9;
       const startAngle = punchAngle - arcSpan / 2;
       const children = enemies.getChildren() as Enemy[];

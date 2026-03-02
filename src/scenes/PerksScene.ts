@@ -35,21 +35,21 @@ export class PerksScene extends Phaser.Scene {
     // Header
     this.add.text(GAME_WIDTH / 2, 14, 'PERKS', {
       fontSize: '28px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+      fontFamily: 'NinjaFont, "Trebuchet MS", Verdana, sans-serif',
       color: '#FFAA44',
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 6,
-    }).setOrigin(0.5, 0).setResolution(16);
+    }).setOrigin(0.5, 0).setResolution(2);
 
     // Close hint
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 14, 'ESC to close  |  Scroll or Arrow keys to navigate', {
       fontSize: '14px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+      fontFamily: 'NinjaFont, "Trebuchet MS", Verdana, sans-serif',
       color: '#555577',
       stroke: '#000000',
       strokeThickness: 4,
-    }).setOrigin(0.5, 1).setResolution(16);
+    }).setOrigin(0.5, 1).setResolution(2);
 
     // Scrollable area (between header and footer)
     this.topY = 46;
@@ -318,12 +318,12 @@ export class PerksScene extends Phaser.Scene {
 
     const text = this.add.text(colX, y + 6, title, {
       fontSize: '22px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+      fontFamily: 'NinjaFont, "Trebuchet MS", Verdana, sans-serif',
       color: color,
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 4,
-    }).setResolution(16);
+    }).setResolution(2);
     this.scrollContainer.add(text);
 
     return y + 32;
@@ -339,13 +339,13 @@ export class PerksScene extends Phaser.Scene {
     }
     const text = this.add.text(colX + iconOffset, y, content, {
       fontSize: fontSize,
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+      fontFamily: 'NinjaFont, "Trebuchet MS", Verdana, sans-serif',
       color: color,
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 3,
       wordWrap: { width: colW - iconOffset },
-    }).setResolution(16);
+    }).setResolution(2);
     this.scrollContainer.add(text);
     return y + Math.max(text.height, 16) + 2;
   }
@@ -353,12 +353,12 @@ export class PerksScene extends Phaser.Scene {
   private addLine(y: number, content: string, color: string, fontSize: string, colX: number, colW: number): number {
     const text = this.add.text(colX, y, content, {
       fontSize: fontSize,
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+      fontFamily: 'NinjaFont, "Trebuchet MS", Verdana, sans-serif',
       color: color,
       stroke: '#000000',
       strokeThickness: 2,
       wordWrap: { width: colW },
-    }).setResolution(16);
+    }).setResolution(2);
     this.scrollContainer.add(text);
     return y + text.height + 2;
   }

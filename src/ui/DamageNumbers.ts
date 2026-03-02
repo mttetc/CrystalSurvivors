@@ -19,11 +19,11 @@ export class DamageNumbers {
     for (let i = 0; i < 40; i++) {
       const text = scene.add.text(0, 0, '', {
         fontSize: '22px',
-        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+        fontFamily: 'NinjaFont, "Trebuchet MS", Verdana, sans-serif',
         color: '#FFFFFF',
         stroke: '#000000',
         strokeThickness: 4,
-      }).setResolution(16);
+      }).setResolution(2);
       text.setDepth(DEPTHS.EFFECTS + 10);
       text.setVisible(false);
       this.pool.push({ text, timer: 0, maxTimer: 600 });

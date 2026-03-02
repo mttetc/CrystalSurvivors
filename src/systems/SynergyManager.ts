@@ -4,6 +4,7 @@ import { JOB_SYNERGIES, SKILL_SYNERGIES, JobSynergy, SkillSynergy, ComboSkillDef
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { EventBus } from './EventBus';
+import { spawnFX, spawnCircleZone, spawnFlash, spawnRing, spawnLine, spawnParticleBurst, spawnProjectileFX, playSlashFX, playImpactFX } from '../weapons/fxHelper';
 
 interface ActiveComboSkill {
   synergyId: string;
@@ -247,17 +248,8 @@ export class SynergyManager {
     const fallHeight = 120 * SPRITE_SCALE;
     const hitEnemies = new Set<Enemy>();
 
-    // Target zone indicator
-    const zone = this.scene.add.graphics();
-    zone.setDepth(DEPTHS.EFFECTS - 2);
-    zone.fillStyle(color, 0.08);
-    zone.fillCircle(cx, cy, radius);
-    zone.lineStyle(1, color, 0.3);
-    zone.strokeCircle(cx, cy, radius);
-    this.scene.tweens.add({
-      targets: zone, alpha: 0, duration: 800, ease: 'Linear',
-      onComplete: () => zone.destroy(),
-    });
+    // Target zone indicator (capped size)
+    spawnCircleZone(this.scene, cx, cy, Math.min(radius, 64 * SPRITE_SCALE), color, 0.1, 800);
 
     for (let i = 0; i < arrowCount; i++) {
       const delay = i * 100 + Math.random() * 60;
@@ -280,43 +272,13 @@ export class SynergyManager {
           }
         }
 
-        const arrow = this.scene.add.graphics();
-        arrow.setDepth(DEPTHS.EFFECTS);
-        const len = 10 * SPRITE_SCALE;
-        const dx = landX - startX;
-        const dy = landY - startY;
-        const d = Math.sqrt(dx * dx + dy * dy) || 1;
-        const nx = dx / d;
-        const ny = dy / d;
-
-        arrow.lineStyle(2, color, 0.9);
-        arrow.beginPath();
-        arrow.moveTo(0, 0);
-        arrow.lineTo(nx * len, ny * len);
-        arrow.strokePath();
-        arrow.fillStyle(0xFFFFFF, 0.9);
-        arrow.fillTriangle(
-          nx * len, ny * len,
-          nx * len - ny * 3 - nx * 4, ny * len + nx * 3 - ny * 4,
-          nx * len + ny * 3 - nx * 4, ny * len - nx * 3 - ny * 4,
-        );
-        arrow.setPosition(startX, startY);
-
-        this.scene.tweens.add({
-          targets: arrow, x: landX, y: landY,
-          duration: 120 + Math.random() * 60, ease: 'Quad.easeIn',
+        // Arrow projectile sprite from sky to landing point
+        spawnProjectileFX(this.scene, startX, startY, landX, landY, 'arrow', {
+          scale: SPRITE_SCALE,
+          tint: color,
+          duration: 120 + Math.random() * 60,
           onComplete: () => {
-            arrow.destroy();
-            const impact = this.scene.add.graphics();
-            impact.setDepth(DEPTHS.EFFECTS);
-            impact.fillStyle(color, 0.6);
-            impact.fillCircle(landX, landY, impactRadius);
-            impact.fillStyle(0xFFFFFF, 0.4);
-            impact.fillCircle(landX, landY, impactRadius * 0.5);
-            this.scene.tweens.add({
-              targets: impact, alpha: 0, duration: 200,
-              onComplete: () => impact.destroy(),
-            });
+            playImpactFX(this.scene, landX, landY, 0, 'fx_explosion', impactRadius / 20, color, 200);
           },
         });
       });
@@ -353,56 +315,26 @@ export class SynergyManager {
       }
     }
 
-    // Visual: central flash
-    const gfx = this.scene.add.graphics();
-    gfx.setDepth(DEPTHS.EFFECTS);
-    gfx.fillStyle(0xFFFFFF, 0.8);
-    gfx.fillCircle(cx, cy, 6 * SPRITE_SCALE);
-    this.scene.tweens.add({
-      targets: gfx, alpha: 0, duration: 150,
-      onComplete: () => gfx.destroy(),
-    });
+    // Visual: central explosion FX (not just a ring)
+    playImpactFX(this.scene, cx, cy, 0, 'fx_explosion', SPRITE_SCALE * 1.5, color, 350);
+    spawnFlash(this.scene, cx, cy, 8 * SPRITE_SCALE, 0xFFFFFF, 120);
 
-    // Expanding ring
-    const ring = this.scene.add.graphics();
-    ring.setDepth(DEPTHS.EFFECTS);
-    let progress = 0;
-    const expandDuration = 250;
-    this.scene.time.addEvent({
-      delay: 16,
-      repeat: Math.floor(expandDuration / 16),
-      callback: () => {
-        progress += 16 / expandDuration;
-        const r = radius * Math.min(1, progress);
-        const a = 1 - progress;
-        ring.clear();
-        ring.lineStyle(4, color, a);
-        ring.strokeCircle(cx, cy, r);
-        ring.fillStyle(color, a * 0.2);
-        ring.fillCircle(cx, cy, r);
-        if (progress >= 1) ring.destroy();
-      },
-    });
-
-    // Debris particles
-    const particleCount = 12;
-    for (let i = 0; i < particleCount; i++) {
-      const angle = (Math.PI * 2 / particleCount) * i + Math.random() * 0.3;
-      const p = this.scene.add.graphics();
-      p.setDepth(DEPTHS.EFFECTS);
-      p.fillStyle(color, 0.8);
-      p.fillRect(-2, -2, 4, 4);
-      p.setPosition(cx, cy);
-      this.scene.tweens.add({
-        targets: p,
-        x: cx + Math.cos(angle) * radius,
-        y: cy + Math.sin(angle) * radius,
-        alpha: 0,
-        duration: 300 + Math.random() * 100,
-        ease: 'Quad.easeOut',
-        onComplete: () => p.destroy(),
+    // Secondary impact bursts at random positions around the center
+    for (let i = 0; i < 4; i++) {
+      const angle = (Math.PI * 2 * i) / 4 + Math.random() * 0.5;
+      const dist = 20 * SPRITE_SCALE + Math.random() * 20 * SPRITE_SCALE;
+      const ix = cx + Math.cos(angle) * dist;
+      const iy = cy + Math.sin(angle) * dist;
+      this.scene.time.delayedCall(i * 50, () => {
+        playImpactFX(this.scene, ix, iy, Math.random() * Math.PI * 2, 'fx_explosion', SPRITE_SCALE, color, 250);
       });
     }
+
+    // Small expanding ring (secondary, subtle)
+    spawnRing(this.scene, cx, cy, 10, radius * 0.5, color, 250, 0.4);
+
+    // Debris particles
+    spawnParticleBurst(this.scene, cx, cy, 10, color, 50, 300);
 
     return hitCount;
   }
@@ -414,24 +346,23 @@ export class SynergyManager {
     const tickDamage = Math.floor(damage * 0.25);
     let ticks = 0;
 
-    const gfx = this.scene.add.graphics();
+    // Persistent zone sprite (use white circle to avoid pixelation at large sizes)
+    const tex = this.scene.textures.exists('fx_circle_white') ? 'fx_circle_white' : 'fx_circle_spark';
+    const gfx = this.scene.add.sprite(cx, cy, tex, 0);
     gfx.setDepth(DEPTHS.EFFECTS - 1);
+    gfx.setTint(color);
+    gfx.setAlpha(0.15);
+    gfx.setScale(0);
 
-    // Grow animation
-    let progress = 0;
-    const growDuration = 200;
-    this.scene.time.addEvent({
-      delay: 16,
-      repeat: Math.floor(growDuration / 16),
-      callback: () => {
-        progress += 16 / growDuration;
-        const r = radius * Math.min(1, progress);
-        gfx.clear();
-        gfx.fillStyle(color, 0.25);
-        gfx.fillCircle(cx, cy, r);
-        gfx.lineStyle(2, color, 0.5);
-        gfx.strokeCircle(cx, cy, r);
-      },
+    // Cap the zone size so it doesn't look pixelated
+    const maxZoneScale = SPRITE_SCALE * 4;
+    const targetScale = Math.min(maxZoneScale, (radius * 2) / 32);
+    this.scene.tweens.add({
+      targets: gfx,
+      scaleX: targetScale,
+      scaleY: targetScale,
+      duration: 200,
+      ease: 'Quad.easeOut',
     });
 
     // Damage ticks every 500ms
@@ -456,14 +387,7 @@ export class SynergyManager {
         }
 
         // Pulse visual on each tick
-        const pulse = this.scene.add.graphics();
-        pulse.setDepth(DEPTHS.EFFECTS);
-        pulse.lineStyle(2, 0xFFFFFF, 0.4);
-        pulse.strokeCircle(cx, cy, radius * 0.5);
-        this.scene.tweens.add({
-          targets: pulse, alpha: 0, duration: 300,
-          onComplete: () => pulse.destroy(),
-        });
+        spawnRing(this.scene, cx, cy, radius * 0.3, radius * 0.6, 0xFFFFFF, 300, 0.4);
 
         // Fade out on last tick
         if (ticks >= tickCount) {
@@ -482,13 +406,14 @@ export class SynergyManager {
     const tickInterval = 1000;
     const tickDamage = Math.floor(damage * 0.3);
 
-    // Base toxic zone circle
-    const zone = this.scene.add.graphics();
+    // Base toxic zone sprite (capped scale to avoid pixelation)
+    const tex = this.scene.textures.exists('fx_circle_white') ? 'fx_circle_white' : 'fx_circle_spark';
+    const zone = this.scene.add.sprite(cx, cy, tex, 0);
     zone.setDepth(DEPTHS.EFFECTS - 1);
-    zone.fillStyle(color, 0.2);
-    zone.fillCircle(cx, cy, radius);
-    zone.lineStyle(1, color, 0.3);
-    zone.strokeCircle(cx, cy, radius);
+    zone.setTint(color);
+    zone.setAlpha(0.15);
+    const maxZoneScale = SPRITE_SCALE * 4;
+    zone.setScale(Math.min(maxZoneScale, (radius * 2) / 32));
 
     // Damage ticks every 1s for 4s
     let ticks = 0;
@@ -518,24 +443,14 @@ export class SynergyManager {
           const dist = Math.random() * radius * 0.8;
           const px = cx + Math.cos(angle) * dist;
           const py = cy + Math.sin(angle) * dist;
-          const puff = this.scene.add.graphics();
-          puff.setDepth(DEPTHS.EFFECTS);
-          puff.setBlendMode(Phaser.BlendModes.ADD);
           const puffSize = 8 + Math.random() * 12;
-          puff.fillStyle(color, 0.4);
-          puff.fillCircle(0, 0, puffSize);
-          puff.fillStyle(0xCCDD88, 0.2);
-          puff.fillCircle(0, 0, puffSize * 0.5);
-          puff.setPosition(px, py);
-          this.scene.tweens.add({
-            targets: puff,
-            x: px + (Math.random() - 0.5) * 20,
-            y: py - 8 - Math.random() * 12,
-            scaleX: 1.5, scaleY: 1.5,
-            alpha: 0,
+          spawnFX(this.scene, px, py, 'fx_smoke_circular', {
+            scale: puffSize / 8,
+            tint: color,
+            alpha: 0.4,
             duration: 800 + Math.random() * 400,
-            ease: 'Quad.easeOut',
-            onComplete: () => puff.destroy(),
+            blendMode: Phaser.BlendModes.ADD,
+            scaleEnd: puffSize / 8 * 1.5,
           });
         }
       },
@@ -551,7 +466,7 @@ export class SynergyManager {
     });
   }
 
-  /** Ring: expanding ring that hits enemies as it passes through them (delayed by distance) */
+  /** Ring: expanding energy wave that hits enemies as it passes through them */
   private fireGenericRing(cx: number, cy: number, radius: number, damage: number, color: number, enemies: Enemy[]): number {
     const expandDuration = 300;
     let hitCount = 0;
@@ -572,25 +487,26 @@ export class SynergyManager {
       }
     }
 
-    // Visual: expanding ring
-    const gfx = this.scene.add.graphics();
-    gfx.setDepth(DEPTHS.EFFECTS);
-    let progress = 0;
-    this.scene.time.addEvent({
-      delay: 16,
-      repeat: Math.floor(expandDuration / 16),
-      callback: () => {
-        progress += 16 / expandDuration;
-        const currentRadius = radius * Math.min(1, progress);
-        const alpha = 1 - progress;
-        gfx.clear();
-        gfx.lineStyle(3, color, alpha * 0.8);
-        gfx.strokeCircle(cx, cy, currentRadius);
-        gfx.fillStyle(color, alpha * 0.15);
-        gfx.fillCircle(cx, cy, currentRadius);
-        if (progress >= 1) gfx.destroy();
-      },
-    });
+    // Visual: central flash + expanding ring
+    spawnFlash(this.scene, cx, cy, 6 * SPRITE_SCALE, 0xFFFFFF, 120);
+    spawnRing(this.scene, cx, cy, 5, radius * 0.5, color, 300, 0.6);
+
+    // Spark particles along the ring edge
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI * 2 * i) / 6;
+      const edgeDist = radius * 0.4;
+      const sx = cx + Math.cos(angle) * edgeDist;
+      const sy = cy + Math.sin(angle) * edgeDist;
+      this.scene.time.delayedCall(i * 30, () => {
+        spawnFX(this.scene, sx, sy, 'fx_spark', {
+          scale: SPRITE_SCALE * 0.5,
+          tint: color,
+          duration: 200,
+          scaleEnd: SPRITE_SCALE * 0.2,
+          blendMode: Phaser.BlendModes.ADD,
+        });
+      });
+    }
 
     return hitCount;
   }
@@ -625,7 +541,6 @@ export class SynergyManager {
       if (dist > radius) continue;
       const angleToEnemy = Math.atan2(enemy.y - cy, enemy.x - cx);
       let angleDiff = angleToEnemy - facingAngle;
-      // Normalize to [-PI, PI]
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
       if (Math.abs(angleDiff) <= coneHalfAngle) {
@@ -635,50 +550,23 @@ export class SynergyManager {
       }
     }
 
-    // Visual: blade arc in facing direction
+    // Visual: fan of blade slashes moving outward in the cone
+    const slashTextures = ['fx_slash_curved', 'fx_slash_double_curved', 'fx_circular_slash'];
+    const slashScale = SPRITE_SCALE * 2.5; // crisp, not pixelated
     const slashCount = 3;
+
     for (let i = 0; i < slashCount; i++) {
-      const arcOffset = (i - 1) * 0.3;
-      const startAngle = facingAngle - coneHalfAngle + arcOffset;
-      const endAngle = facingAngle + coneHalfAngle + arcOffset;
-      const delay = i * 80;
+      const arcOffset = (i - 1) * 0.4;
+      const slashAngle = facingAngle + arcOffset;
+      const dist = 16 * SPRITE_SCALE + i * 12 * SPRITE_SCALE; // stagger outward
+      const sx = cx + Math.cos(slashAngle) * dist;
+      const sy = cy + Math.sin(slashAngle) * dist;
+      const delay = i * 60;
+      const tex = slashTextures[i % slashTextures.length];
 
       this.scene.time.delayedCall(delay, () => {
-        const trail = this.scene.add.graphics();
-        trail.setDepth(DEPTHS.EFFECTS);
-        trail.fillStyle(color, 0.5);
-        trail.slice(cx, cy, radius, startAngle, endAngle, false);
-        trail.fillPath();
-        trail.fillStyle(0xFFFFFF, 0.3);
-        trail.slice(cx, cy, radius * 0.95, startAngle + 0.1, endAngle - 0.1, false);
-        trail.fillPath();
-        trail.lineStyle(3, 0xFFFFFF, 0.8);
-        trail.beginPath();
-        trail.moveTo(cx, cy);
-        trail.lineTo(cx + Math.cos(endAngle) * radius, cy + Math.sin(endAngle) * radius);
-        trail.strokePath();
-        this.scene.tweens.add({
-          targets: trail, alpha: 0, duration: 250, ease: 'Quad.easeOut',
-          onComplete: () => trail.destroy(),
-        });
-
-        for (let s = 0; s < 3; s++) {
-          const sparkAngle = endAngle + (Math.random() - 0.5) * 0.4;
-          const sparkDist = radius * (0.8 + Math.random() * 0.3);
-          const sx = cx + Math.cos(sparkAngle) * sparkDist;
-          const sy = cy + Math.sin(sparkAngle) * sparkDist;
-          const spark = this.scene.add.graphics();
-          spark.setDepth(DEPTHS.EFFECTS + 1);
-          spark.fillStyle(0xFFFFFF, 0.9);
-          spark.fillRect(-1, -1, 2, 2);
-          spark.setPosition(sx, sy);
-          this.scene.tweens.add({
-            targets: spark,
-            x: sx + Math.cos(sparkAngle) * 15, y: sy + Math.sin(sparkAngle) * 15,
-            alpha: 0, duration: 150, ease: 'Quad.easeOut',
-            onComplete: () => spark.destroy(),
-          });
-        }
+        playSlashFX(this.scene, sx, sy, slashAngle, tex, slashScale, color, 200);
+        spawnParticleBurst(this.scene, sx, sy, 3, color, 25, 180);
       });
     }
 
@@ -745,47 +633,33 @@ export class SynergyManager {
         const endX = cx + Math.cos(angle) * radius;
         const endY = cy + Math.sin(angle) * radius;
 
-        const clone = this.scene.add.graphics();
+        // Clone figure sprite (spirit)
+        const texKey = this.scene.textures.exists('fx_spirit') ? 'fx_spirit' : 'fx_circle_spark';
+        const clone = this.scene.add.sprite(cx, cy, texKey, 0);
         clone.setDepth(DEPTHS.EFFECTS + 1);
-        clone.fillStyle(color, 0.7);
-        clone.fillCircle(0, -8, 4);
-        clone.fillRect(-3, -4, 6, 12);
-        clone.lineStyle(2, 0xFFFFFF, 0.8);
-        clone.beginPath();
-        clone.moveTo(3, -2);
-        clone.lineTo(10, -8);
-        clone.strokePath();
-        clone.setPosition(cx, cy);
+        clone.setTint(color);
+        clone.setAlpha(0.7);
+        clone.setScale(SPRITE_SCALE * 0.5);
         clone.setRotation(angle + Math.PI / 2);
 
-        const trail = this.scene.add.graphics();
-        trail.setDepth(DEPTHS.EFFECTS);
+        // Tween clone from start to end, spawning trail sprites each update
         this.scene.tweens.add({
           targets: clone, x: endX, y: endY,
           duration: 150, ease: 'Quad.easeIn',
           onUpdate: () => {
-            trail.fillStyle(color, 0.25);
-            trail.fillCircle(clone.x, clone.y, 6);
+            // Trail: small smoke sprite at each position along the path
+            spawnFX(this.scene, clone.x, clone.y, 'fx_smoke_circular', {
+              scale: 0.4,
+              tint: color,
+              alpha: 0.25,
+              duration: 200,
+              scaleEnd: 0.1,
+            });
           },
           onComplete: () => {
-            const slashGfx = this.scene.add.graphics();
-            slashGfx.setDepth(DEPTHS.EFFECTS);
-            slashGfx.lineStyle(3, 0xFFFFFF, 0.8);
-            const perpAngle = angle + Math.PI / 2;
-            const slashLen = 15;
-            slashGfx.beginPath();
-            slashGfx.moveTo(endX + Math.cos(perpAngle) * slashLen, endY + Math.sin(perpAngle) * slashLen);
-            slashGfx.lineTo(endX - Math.cos(perpAngle) * slashLen, endY - Math.sin(perpAngle) * slashLen);
-            slashGfx.strokePath();
-            this.scene.tweens.add({
-              targets: slashGfx, alpha: 0, duration: 300,
-              onComplete: () => slashGfx.destroy(),
-            });
+            // Slash at end of dash
+            playSlashFX(this.scene, endX, endY, angle + Math.PI / 2, 'fx_cut', SPRITE_SCALE, 0xFFFFFF, 300);
             clone.destroy();
-            this.scene.tweens.add({
-              targets: trail, alpha: 0, duration: 200,
-              onComplete: () => trail.destroy(),
-            });
           },
         });
       });
@@ -853,38 +727,10 @@ export class SynergyManager {
       prevY = e.y;
 
       this.scene.time.delayedCall(delay, () => {
-        const gfx = this.scene.add.graphics();
-        gfx.setDepth(DEPTHS.EFFECTS);
-        const segments = 5;
-        const pts = [{ x: fromX, y: fromY }];
-        const dx = e.x - fromX;
-        const dy = e.y - fromY;
-        for (let s = 1; s < segments; s++) {
-          const t = s / segments;
-          pts.push({
-            x: fromX + dx * t + (Math.random() - 0.5) * 12,
-            y: fromY + dy * t + (Math.random() - 0.5) * 12,
-          });
-        }
-        pts.push({ x: e.x, y: e.y });
-        gfx.lineStyle(3, 0xFFFFFF, 0.9);
-        gfx.beginPath();
-        gfx.moveTo(pts[0].x, pts[0].y);
-        for (const p of pts) gfx.lineTo(p.x, p.y);
-        gfx.strokePath();
-        gfx.lineStyle(5, color, 0.4);
-        gfx.beginPath();
-        gfx.moveTo(pts[0].x, pts[0].y);
-        for (const p of pts) gfx.lineTo(p.x, p.y);
-        gfx.strokePath();
-        gfx.fillStyle(0xFFFFFF, 0.7);
-        gfx.fillCircle(e.x, e.y, 6);
-        gfx.fillStyle(color, 0.4);
-        gfx.fillCircle(e.x, e.y, 10);
-        this.scene.tweens.add({
-          targets: gfx, alpha: 0, duration: 250,
-          onComplete: () => gfx.destroy(),
-        });
+        // Lightning line from previous point to this enemy
+        spawnLine(this.scene, fromX, fromY, e.x, e.y, color, 250, 0.8);
+        // Flash at impact point
+        spawnFlash(this.scene, e.x, e.y, 10, color, 250);
       });
     }
 
@@ -912,37 +758,14 @@ export class SynergyManager {
     const healAmount = 10 + Math.floor(totalDamageDealt * 0.05);
     this.player.heal(healAmount);
 
-    // Visual: central healing flash
-    const flash = this.scene.add.graphics();
-    flash.setDepth(DEPTHS.EFFECTS);
-    flash.fillStyle(0xFFFFFF, 0.7);
-    flash.fillCircle(cx, cy, 10);
-    flash.fillStyle(color, 0.5);
-    flash.fillCircle(cx, cy, 18);
-    this.scene.tweens.add({
-      targets: flash, alpha: 0, duration: 300,
-      onComplete: () => flash.destroy(),
-    });
+    // Visual: central healing flash + magic FX
+    spawnFlash(this.scene, cx, cy, 8 * SPRITE_SCALE, color, 300);
+    playImpactFX(this.scene, cx, cy, 0, 'fx_shield_yellow', SPRITE_SCALE * 1.5, color, 350);
 
-    // Expanding heal ring
-    const ring = this.scene.add.graphics();
-    ring.setDepth(DEPTHS.EFFECTS);
-    let progress = 0;
-    this.scene.time.addEvent({
-      delay: 16, repeat: 20,
-      callback: () => {
-        progress += 0.05;
-        const r = radius * progress;
-        ring.clear();
-        ring.lineStyle(2, color, 1 - progress);
-        ring.strokeCircle(cx, cy, r);
-        ring.fillStyle(color, (1 - progress) * 0.1);
-        ring.fillCircle(cx, cy, r);
-        if (progress >= 1) ring.destroy();
-      },
-    });
+    // Subtle expanding ring (not full radius)
+    spawnRing(this.scene, cx, cy, 5, radius * 0.4, color, 320, 0.5);
 
-    // Rising heal particles (green plus signs on player)
+    // Rising heal particles (spark sprites floating upward)
     for (let i = 0; i < 6; i++) {
       const angle = Math.random() * Math.PI * 2;
       const dist = Math.random() * 15;
@@ -950,16 +773,17 @@ export class SynergyManager {
       const py = cy + Math.sin(angle) * dist;
       const delay = Math.random() * 200;
       this.scene.time.delayedCall(delay, () => {
-        const particle = this.scene.add.graphics();
-        particle.setDepth(DEPTHS.EFFECTS + 1);
-        particle.fillStyle(0x44FF44, 0.8);
-        particle.fillRect(-1, -4, 2, 8);
-        particle.fillRect(-4, -1, 8, 2);
-        particle.setPosition(px, py);
+        const particle = spawnFX(this.scene, px, py, 'fx_spark', {
+          scale: 0.4,
+          tint: 0x44FF44,
+          duration: 500 + Math.random() * 300,
+          depth: DEPTHS.EFFECTS + 1,
+          fadeOut: false, // we'll handle fade in the y tween
+        });
+        // Tween upward with fade
         this.scene.tweens.add({
           targets: particle, y: py - 20, alpha: 0,
           duration: 500 + Math.random() * 300, ease: 'Quad.easeOut',
-          onComplete: () => particle.destroy(),
         });
       });
     }
@@ -974,16 +798,7 @@ export class SynergyManager {
     const orbSpeed = 3;
 
     // Central summoning circle visual
-    const circle = this.scene.add.graphics();
-    circle.setDepth(DEPTHS.EFFECTS - 1);
-    circle.lineStyle(2, color, 0.6);
-    circle.strokeCircle(cx, cy, 20);
-    circle.lineStyle(1, color, 0.3);
-    circle.strokeCircle(cx, cy, 30);
-    this.scene.tweens.add({
-      targets: circle, alpha: 0, duration: 600,
-      onComplete: () => circle.destroy(),
-    });
+    spawnRing(this.scene, cx, cy, 20, 30, color, 600, 0.6);
 
     // Pick different targets for each orb
     const activeEnemies = enemies
@@ -996,26 +811,17 @@ export class SynergyManager {
     for (let i = 0; i < spiritCount; i++) {
       const delay = i * 150;
       this.scene.time.delayedCall(delay, () => {
-        const spirit = this.scene.add.graphics();
+        // Spirit orb sprite (persistent, not auto-destroyed)
+        const spiritTex = this.scene.textures.exists('fx_spirit_blue') ? 'fx_spirit_blue' : (this.scene.textures.exists('fx_spirit') ? 'fx_spirit' : 'fx_circle_spark');
+        const spirit = this.scene.add.sprite(cx, cy, spiritTex, 0);
         spirit.setDepth(DEPTHS.EFFECTS + 1);
-        spirit.fillStyle(color, 0.6);
-        spirit.fillCircle(0, 0, 8);
-        spirit.fillStyle(0xFFFFFF, 0.4);
-        spirit.fillCircle(0, -2, 3);
-        spirit.lineStyle(2, color, 0.4);
-        spirit.beginPath();
-        spirit.moveTo(0, 8);
-        spirit.lineTo(-3, 14);
-        spirit.moveTo(0, 8);
-        spirit.lineTo(3, 14);
-        spirit.strokePath();
-        spirit.setPosition(cx, cy);
-
-        const trail = this.scene.add.graphics();
-        trail.setDepth(DEPTHS.EFFECTS);
+        spirit.setTint(color);
+        spirit.setAlpha(0.7);
+        spirit.setScale(SPRITE_SCALE * 0.4);
 
         let hasHit = false;
         let elapsed = 0;
+        let trailTimer = 0;
 
         // Homing update loop
         const homingEvent = this.scene.time.addEvent({
@@ -1023,12 +829,9 @@ export class SynergyManager {
           loop: true,
           callback: () => {
             elapsed += 16;
+            trailTimer += 16;
             if (hasHit || elapsed > orbLifetime) {
               spirit.destroy();
-              this.scene.tweens.add({
-                targets: trail, alpha: 0, duration: 300,
-                onComplete: () => trail.destroy(),
-              });
               homingEvent.destroy();
               return;
             }
@@ -1053,9 +856,17 @@ export class SynergyManager {
               spirit.x += Math.cos(angle) * orbSpeed;
               spirit.y += Math.sin(angle) * orbSpeed;
 
-              // Trail
-              trail.fillStyle(color, 0.15);
-              trail.fillCircle(spirit.x, spirit.y, 5);
+              // Trail: spawn a small smoke sprite every few frames
+              if (trailTimer >= 48) {
+                trailTimer = 0;
+                spawnFX(this.scene, spirit.x, spirit.y, 'fx_smoke_circular', {
+                  scale: 0.3,
+                  tint: color,
+                  alpha: 0.15,
+                  duration: 300,
+                  scaleEnd: 0.1,
+                });
+              }
 
               // Check collision
               const dist = Phaser.Math.Distance.Between(spirit.x, spirit.y, target.x, target.y);
@@ -1066,24 +877,23 @@ export class SynergyManager {
                 if (healOnHit) this.player.heal(10);
 
                 // Burst on impact
-                const burst = this.scene.add.graphics();
-                burst.setDepth(DEPTHS.EFFECTS);
-                burst.fillStyle(color, 0.5);
-                burst.fillCircle(target.x, target.y, 12);
-                burst.fillStyle(0xFFFFFF, 0.3);
-                burst.fillCircle(target.x, target.y, 6);
-                this.scene.tweens.add({
-                  targets: burst, alpha: 0, duration: 200,
-                  onComplete: () => burst.destroy(),
-                });
+                spawnFlash(this.scene, target.x, target.y, 12, color, 200);
               }
             } else {
               // No target, drift outward
               const angle = (Math.PI * 2 / spiritCount) * i;
               spirit.x += Math.cos(angle) * orbSpeed * 0.5;
               spirit.y += Math.sin(angle) * orbSpeed * 0.5;
-              trail.fillStyle(color, 0.15);
-              trail.fillCircle(spirit.x, spirit.y, 5);
+              if (trailTimer >= 48) {
+                trailTimer = 0;
+                spawnFX(this.scene, spirit.x, spirit.y, 'fx_smoke_circular', {
+                  scale: 0.3,
+                  tint: color,
+                  alpha: 0.15,
+                  duration: 300,
+                  scaleEnd: 0.1,
+                });
+              }
             }
           },
         });
@@ -1141,39 +951,16 @@ export class SynergyManager {
       }
     }
 
-    // Visual: large dark arrow graphic with shadow trail
-    const arrow = this.scene.add.graphics();
+    // Visual: large dark kunai projectile with shadow trail
+    // Spawn the main projectile sprite
+    const arrowTex = this.scene.textures.exists('kunai') ? 'kunai' : 'fx_spark';
+    const arrow = this.scene.add.sprite(cx, cy, arrowTex, 0);
     arrow.setDepth(DEPTHS.EFFECTS + 1);
-
-    // Arrow head (large triangle)
-    const headLen = 16 * SPRITE_SCALE;
-    const headWidth = 8 * SPRITE_SCALE;
-    arrow.fillStyle(color, 0.9);
-    arrow.beginPath();
-    arrow.moveTo(headLen, 0);
-    arrow.lineTo(-headLen * 0.3, -headWidth);
-    arrow.lineTo(-headLen * 0.3, headWidth);
-    arrow.closePath();
-    arrow.fillPath();
-    // Arrow shaft
-    arrow.fillStyle(0x220011, 0.8);
-    arrow.fillRect(-headLen * 0.3, -headWidth * 0.3, -headLen * 0.8, headWidth * 0.6);
-    // Glow outline
-    arrow.lineStyle(2, 0xFF0066, 0.6);
-    arrow.beginPath();
-    arrow.moveTo(headLen, 0);
-    arrow.lineTo(-headLen * 0.3, -headWidth);
-    arrow.lineTo(-headLen * 0.3, headWidth);
-    arrow.closePath();
-    arrow.strokePath();
-
-    arrow.setPosition(cx, cy);
+    arrow.setScale(SPRITE_SCALE * 2);
+    arrow.setTint(color);
     arrow.setRotation(angle);
 
-    const trail = this.scene.add.graphics();
-    trail.setDepth(DEPTHS.EFFECTS);
-
-    // Animate the arrow flying
+    // Animate the arrow flying, spawning trail sprites along the way
     this.scene.tweens.add({
       targets: arrow,
       x: endX,
@@ -1181,29 +968,20 @@ export class SynergyManager {
       duration: 250,
       ease: 'Quad.easeIn',
       onUpdate: () => {
-        // Shadow trail particles
-        trail.fillStyle(color, 0.2);
-        trail.fillCircle(arrow.x + (Math.random() - 0.5) * 10, arrow.y + (Math.random() - 0.5) * 10, 6 + Math.random() * 4);
-        trail.fillStyle(0x330022, 0.15);
-        trail.fillCircle(arrow.x + (Math.random() - 0.5) * 15, arrow.y + (Math.random() - 0.5) * 15, 8 + Math.random() * 5);
+        // Shadow trail particles (smoke sprites along the path)
+        spawnFX(this.scene, arrow.x + (Math.random() - 0.5) * 10, arrow.y + (Math.random() - 0.5) * 10, 'fx_smoke_circular', {
+          scale: 0.5 + Math.random() * 0.3,
+          tint: color,
+          alpha: 0.2,
+          duration: 300,
+          scaleEnd: 0.1,
+        });
       },
       onComplete: () => {
         // Impact burst at end
-        const burst = this.scene.add.graphics();
-        burst.setDepth(DEPTHS.EFFECTS);
-        burst.fillStyle(color, 0.5);
-        burst.fillCircle(endX, endY, 25);
-        burst.fillStyle(0xFF0066, 0.3);
-        burst.fillCircle(endX, endY, 15);
-        this.scene.tweens.add({
-          targets: burst, alpha: 0, duration: 400,
-          onComplete: () => burst.destroy(),
-        });
+        spawnFlash(this.scene, endX, endY, 25, color, 400);
+        playImpactFX(this.scene, endX, endY, 0, 'fx_explosion', SPRITE_SCALE, color, 300);
         arrow.destroy();
-        this.scene.tweens.add({
-          targets: trail, alpha: 0, duration: 500,
-          onComplete: () => trail.destroy(),
-        });
       },
     });
 
@@ -1237,27 +1015,16 @@ export class SynergyManager {
     const targetX = nearest.x;
     const targetY = nearest.y;
 
-    // Afterimage at start position
-    const afterimage = this.scene.add.graphics();
-    afterimage.setDepth(DEPTHS.EFFECTS);
-    afterimage.fillStyle(combo.color, 0.5);
-    afterimage.fillCircle(px, py, 8);
-    this.scene.tweens.add({
-      targets: afterimage, alpha: 0, duration: 300,
-      onComplete: () => afterimage.destroy(),
+    // Afterimage at start position (spirit sprite)
+    spawnFX(this.scene, px, py, 'fx_spirit', {
+      scale: SPRITE_SCALE * 0.5,
+      tint: combo.color,
+      alpha: 0.5,
+      duration: 300,
     });
 
     // Teleport line trail from old position to target
-    const trail = this.scene.add.graphics();
-    trail.setDepth(DEPTHS.EFFECTS);
-    trail.lineStyle(3, combo.color, 0.6);
-    trail.lineBetween(px, py, targetX, targetY);
-    trail.lineStyle(1, 0xFFFFFF, 0.3);
-    trail.lineBetween(px, py, targetX, targetY);
-    this.scene.tweens.add({
-      targets: trail, alpha: 0, duration: 250,
-      onComplete: () => trail.destroy(),
-    });
+    spawnLine(this.scene, px, py, targetX, targetY, combo.color, 250, 0.6);
 
     // Teleport player behind the target (offset away from original position)
     const angle = Math.atan2(targetY - py, targetX - px);
@@ -1284,32 +1051,12 @@ export class SynergyManager {
       }
     }
 
-    // Slash visual at arrival
-    const slash = this.scene.add.graphics();
-    slash.setDepth(DEPTHS.EFFECTS + 1);
-    // X-slash mark
-    slash.lineStyle(3, 0xFFFFFF, 0.9);
-    slash.lineBetween(targetX - 15, targetY - 15, targetX + 15, targetY + 15);
-    slash.lineBetween(targetX + 15, targetY - 15, targetX - 15, targetY + 15);
-    slash.lineStyle(2, combo.color, 0.6);
-    slash.lineBetween(targetX - 16, targetY - 14, targetX + 16, targetY + 16);
-    slash.lineBetween(targetX + 16, targetY - 14, targetX - 16, targetY + 16);
-    this.scene.tweens.add({
-      targets: slash, alpha: 0, duration: 300, ease: 'Quad.easeOut',
-      onComplete: () => slash.destroy(),
-    });
+    // Slash visual at arrival (X-slash: two crossed slashes)
+    playSlashFX(this.scene, targetX, targetY, Math.PI / 4, 'fx_cut', SPRITE_SCALE, 0xFFFFFF, 300);
+    playSlashFX(this.scene, targetX, targetY, -Math.PI / 4, 'fx_cut', SPRITE_SCALE, combo.color, 300);
 
     // Arrival burst
-    const burst = this.scene.add.graphics();
-    burst.setDepth(DEPTHS.EFFECTS);
-    burst.fillStyle(combo.color, 0.4);
-    burst.fillCircle(behindX, behindY, 15);
-    burst.fillStyle(0xFFFFFF, 0.3);
-    burst.fillCircle(behindX, behindY, 8);
-    this.scene.tweens.add({
-      targets: burst, alpha: 0, duration: 200,
-      onComplete: () => burst.destroy(),
-    });
+    spawnFlash(this.scene, behindX, behindY, 15, combo.color, 200);
   }
 
   public destroy(): void {

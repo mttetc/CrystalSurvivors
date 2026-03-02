@@ -3,6 +3,8 @@ import { GAME_WIDTH, GAME_HEIGHT, SCENES } from '../constants';
 import { PlayerStats } from '../types';
 import { getMusicManager } from './TitleScene';
 
+const FONT = 'NinjaFont, "Trebuchet MS", Verdana, sans-serif';
+
 interface GameOverData {
   victory: boolean;
   stats: PlayerStats;
@@ -21,23 +23,31 @@ export class GameOverScene extends Phaser.Scene {
     const title = data.victory ? 'VICTORY!' : 'GAME OVER';
     const titleColor = data.victory ? '#44FF44' : '#FF4444';
 
+    // Main panel background
+    if (this.textures.exists('ui_panel')) {
+      this.add.nineslice(
+        GAME_WIDTH / 2, GAME_HEIGHT / 2, 'ui_panel',
+        undefined, GAME_WIDTH - 80, GAME_HEIGHT - 60, 5, 5, 5, 5,
+      ).setAlpha(0.85);
+    }
+
     this.add.text(GAME_WIDTH / 2, 60, title, {
-      fontSize: '40px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+      fontSize: '38px',
+      fontFamily: FONT,
       color: titleColor,
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 8,
-    }).setOrigin(0.5).setResolution(16);
+    }).setOrigin(0.5).setResolution(2);
 
     if (data.victory) {
       this.add.text(GAME_WIDTH / 2, 104, 'You survived the horde!', {
-        fontSize: '22px',
-        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+        fontSize: '20px',
+        fontFamily: FONT,
         color: '#88CC88',
         stroke: '#000000',
         strokeThickness: 4,
-      }).setOrigin(0.5).setResolution(16);
+      }).setOrigin(0.5).setResolution(2);
     }
 
     // Stats
@@ -45,7 +55,6 @@ export class GameOverScene extends Phaser.Scene {
     const timeSec = Math.floor(stats.timeSurvived / 1000);
     const timeMin = Math.floor(timeSec / 60);
     const timeSecs = timeSec % 60;
-
     const dps = timeSec > 0 ? (stats.damageDealt / timeSec).toFixed(1) : '0.0';
 
     const statsLines = [
@@ -60,23 +69,31 @@ export class GameOverScene extends Phaser.Scene {
     ];
 
     statsLines.forEach((line, i) => {
-      this.add.text(GAME_WIDTH / 2, 160 + i * 36, line, {
-        fontSize: '22px',
-        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+      this.add.text(GAME_WIDTH / 2, 150 + i * 34, line, {
+        fontSize: '20px',
+        fontFamily: FONT,
         color: '#CCCCCC',
         stroke: '#000000',
         strokeThickness: 4,
-      }).setOrigin(0.5).setResolution(16);
+      }).setOrigin(0.5).setResolution(2);
     });
 
-    // Play again
-    const playAgain = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 80, 'Press ENTER to Play Again', {
-      fontSize: '24px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
-      color: '#AAAAAA',
+    // Play again button
+    const btnY = GAME_HEIGHT - 80;
+    if (this.textures.exists('ui_btn_normal')) {
+      this.add.nineslice(
+        GAME_WIDTH / 2, btnY, 'ui_btn_normal',
+        undefined, 340, 48, 4, 4, 3, 3,
+      );
+    }
+
+    const playAgain = this.add.text(GAME_WIDTH / 2, btnY, 'Press ENTER to Play Again', {
+      fontSize: '26px',
+      fontFamily: FONT,
+      color: '#FFFFFF',
       stroke: '#000000',
       strokeThickness: 4,
-    }).setOrigin(0.5).setResolution(16);
+    }).setOrigin(0.5).setResolution(2);
 
     this.tweens.add({
       targets: playAgain,
@@ -87,7 +104,7 @@ export class GameOverScene extends Phaser.Scene {
     });
 
     this.input.keyboard!.once('keydown-ENTER', () => {
-      getMusicManager().playGameMusic();
+      getMusicManager(this).playGameMusic();
       this.scene.stop(SCENES.LEVEL_UP);
       this.scene.stop(SCENES.HUD);
       this.scene.start(SCENES.GAME);

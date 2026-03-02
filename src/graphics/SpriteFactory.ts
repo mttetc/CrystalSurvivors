@@ -1,14 +1,5 @@
-import { generatePlayerTextures } from './PlayerSprites';
-import { generateEnemyTextures } from './EnemySprites';
-import { generateProjectileTextures } from './ProjectileSprites';
-import { generatePickupTextures } from './PickupSprites';
-import { generateUITextures, generateEnvironmentTextures } from './UISprites';
-
-export function generateAllTextures(scene: Phaser.Scene): void {
-  generatePlayerTextures(scene);
-  generateEnemyTextures(scene);
-  generateProjectileTextures(scene);
-  generatePickupTextures(scene);
-  generateUITextures(scene);
-  generateEnvironmentTextures(scene);
+// All textures are now loaded as PNG assets in BootScene.preload().
+// This file is kept as a no-op for backward compatibility.
+export function generateAllTextures(_scene: Phaser.Scene): void {
+  // No procedural textures needed
 }

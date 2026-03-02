@@ -4,6 +4,7 @@ import { BaseWeapon } from './BaseWeapon';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { EventBus } from '../systems/EventBus';
+import { playSlashFX, showWeaponInHand } from './fxHelper';
 
 export class Katana extends BaseWeapon {
   private swingAngle = 0;
@@ -16,7 +17,6 @@ export class Katana extends BaseWeapon {
     const stats = this.getStats();
     const hitRadius = this.getEffectiveRadius();
     const meleeScale = this.getMeleeScale();
-    const visualRadius = hitRadius * meleeScale;
     const damage = this.getDamage();
     const enchant = this.getEnchant();
     const swingCount = stats.count ?? 1;
@@ -36,67 +36,16 @@ export class Katana extends BaseWeapon {
       const endAngle = baseAngle + swingOffset + 0.4;
       const arcSpan = endAngle - startAngle;
 
-      // Offset origin from player center
       const sp = this.getSpawnPoint(baseAngle + swingOffset);
 
-      // Katana blade swinging through arc
-      const blade = this.scene.add.image(sp.x, sp.y, 'weapon_katana');
-      blade.setOrigin(0, 0.5);
-      blade.setRotation(startAngle);
-      blade.setScale(2 * meleeScale);
-      blade.setDepth(DEPTHS.EFFECTS);
+      // Fast katana slash FX
+      playSlashFX(this.scene, sp.x, sp.y, baseAngle + swingOffset, 'fx_slash_curved', this.getMeleeFXScale() * 1.8, 0x44FFCC, 200);
 
-      this.scene.tweens.add({
-        targets: blade,
-        rotation: endAngle,
-        duration: 150,
-        ease: 'Power2',
-        onComplete: () => {
-          this.scene.tweens.add({
-            targets: blade,
-            alpha: 0,
-            duration: 80,
-            onComplete: () => blade.destroy(),
-          });
-        },
-      });
+      // Show weapon in hand facing attack direction
+      showWeaponInHand(this.scene, this.player, baseAngle + swingOffset, this.id, 200);
 
-      // Cyan slash trail
-      const trail = this.scene.add.graphics();
-      trail.setDepth(DEPTHS.EFFECTS - 1);
-      trail.fillStyle(0x44FFCC, 0.3);
-      trail.slice(sp.x, sp.y, visualRadius, startAngle, endAngle, false);
-      trail.fillPath();
-      trail.fillStyle(0xFFFFFF, 0.15);
-      trail.slice(sp.x, sp.y, visualRadius * 0.5, startAngle, endAngle, false);
-      trail.fillPath();
-
-      this.scene.tweens.add({
-        targets: trail,
-        alpha: 0,
-        duration: 250,
-        ease: 'Quad.easeOut',
-        onComplete: () => trail.destroy(),
-      });
-
-      // Cyan additive glow on the slash trail
-      const trailGlow = this.scene.add.graphics();
-      trailGlow.setBlendMode(Phaser.BlendModes.ADD);
-      trailGlow.setDepth(DEPTHS.EFFECTS - 2);
-      trailGlow.fillStyle(0x44FFCC, 0.2);
-      trailGlow.slice(sp.x, sp.y, visualRadius * 0.95, startAngle, endAngle, false);
-      trailGlow.fillPath();
-      trailGlow.fillStyle(0x88FFEE, 0.12);
-      trailGlow.slice(sp.x, sp.y, visualRadius * 0.5, startAngle, endAngle, false);
-      trailGlow.fillPath();
-
-      this.scene.tweens.add({
-        targets: trailGlow,
-        alpha: 0,
-        duration: 300,
-        ease: 'Quad.easeOut',
-        onComplete: () => trailGlow.destroy(),
-      });
+      // Player attack animation
+      this.showAttackSprite(baseAngle + swingOffset);
 
       // Damage enemies in the arc
       const children = enemies.getChildren() as Enemy[];

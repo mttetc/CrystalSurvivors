@@ -164,19 +164,22 @@ export class ElementManager {
         nearest.applyStun(stunDuration);
       }
 
-      // Visual arc
-      const gfx = this.scene.add.graphics();
-      gfx.setDepth(DEPTHS.EFFECTS);
-      gfx.lineStyle(1, 0xFFFF44, 0.8);
-      gfx.beginPath();
-      gfx.moveTo(current.x, current.y);
-      gfx.lineTo(nearest.x, nearest.y);
-      gfx.stroke();
+      // Visual arc — lightning line between enemies
+      const midX = (current.x + nearest.x) / 2;
+      const midY = (current.y + nearest.y) / 2;
+      const dist = Phaser.Math.Distance.Between(current.x, current.y, nearest.x, nearest.y);
+      const lineAngle = Math.atan2(nearest.y - current.y, nearest.x - current.x);
+      const tex = this.scene.textures.exists('fx_spark') ? 'fx_spark' : 'fx_circle_spark';
+      const lineSprite = this.scene.add.sprite(midX, midY, tex, 0);
+      lineSprite.setDepth(DEPTHS.EFFECTS);
+      lineSprite.setScale(dist / 27, 0.15);
+      lineSprite.setRotation(lineAngle);
+      lineSprite.setTint(0xFFFF44);
+      lineSprite.setAlpha(0.8);
+      lineSprite.setBlendMode(Phaser.BlendModes.ADD);
       this.scene.tweens.add({
-        targets: gfx,
-        alpha: 0,
-        duration: 150,
-        onComplete: () => gfx.destroy(),
+        targets: lineSprite, alpha: 0, duration: 150,
+        onComplete: () => lineSprite.destroy(),
       });
 
       current = nearest;

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, SCENES, JobId, WeaponId } from '../constants';
+import { GAME_WIDTH, GAME_HEIGHT, SCENES, JobId, WeaponId, SPRITE_SCALE } from '../constants';
 import { JOB_DEFS } from '../data/jobs';
 import { WEAPON_DEFS } from '../data/weapons';
 
@@ -10,11 +10,10 @@ const CARD_W = 168;
 const CARD_H = 164;
 const GAP_X = 16;
 const GAP_Y = 12;
+const FONT = 'NinjaFont, "Trebuchet MS", Verdana, sans-serif';
 
-// Map each job to its player texture key
 function getPlayerTexture(jobId: JobId): string {
-  const key = 'player_' + jobId;
-  return key;
+  return 'player_' + jobId;
 }
 
 function getAffinityWeaponName(jobId: JobId): string {
@@ -27,7 +26,8 @@ function getAffinityWeaponName(jobId: JobId): string {
 
 export class CharSelectScene extends Phaser.Scene {
   private selectedIndex = 0;
-  private selectorGfx!: Phaser.GameObjects.Graphics;
+  private selectorBorder!: Phaser.GameObjects.Rectangle;
+  private selectorGlow!: Phaser.GameObjects.Rectangle;
   private inputEnabled = true;
   private infoText!: Phaser.GameObjects.Text;
   private weaponText!: Phaser.GameObjects.Text;
@@ -42,20 +42,29 @@ export class CharSelectScene extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor('#080818');
 
-    // Title
-    this.add.text(GAME_WIDTH / 2, 16, 'CHOOSE YOUR CLASS', {
+    // Title with panel
+    if (this.textures.exists('ui_panel')) {
+      this.add.nineslice(
+        GAME_WIDTH / 2, 26, 'ui_panel',
+        undefined, 420, 44, 5, 5, 5, 5,
+      ).setAlpha(0.8);
+    }
+
+    this.add.text(GAME_WIDTH / 2, 26, 'CHOOSE YOUR CLASS', {
       fontSize: '28px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+      fontFamily: FONT,
       color: '#FFD700',
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 8,
-    }).setOrigin(0.5, 0).setResolution(16);
+    }).setOrigin(0.5).setResolution(2);
 
     // Grid layout
     const totalW = COLS * CARD_W + (COLS - 1) * GAP_X;
     const startX = (GAME_WIDTH - totalW) / 2;
     const startY = 56;
+
+    const hasPanel = this.textures.exists('ui_panel');
 
     for (let i = 0; i < ALL_JOBS.length; i++) {
       const jobId = ALL_JOBS[i];
@@ -65,83 +74,107 @@ export class CharSelectScene extends Phaser.Scene {
       const cx = startX + col * (CARD_W + GAP_X) + CARD_W / 2;
       const cy = startY + row * (CARD_H + GAP_Y) + CARD_H / 2;
 
-      // Card background
-      const bg = this.add.graphics();
-      const jobColor = Phaser.Display.Color.HexStringToColor(job.color).color;
-      bg.fillStyle(0x111133, 0.85);
-      bg.fillRoundedRect(cx - CARD_W / 2, cy - CARD_H / 2, CARD_W, CARD_H, 6);
-      bg.lineStyle(3, jobColor, 0.6);
-      bg.strokeRoundedRect(cx - CARD_W / 2, cy - CARD_H / 2, CARD_W, CARD_H, 6);
+      // Card background - use nine-patch panel or rectangle fallback
+      if (hasPanel) {
+        const panel = this.add.nineslice(
+          cx, cy, 'ui_panel',
+          undefined, CARD_W, CARD_H, 5, 5, 5, 5,
+        );
+        panel.setAlpha(0.85);
+      } else {
+        const jobColor = Phaser.Display.Color.HexStringToColor(job.color).color;
+        const cardBg = this.add.rectangle(cx, cy, CARD_W, CARD_H, 0x111133, 0.85);
+        cardBg.setStrokeStyle(3, jobColor, 0.6);
+      }
 
       // Player sprite preview (animated)
       const textureKey = getPlayerTexture(jobId);
       const hasTexture = this.textures.exists(textureKey);
       const sprite = this.add.sprite(cx, cy - 24, hasTexture ? textureKey : 'player', 0);
-      sprite.setScale(2);
+      sprite.setScale(SPRITE_SCALE * 2);
 
       // Animate walk
       let animFrame = 0;
       this.time.addEvent({
-        delay: 220 + i * 10,
+        delay: 140 + i * 5,
         loop: true,
         callback: () => {
           animFrame = (animFrame + 1) % 4;
-          sprite.setFrame(animFrame);
+          sprite.setFrame(animFrame * 4);
         },
       });
+
+      // Job icon
+      if (this.textures.exists(job.icon)) {
+        const jobIcon = this.add.image(cx - CARD_W / 2 + 14, cy - CARD_H / 2 + 14, job.icon);
+        jobIcon.setScale(0.8);
+      }
 
       // Job name
       this.add.text(cx, cy + 44, job.name, {
         fontSize: '18px',
-        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+        fontFamily: FONT,
         color: job.color,
         fontStyle: 'bold',
         stroke: '#000000',
         strokeThickness: 6,
-      }).setOrigin(0.5).setResolution(16);
+      }).setOrigin(0.5).setResolution(2);
 
-      // Starting weapon name (small)
+      // Starting weapon name
       const weaponName = getAffinityWeaponName(jobId);
       this.add.text(cx, cy + 66, weaponName, {
         fontSize: '14px',
-        fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+        fontFamily: FONT,
         color: '#FFAA44',
         stroke: '#000000',
         strokeThickness: 4,
-      }).setOrigin(0.5).setResolution(16);
+      }).setOrigin(0.5).setResolution(2);
     }
 
     // Selection highlight
-    this.selectorGfx = this.add.graphics();
-    this.selectorGfx.setDepth(100);
+    this.selectorGlow = this.add.rectangle(0, 0, CARD_W + 16, CARD_H + 16);
+    this.selectorGlow.setStrokeStyle(1, 0xFFD700, 0.3);
+    this.selectorGlow.setFillStyle();
+    this.selectorGlow.setDepth(100);
+    this.selectorBorder = this.add.rectangle(0, 0, CARD_W + 8, CARD_H + 8);
+    this.selectorBorder.setStrokeStyle(3, 0xFFD700, 1);
+    this.selectorBorder.setFillStyle();
+    this.selectorBorder.setDepth(100);
 
-    // Info bar at bottom
-    this.infoText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 72, '', {
-      fontSize: '20px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+    // Info bar at bottom - use dialog box
+    const infoY = GAME_HEIGHT - 72;
+    if (this.textures.exists('ui_dialog_simple')) {
+      this.add.image(GAME_WIDTH / 2, infoY + 10, 'ui_dialog_simple')
+        .setDisplaySize(GAME_WIDTH - 40, 50)
+        .setAlpha(0.7);
+    }
+
+    this.infoText = this.add.text(GAME_WIDTH / 2, infoY, '', {
+      fontSize: '18px',
+      fontFamily: FONT,
       color: '#AAAACC',
       stroke: '#000000',
       strokeThickness: 6,
       align: 'center',
-    }).setOrigin(0.5).setResolution(16);
+    }).setOrigin(0.5).setResolution(2);
 
-    this.weaponText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 44, '', {
-      fontSize: '20px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+    this.weaponText = this.add.text(GAME_WIDTH / 2, infoY + 24, '', {
+      fontSize: '18px',
+      fontFamily: FONT,
       color: '#FFAA44',
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 6,
-    }).setOrigin(0.5).setResolution(16);
+    }).setOrigin(0.5).setResolution(2);
 
     // Controls hint
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 16, 'Arrows to select  |  ENTER to confirm', {
       fontSize: '16px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
+      fontFamily: FONT,
       color: '#333355',
       stroke: '#000000',
       strokeThickness: 4,
-    }).setOrigin(0.5).setResolution(16);
+    }).setOrigin(0.5).setResolution(2);
 
     this.drawSelector();
     this.updateInfo();
@@ -167,7 +200,6 @@ export class CharSelectScene extends Phaser.Scene {
     let newCol = col + dx;
     let newRow = row + dy;
 
-    // Wrap
     if (newCol < 0) newCol = COLS - 1;
     if (newCol >= COLS) newCol = 0;
     if (newRow < 0) newRow = ROWS - 1;
@@ -182,7 +214,6 @@ export class CharSelectScene extends Phaser.Scene {
   }
 
   private drawSelector(): void {
-    this.selectorGfx.clear();
     const totalW = COLS * CARD_W + (COLS - 1) * GAP_X;
     const startX = (GAME_WIDTH - totalW) / 2;
     const startY = 56;
@@ -192,19 +223,8 @@ export class CharSelectScene extends Phaser.Scene {
     const cx = startX + col * (CARD_W + GAP_X) + CARD_W / 2;
     const cy = startY + row * (CARD_H + GAP_Y) + CARD_H / 2;
 
-    // Gold selector border
-    this.selectorGfx.lineStyle(3, 0xFFD700, 1);
-    this.selectorGfx.strokeRoundedRect(
-      cx - CARD_W / 2 - 4, cy - CARD_H / 2 - 4,
-      CARD_W + 8, CARD_H + 8, 10,
-    );
-
-    // Subtle glow
-    this.selectorGfx.lineStyle(1, 0xFFD700, 0.3);
-    this.selectorGfx.strokeRoundedRect(
-      cx - CARD_W / 2 - 8, cy - CARD_H / 2 - 8,
-      CARD_W + 16, CARD_H + 16, 14,
-    );
+    this.selectorBorder.setPosition(cx, cy);
+    this.selectorGlow.setPosition(cx, cy);
   }
 
   private updateInfo(): void {

@@ -45,9 +45,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
 
     this.setDepth(DEPTHS.PLAYER);
+    this.setScale(SPRITE_SCALE);
     this.setCollideWorldBounds(true);
-    this.body!.setSize(10 * SPRITE_SCALE, 14 * SPRITE_SCALE);
-    this.body!.setOffset(3 * SPRITE_SCALE, 5 * SPRITE_SCALE);
+    // Body in LOCAL (texture) coords — scale is applied automatically
+    this.body!.setSize(12, 12);
+    this.body!.setOffset(2, 3);
 
     this.playerState = this.createInitialState();
 
@@ -209,9 +211,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.facing = vy < 0 ? Direction.UP : Direction.DOWN;
       }
 
-      // Walk animation
+      // Walk animation (4 frames per direction in column-major layout)
       this.walkAnimTimer += delta;
-      if (this.walkAnimTimer >= 150) {
+      if (this.walkAnimTimer >= 120) {
         this.walkAnimTimer = 0;
         this.currentFrame = (this.currentFrame + 1) % 4;
       }
@@ -220,7 +222,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.walkAnimTimer = 0;
     }
 
-    this.setFrame(this.facing * 4 + this.currentFrame);
+    // Column-major: each column = direction, rows = animation frames
+    // Walk.png: 4 cols × 4 rows → col 0=DOWN, col 1=UP, col 2=LEFT, col 3=RIGHT
+    const DIR_TO_COL = [0, 2, 3, 1]; // DOWN→0, LEFT→2, RIGHT→3, UP→1
+    this.setFrame(this.currentFrame * 4 + DIR_TO_COL[this.facing]);
   }
 
   private triggerDash(): void {
@@ -272,24 +277,31 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         onComplete: () => afterimage.destroy(),
       });
 
-      // Speed lines behind player
-      const gfx = this.scene.add.graphics();
-      gfx.setDepth(DEPTHS.EFFECTS);
+      // Speed lines behind player (sprite-based)
       const lineColor = hasShadowStep ? 0x9400D3 : 0x4488FF;
-      gfx.lineStyle(1, lineColor, 0.5);
       for (let i = 0; i < 3; i++) {
         const off = (Math.random() - 0.5) * 8;
-        gfx.lineBetween(
-          this.x + off, this.y + off,
-          this.x - this.lastMoveVx * 10 + off, this.y - this.lastMoveVy * 10 + off,
-        );
+        const fromX = this.x + off;
+        const fromY = this.y + off;
+        const toX = this.x - this.lastMoveVx * 10 + off;
+        const toY = this.y - this.lastMoveVy * 10 + off;
+        const midX = (fromX + toX) / 2;
+        const midY = (fromY + toY) / 2;
+        const dist = Phaser.Math.Distance.Between(fromX, fromY, toX, toY);
+        const angle = Math.atan2(toY - fromY, toX - fromX);
+        const tex = this.scene.textures.exists('fx_spark') ? 'fx_spark' : 'fx_circle_spark';
+        const line = this.scene.add.sprite(midX, midY, tex, 0);
+        line.setDepth(DEPTHS.EFFECTS);
+        line.setScale(dist / 27, 0.1);
+        line.setRotation(angle);
+        line.setTint(lineColor);
+        line.setAlpha(0.5);
+        line.setBlendMode(Phaser.BlendModes.ADD);
+        this.scene.tweens.add({
+          targets: line, alpha: 0, duration: 150,
+          onComplete: () => line.destroy(),
+        });
       }
-      this.scene.tweens.add({
-        targets: gfx,
-        alpha: 0,
-        duration: 150,
-        onComplete: () => gfx.destroy(),
-      });
     }
 
     // Flash/blink effect during dash

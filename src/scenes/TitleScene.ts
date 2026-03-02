@@ -5,17 +5,28 @@ import { MusicManager } from '../systems/MusicManager';
 // Singleton music manager (persists across scene changes)
 let musicManager: MusicManager | null = null;
 
-export function getMusicManager(): MusicManager {
+export function getMusicManager(scene?: Phaser.Scene): MusicManager {
   if (!musicManager) {
     musicManager = new MusicManager();
+  }
+  if (scene) {
+    musicManager.setScene(scene);
   }
   return musicManager;
 }
 
+interface TitleParticle {
+  sprite: Phaser.GameObjects.Sprite;
+  vx: number;
+  vy: number;
+  baseAlpha: number;
+}
+
+const FONT = 'NinjaFont, "Trebuchet MS", Verdana, sans-serif';
+
 export class TitleScene extends Phaser.Scene {
-  private particles: { x: number; y: number; vx: number; vy: number; alpha: number; size: number }[] = [];
-  private particleGfx!: Phaser.GameObjects.Graphics;
-  private fogGfx!: Phaser.GameObjects.Graphics;
+  private particles: TitleParticle[] = [];
+  private fogSprites: Phaser.GameObjects.Sprite[] = [];
   private fogTime = 0;
 
   constructor() {
@@ -23,109 +34,110 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.cameras.main.setBackgroundColor('#050510');
+    this.cameras.main.setBackgroundColor('#2a5a1a');
 
     // Start title music
-    getMusicManager().playTitleMusic();
+    getMusicManager(this).playTitleMusic();
 
-    // ─── Dark tiled ground background ────────────────────────────
+    // ─── Nature tiled ground background ──────────────────────────
     const bgContainer = this.add.container(0, 0);
-    for (let x = 0; x < GAME_WIDTH; x += 64) {
-      for (let y = 0; y < GAME_HEIGHT; y += 64) {
-        const tile = this.add.image(x + 32, y + 32, 'ground_tile');
-        tile.setAlpha(0.35);
+    const tileSize = 16;
+    const scale = 2;
+    const scaledSize = tileSize * scale;
+    const grassFrames = [21, 21, 21, 36, 28, 29]; // green grass center variants
+    for (let x = 0; x < GAME_WIDTH; x += scaledSize) {
+      for (let y = 0; y < GAME_HEIGHT; y += scaledSize) {
+        const frame = grassFrames[Math.floor(Math.random() * grassFrames.length)];
+        const tile = this.add.image(x + scaledSize / 2, y + scaledSize / 2, 'tileset_field', frame);
+        tile.setScale(scale).setAlpha(0.4);
         bgContainer.add(tile);
       }
     }
 
-    // ─── Scattered decorations (dark, atmospheric) ───────────────
+    // ─── Scattered nature decorations ────────────────────────────
     const decoData = [
-      { key: 'deco_gravestone', count: 8, alphaMin: 0.12, alphaMax: 0.25 },
-      { key: 'deco_dead_tree', count: 5, alphaMin: 0.10, alphaMax: 0.20 },
-      { key: 'deco_bones', count: 10, alphaMin: 0.08, alphaMax: 0.18 },
-      { key: 'deco_skull_pile', count: 6, alphaMin: 0.10, alphaMax: 0.22 },
-      { key: 'deco_blood_puddle', count: 8, alphaMin: 0.15, alphaMax: 0.30 },
-      { key: 'deco_cobweb', count: 4, alphaMin: 0.06, alphaMax: 0.15 },
+      { key: 'env_bush', count: 8, alphaMin: 0.15, alphaMax: 0.30, scale: 1.5 },
+      { key: 'env_flowers', count: 6, alphaMin: 0.12, alphaMax: 0.25, scale: 1.2 },
     ];
 
-    for (const { key, count, alphaMin, alphaMax } of decoData) {
+    for (const { key, count, alphaMin, alphaMax, scale: s } of decoData) {
       for (let i = 0; i < count; i++) {
         const x = 40 + Math.random() * (GAME_WIDTH - 80);
         const y = 40 + Math.random() * (GAME_HEIGHT - 80);
         if (this.textures.exists(key)) {
           const deco = this.add.image(x, y, key);
           deco.setAlpha(alphaMin + Math.random() * (alphaMax - alphaMin));
-          deco.setTint(0x334455);
+          deco.setScale(s);
+          deco.setTint(0x556655);
         }
       }
     }
 
-    // ─── Animated torches on sides ───────────────────────────────
-    if (this.textures.exists('deco_torch')) {
-      const torchPositions = [
-        { x: 60, y: GAME_HEIGHT / 2 - 80 },
-        { x: 60, y: GAME_HEIGHT / 2 + 80 },
-        { x: GAME_WIDTH - 60, y: GAME_HEIGHT / 2 - 80 },
-        { x: GAME_WIDTH - 60, y: GAME_HEIGHT / 2 + 80 },
-      ];
-      for (const pos of torchPositions) {
-        const torch = this.add.sprite(pos.x, pos.y, 'deco_torch', 0);
-        torch.setScale(2);
-        torch.setAlpha(0.7);
-        this.time.addEvent({
-          delay: 250 + Math.random() * 200,
-          loop: true,
-          callback: () => {
-            torch.setFrame(torch.frame.name === '0' ? 1 : 0);
-          },
-        });
-      }
-    }
-
-    // ─── Dark vignette overlay (stepped for pixel-crisp look) ────
-    const vignette = this.add.graphics();
-    const vStep = 8; // step size in pixels for crisp banding
-    // Top and bottom stepped dark bars
+    // ─── Vignette overlay ───────────────────────────────────────
+    const vStep = 8;
     for (let i = 0; i < 80; i += vStep) {
-      const alpha = (1 - i / 80) * 0.6;
-      vignette.fillStyle(0x000000, alpha);
-      vignette.fillRect(0, i, GAME_WIDTH, vStep);
-      vignette.fillRect(0, GAME_HEIGHT - i - vStep, GAME_WIDTH, vStep);
+      const alpha = (1 - i / 80) * 0.5;
+      this.add.rectangle(GAME_WIDTH / 2, i + vStep / 2, GAME_WIDTH, vStep, 0x0a1a0a).setAlpha(alpha);
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - i - vStep / 2, GAME_WIDTH, vStep, 0x0a1a0a).setAlpha(alpha);
     }
-    // Left and right stepped dark bars
     for (let i = 0; i < 120; i += vStep) {
-      const alpha = (1 - i / 120) * 0.5;
-      vignette.fillStyle(0x000000, alpha);
-      vignette.fillRect(i, 0, vStep, GAME_HEIGHT);
-      vignette.fillRect(GAME_WIDTH - i - vStep, 0, vStep, GAME_HEIGHT);
+      const alpha = (1 - i / 120) * 0.4;
+      this.add.rectangle(i + vStep / 2, GAME_HEIGHT / 2, vStep, GAME_HEIGHT, 0x0a1a0a).setAlpha(alpha);
+      this.add.rectangle(GAME_WIDTH - i - vStep / 2, GAME_HEIGHT / 2, vStep, GAME_HEIGHT, 0x0a1a0a).setAlpha(alpha);
     }
 
-    // ─── Floating particles (embers / dust) ──────────────────────
+    // ─── Floating particles (firefly sprites) ────────────────────
     this.particles = [];
+    const particleTex = this.textures.exists('fx_spark') ? 'fx_spark' : 'fx_circle_spark';
     for (let i = 0; i < 30; i++) {
+      const sprite = this.add.sprite(
+        Math.random() * GAME_WIDTH,
+        Math.random() * GAME_HEIGHT,
+        particleTex, 0,
+      );
+      sprite.setScale(Math.random() < 0.3 ? 0.12 : 0.07);
+      sprite.setTint(0xFFDD44);
+      sprite.setBlendMode(Phaser.BlendModes.ADD);
+      const baseAlpha = 0.1 + Math.random() * 0.4;
+      sprite.setAlpha(baseAlpha);
       this.particles.push({
-        x: Math.random() * GAME_WIDTH,
-        y: Math.random() * GAME_HEIGHT,
+        sprite,
         vx: (Math.random() - 0.5) * 16,
         vy: -10 - Math.random() * 30,
-        alpha: 0.1 + Math.random() * 0.4,
-        size: Math.random() < 0.3 ? 2 : 1,
+        baseAlpha,
       });
     }
-    this.particleGfx = this.add.graphics();
 
-    // ─── Fog layer ───────────────────────────────────────────────
-    this.fogGfx = this.add.graphics();
+    // ─── Fog layer ──────────────────────────────────────────────
+    this.fogSprites = [];
     this.fogTime = 0;
+    const fogTex = this.textures.exists('fx_smoke') ? 'fx_smoke' : 'fx_circle_spark';
+    for (let i = 0; i < 3; i++) {
+      const fog = this.add.sprite(0, 0, fogTex, 0);
+      fog.setTint(0x1a331a);
+      fog.setAlpha(0.06 + i * 0.015);
+      fog.setScale((400 + i * 80) / 32, (32 + i * 12) / 32);
+      fog.setBlendMode(Phaser.BlendModes.MULTIPLY);
+      this.fogSprites.push(fog);
+    }
 
-    // ─── Title text with glow effect ─────────────────────────────
+    // ─── Title panel (nine-patch) ────────────────────────────────
+    const titleCY = GAME_HEIGHT / 2 - 50;
+    if (this.textures.exists('ui_panel')) {
+      const titlePanel = this.add.nineslice(
+        GAME_WIDTH / 2, titleCY, 'ui_panel',
+        undefined, 580, 150, 5, 5, 5, 5,
+      );
+      titlePanel.setAlpha(0.85);
+    }
+
     // Glow behind title
-    const glow = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, 'CRYSTAL SURVIVORS', {
+    const glow = this.add.text(GAME_WIDTH / 2, titleCY - 18, 'CRYSTAL SURVIVORS', {
       fontSize: '52px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
-      color: '#1a3355',
+      fontFamily: FONT,
+      color: '#554411',
       fontStyle: 'bold',
-    }).setOrigin(0.5).setResolution(16).setAlpha(0.6);
+    }).setOrigin(0.5).setResolution(2).setAlpha(0.6);
 
     this.tweens.add({
       targets: glow,
@@ -137,16 +149,15 @@ export class TitleScene extends Phaser.Scene {
     });
 
     // Main title
-    const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, 'CRYSTAL SURVIVORS', {
+    const title = this.add.text(GAME_WIDTH / 2, titleCY - 18, 'CRYSTAL SURVIVORS', {
       fontSize: '48px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
-      color: '#CC4444',
+      fontFamily: FONT,
+      color: '#FFD700',
       fontStyle: 'bold',
       stroke: '#000000',
-      strokeThickness: 12,
-    }).setOrigin(0.5).setResolution(16);
+      strokeThickness: 10,
+    }).setOrigin(0.5).setResolution(2);
 
-    // Subtle title pulse
     this.tweens.add({
       targets: title,
       scaleX: 1.02,
@@ -158,48 +169,55 @@ export class TitleScene extends Phaser.Scene {
     });
 
     // Subtitle
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20, 'Jobs, Crystals & Chaos', {
-      fontSize: '28px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
-      color: '#553333',
+    this.add.text(GAME_WIDTH / 2, titleCY + 36, 'Jobs, Crystals & Chaos', {
+      fontSize: '26px',
+      fontFamily: FONT,
+      color: '#88AA44',
       stroke: '#000000',
       strokeThickness: 6,
-    }).setOrigin(0.5).setResolution(16);
+    }).setOrigin(0.5).setResolution(2);
 
-    // Divider line
-    const divider = this.add.graphics();
-    divider.lineStyle(1, 0x442222, 0.5);
-    divider.beginPath();
-    divider.moveTo(GAME_WIDTH / 2 - 160, GAME_HEIGHT / 2 + 16);
-    divider.lineTo(GAME_WIDTH / 2 + 160, GAME_HEIGHT / 2 + 16);
-    divider.stroke();
+    // ─── Prompt button (themed) ─────────────────────────────────
+    const promptY = GAME_HEIGHT / 2 + 110;
+    if (this.textures.exists('ui_btn_normal')) {
+      const btnBg = this.add.nineslice(
+        GAME_WIDTH / 2, promptY, 'ui_btn_normal',
+        undefined, 320, 48, 4, 4, 3, 3,
+      );
+      btnBg.setAlpha(0.9);
+    }
 
-    // Prompt
-    const prompt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100, 'Press ENTER to Start', {
-      fontSize: '28px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
-      color: '#666666',
+    const prompt = this.add.text(GAME_WIDTH / 2, promptY, 'Press ENTER to Start', {
+      fontSize: '26px',
+      fontFamily: FONT,
+      color: '#FFFFFF',
       stroke: '#000000',
-      strokeThickness: 6,
-    }).setOrigin(0.5).setResolution(16);
+      strokeThickness: 5,
+    }).setOrigin(0.5).setResolution(2);
 
-    // Blink prompt
     this.tweens.add({
       targets: prompt,
-      alpha: 0.15,
+      alpha: 0.3,
       duration: 800,
       yoyo: true,
       repeat: -1,
     });
 
-    // Controls hint
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 40, 'WASD: Move  |  SPACE: Dash  |  ESC: Pause', {
-      fontSize: '22px',
-      fontFamily: '"Trebuchet MS", Verdana, sans-serif',
-      color: '#333344',
+    // ─── Controls hint (dialog box) ─────────────────────────────
+    const controlsY = GAME_HEIGHT - 36;
+    if (this.textures.exists('ui_dialog_simple')) {
+      const ctrlPanel = this.add.image(GAME_WIDTH / 2, controlsY, 'ui_dialog_simple');
+      ctrlPanel.setDisplaySize(560, 40);
+      ctrlPanel.setAlpha(0.6);
+    }
+
+    this.add.text(GAME_WIDTH / 2, controlsY, 'WASD: Move  |  SPACE: Dash  |  ESC: Pause', {
+      fontSize: '20px',
+      fontFamily: FONT,
+      color: '#556644',
       stroke: '#000000',
-      strokeThickness: 4,
-    }).setOrigin(0.5).setResolution(16);
+      strokeThickness: 3,
+    }).setOrigin(0.5).setResolution(2);
 
     this.input.keyboard!.once('keydown-ENTER', () => {
       this.scene.start(SCENES.CHAR_SELECT);
@@ -209,48 +227,28 @@ export class TitleScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     const dt = delta / 1000;
 
-    // Update floating particles
-    this.particleGfx.clear();
+    // Update floating particle sprites
     for (const p of this.particles) {
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
+      p.sprite.x += p.vx * dt;
+      p.sprite.y += p.vy * dt;
 
-      // Wrap around
-      if (p.y < -5) {
-        p.y = GAME_HEIGHT + 5;
-        p.x = Math.random() * GAME_WIDTH;
+      if (p.sprite.y < -5) {
+        p.sprite.y = GAME_HEIGHT + 5;
+        p.sprite.x = Math.random() * GAME_WIDTH;
       }
-      if (p.x < -5) p.x = GAME_WIDTH + 5;
-      if (p.x > GAME_WIDTH + 5) p.x = -5;
+      if (p.sprite.x < -5) p.sprite.x = GAME_WIDTH + 5;
+      if (p.sprite.x > GAME_WIDTH + 5) p.sprite.x = -5;
 
-      // Flicker alpha
-      const flicker = p.alpha * (0.7 + Math.sin(_time * 0.003 + p.x) * 0.3);
-
-      // Draw - reddish embers
-      this.particleGfx.fillStyle(0xFF4422, flicker);
-      this.particleGfx.fillRect(Math.floor(p.x), Math.floor(p.y), p.size, p.size);
+      p.sprite.setAlpha(p.baseAlpha * (0.7 + Math.sin(_time * 0.003 + p.sprite.x) * 0.3));
     }
 
-    // Pixel-art fog drift (rectangular blocks instead of smooth ellipses)
+    // Fog drift
     this.fogTime += dt;
-    this.fogGfx.clear();
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < this.fogSprites.length; i++) {
+      const fog = this.fogSprites[i];
       const fogCX = ((this.fogTime * (16 + i * 6)) % (GAME_WIDTH + 400)) - 200;
       const fogCY = GAME_HEIGHT * 0.6 + i * 50 + Math.floor(Math.sin(this.fogTime * 0.5 + i) * 20);
-      const fogW = 400 + i * 80;
-      const fogH = 32 + i * 12;
-      const baseAlpha = 0.06 + i * 0.015;
-      // Draw fog as stacked rectangles for a pixel-crisp look
-      const layers = 4;
-      for (let l = 0; l < layers; l++) {
-        const shrink = l * (fogW / (layers * 3));
-        const lx = Math.floor(fogCX - fogW / 2 + shrink);
-        const ly = Math.floor(fogCY - fogH / 2 + l * 2);
-        const lw = Math.floor(fogW - shrink * 2);
-        const lh = Math.max(2, Math.floor(fogH / layers));
-        this.fogGfx.fillStyle(0x111122, baseAlpha);
-        this.fogGfx.fillRect(lx, ly, lw, lh);
-      }
+      fog.setPosition(fogCX, fogCY);
     }
   }
 }

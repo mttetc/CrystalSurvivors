@@ -84,12 +84,8 @@ export class GameScene extends Phaser.Scene {
     // World bounds
     this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-    // Tiled ground
-    for (let x = 0; x < WORLD_WIDTH; x += 64) {
-      for (let y = 0; y < WORLD_HEIGHT; y += 64) {
-        this.add.image(x + 32, y + 32, 'ground_tile').setDepth(DEPTHS.GROUND);
-      }
-    }
+    // Tiled ground using grass tileset
+    this.tileGround();
 
     // Player at center
     this.player = new Player(this, WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
@@ -108,7 +104,8 @@ export class GameScene extends Phaser.Scene {
     // Camera
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    this.cameras.main.setBackgroundColor('#0a0a1a');
+    this.cameras.main.setBackgroundColor('#3a7a2a');
+    this.cameras.main.setZoom(1.5);
 
     // Groups
     this.enemyGroup = this.physics.add.group({
@@ -218,9 +215,10 @@ export class GameScene extends Phaser.Scene {
 
     // SFX
     this.sfxManager = new SFXManager();
+    this.sfxManager.setScene(this);
 
     // Switch to game music
-    getMusicManager().playGameMusic();
+    getMusicManager(this).playGameMusic();
 
     // UI
     this.damageNumbers = new DamageNumbers(this);
@@ -239,6 +237,7 @@ export class GameScene extends Phaser.Scene {
     EventBus.on(EVENTS.ELITE_KILLED, this.onEliteKilled, this);
     EventBus.on(EVENTS.CRIT_HIT, this.onCritHit, this);
     EventBus.on(EVENTS.ENCHANT_DAMAGE, this.onEnchantDamage, this);
+    EventBus.on(EVENTS.BOSS_SPAWNED, () => getMusicManager(this).playBossMusic());
 
     EventBus.on(EVENTS.PLAYER_COUNTER, (damage: number, radius: number) => {
       const enemies = this.enemyGroup.getChildren() as Enemy[];
@@ -389,7 +388,7 @@ export class GameScene extends Phaser.Scene {
           enemy.resetBehaviorTimer();
           enemy.startCharge();
           enemy.chargeToward(px, py, enemy.def.chargeSpeed ?? 180);
-          this.cameras.main.shake(200, 0.005);
+          // screen shake removed
         } else {
           enemy.moveToward(px, py);
         }
@@ -429,7 +428,7 @@ export class GameScene extends Phaser.Scene {
         } else {
           enemy.moveToward(px, py);
           if (enemy.canShoot(delta, 800)) {
-            this.fireEnemyProjectile(enemy, px, py, 'boss_bullet');
+            this.fireEnemyProjectile(enemy, px, py, 'big_energyball');
           }
           if (enemy.canSummon(delta)) {
             for (let i = 0; i < 4; i++) {
@@ -492,7 +491,7 @@ export class GameScene extends Phaser.Scene {
     return 3;
   }
 
-  private fireEnemyProjectile(enemy: Enemy, tx: number, ty: number, texture = 'enemy_bullet'): void {
+  private fireEnemyProjectile(enemy: Enemy, tx: number, ty: number, texture = 'shuriken'): void {
     const proj = this.enemyProjectileGroup.getFirstDead(false) as EnemyProjectile | null;
     if (!proj) return;
 
@@ -525,7 +524,7 @@ export class GameScene extends Phaser.Scene {
         Math.cos(angle) * speed,
         Math.sin(angle) * speed,
         enemy.scaledDamage,
-        'boss_bullet',
+        'big_energyball',
       );
     }
   }
@@ -592,6 +591,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onPlayerDied(): void {
+    getMusicManager(this).playGameOverMusic();
     this.time.delayedCall(1000, () => {
       this.scene.stop(SCENES.HUD);
       this.scene.start(SCENES.GAME_OVER, {
@@ -604,6 +604,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onGameWon(): void {
+    getMusicManager(this).stop();
     this.time.delayedCall(2000, () => {
       this.scene.stop(SCENES.HUD);
       this.scene.start(SCENES.GAME_OVER, {
@@ -639,12 +640,15 @@ export class GameScene extends Phaser.Scene {
       const playerDist = Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y);
       if (playerDist <= 30 * SPRITE_SCALE) this.player.takeDamage(15);
 
-      // Visual explosion
-      const gfx = this.add.graphics();
-      gfx.setDepth(DEPTHS.EFFECTS);
-      gfx.fillStyle(0xFF4400, 0.6);
-      gfx.fillCircle(x, y, 30 * SPRITE_SCALE);
-      this.tweens.add({ targets: gfx, alpha: 0, duration: 300, onComplete: () => gfx.destroy() });
+      // Visual explosion — sprite-based
+      const explTex = this.textures.exists('fx_explosion') ? 'fx_explosion' : 'fx_circle_spark';
+      const explSprite = this.add.sprite(x, y, explTex, 0);
+      explSprite.setDepth(DEPTHS.EFFECTS);
+      explSprite.setScale((30 * SPRITE_SCALE * 2) / 40);
+      explSprite.setTint(0xFF4400);
+      explSprite.setAlpha(0.8);
+      explSprite.setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: explSprite, alpha: 0, scaleX: explSprite.scaleX * 1.3, scaleY: explSprite.scaleY * 1.3, duration: 300, onComplete: () => explSprite.destroy() });
       this.isProcessingBomberExplosion = false;
     }
 
@@ -678,7 +682,7 @@ export class GameScene extends Phaser.Scene {
 
   private onPlayerDamageTaken(damage: number): void {
     this.damageNumbers.spawn(this.player.x, this.player.y - 10, damage, '#FF4444');
-    this.cameras.main.shake(100, 0.003);
+    // screen shake removed
   }
 
   // ─── Pause / Resume ───────────────────────────────────────────────
@@ -710,42 +714,119 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  // ─── Environment Decorations ──────────────────────────────────────
-  private scatterDecorations(): void {
-    const decoTypes = [
-      { key: 'deco_gravestone', count: 40 },
-      { key: 'deco_dead_tree', count: 25 },
-      { key: 'deco_bones', count: 50 },
-      { key: 'deco_skull_pile', count: 30 },
-      { key: 'deco_blood_puddle', count: 35 },
-      { key: 'deco_cobweb', count: 25 },
-    ];
+  // ─── Ground Tiling ─────────────────────────────────────────────────
+  private tileGround(): void {
+    // Build landscape using individual tiles from TilesetField (5 cols × 15 rows)
+    // Green grass block: rows 3-5 → solid center at (col 1, row 4) = frame 21
+    // Dark grass block: rows 6-8 → solid center at (col 1, row 7) = frame 36
+    // Grass center variants: frame 28, 29 (row 5 cols 3,4)
+    const TILE = 16;
+    const S = SPRITE_SCALE;
+    const scaledTile = TILE * S;
+    const tilesX = Math.ceil(WORLD_WIDTH / scaledTile);
+    const tilesY = Math.ceil(WORLD_HEIGHT / scaledTile);
 
-    for (const { key, count } of decoTypes) {
-      for (let i = 0; i < count; i++) {
-        const x = 50 + Math.random() * (WORLD_WIDTH - 100);
-        const y = 50 + Math.random() * (WORLD_HEIGHT - 100);
-        const deco = this.add.image(x, y, key);
-        deco.setDepth(DEPTHS.GROUND + 1);
-        deco.setAlpha(0.5 + Math.random() * 0.3);
+    // Grass tile indices from TilesetField (5 cols per row)
+    const grassSolid = [21, 21, 21, 21, 21, 36, 28, 29]; // mostly green, some dark/variant
+
+    for (let ty = 0; ty < tilesY; ty++) {
+      for (let tx = 0; tx < tilesX; tx++) {
+        const wx = tx * scaledTile + scaledTile / 2;
+        const wy = ty * scaledTile + scaledTile / 2;
+        const tileIdx = grassSolid[Math.floor(Math.random() * grassSolid.length)];
+        this.add.image(wx, wy, 'tileset_field', tileIdx)
+          .setScale(S)
+          .setDepth(DEPTHS.GROUND);
       }
     }
 
-    // Animated torches (fewer, spread around)
-    for (let i = 0; i < 20; i++) {
+    // Dirt paths crossing the map (using orange/sandy tiles: row 1 center = frame 6)
+    const dirtTile = 6;
+    const pathCount = 4;
+    for (let p = 0; p < pathCount; p++) {
+      const isHoriz = p % 2 === 0;
+      const pos = 200 + Math.floor(Math.random() * (isHoriz ? WORLD_HEIGHT - 400 : WORLD_WIDTH - 400));
+      const length = isHoriz ? tilesX : tilesY;
+      const pathWidth = 2 + Math.floor(Math.random() * 2); // 2-3 tiles wide
+      for (let i = 0; i < length; i++) {
+        for (let w = 0; w < pathWidth; w++) {
+          const wx = isHoriz
+            ? i * scaledTile + scaledTile / 2
+            : pos + w * scaledTile + scaledTile / 2;
+          const wy = isHoriz
+            ? pos + w * scaledTile + scaledTile / 2
+            : i * scaledTile + scaledTile / 2;
+          if (wx < WORLD_WIDTH && wy < WORLD_HEIGHT) {
+            this.add.image(wx, wy, 'tileset_field', dirtTile)
+              .setScale(S)
+              .setDepth(DEPTHS.GROUND + 0.1);
+          }
+        }
+      }
+    }
+  }
+
+  // ─── Environment Decorations ──────────────────────────────────────
+  private scatterDecorations(): void {
+    const S = SPRITE_SCALE;
+
+    // Scatter trees from TilesetNature (various tree tiles)
+    // Trees in TilesetNature are multi-tile (2x2 or 3x3). Use large single-tile elements.
+    // Small bushes: around row 5-6 of nature tileset. Single rocks: row 8-9.
+    // Nature tileset is 24 cols × 21 rows
+    const treeTiles = [0, 1, 2, 3, 4, 5]; // Top row: tree tops
+    const rockTiles = [168, 169, 192, 193]; // ~row 7-8: rocks
+    const bushTiles = [120, 121, 122, 144, 145]; // ~row 5-6: bushes/plants
+
+    // Large trees (using 2x2 tile clusters from nature tileset)
+    for (let i = 0; i < 40; i++) {
       const x = 100 + Math.random() * (WORLD_WIDTH - 200);
       const y = 100 + Math.random() * (WORLD_HEIGHT - 200);
-      const torch = this.add.sprite(x, y, 'deco_torch', 0);
-      torch.setDepth(DEPTHS.GROUND + 2);
+      const tileIdx = treeTiles[Math.floor(Math.random() * treeTiles.length)];
+      this.add.image(x, y, 'tileset_nature', tileIdx)
+        .setScale(S * 2)
+        .setDepth(DEPTHS.GROUND + 2);
+    }
 
-      // Simple frame toggle for flicker
-      this.time.addEvent({
-        delay: 300 + Math.random() * 200,
-        loop: true,
-        callback: () => {
-          torch.setFrame(torch.frame.name === '0' ? 1 : 0);
-        },
-      });
+    // Rocks
+    for (let i = 0; i < 30; i++) {
+      const x = 50 + Math.random() * (WORLD_WIDTH - 100);
+      const y = 50 + Math.random() * (WORLD_HEIGHT - 100);
+      const tileIdx = rockTiles[Math.floor(Math.random() * rockTiles.length)];
+      this.add.image(x, y, 'tileset_nature', tileIdx)
+        .setScale(S * 1.5)
+        .setDepth(DEPTHS.GROUND + 1);
+    }
+
+    // Small bushes from tileset
+    for (let i = 0; i < 50; i++) {
+      const x = 50 + Math.random() * (WORLD_WIDTH - 100);
+      const y = 50 + Math.random() * (WORLD_HEIGHT - 100);
+      const tileIdx = bushTiles[Math.floor(Math.random() * bushTiles.length)];
+      this.add.image(x, y, 'tileset_nature', tileIdx)
+        .setScale(S)
+        .setDepth(DEPTHS.GROUND + 1);
+    }
+
+    // Flowers and bushes from environment PNGs
+    if (this.textures.exists('env_bush')) {
+      for (let i = 0; i < 40; i++) {
+        const x = 50 + Math.random() * (WORLD_WIDTH - 100);
+        const y = 50 + Math.random() * (WORLD_HEIGHT - 100);
+        this.add.image(x, y, 'env_bush')
+          .setScale(1.5)
+          .setDepth(DEPTHS.GROUND + 1)
+          .setAlpha(0.8 + Math.random() * 0.2);
+      }
+    }
+    if (this.textures.exists('env_flowers')) {
+      for (let i = 0; i < 35; i++) {
+        const x = 50 + Math.random() * (WORLD_WIDTH - 100);
+        const y = 50 + Math.random() * (WORLD_HEIGHT - 100);
+        this.add.image(x, y, 'env_flowers')
+          .setDepth(DEPTHS.GROUND + 1)
+          .setAlpha(0.7 + Math.random() * 0.3);
+      }
     }
   }
 

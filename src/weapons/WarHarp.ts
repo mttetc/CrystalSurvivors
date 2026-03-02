@@ -4,6 +4,7 @@ import { BaseWeapon } from './BaseWeapon';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { EventBus } from '../systems/EventBus';
+import { playSlashFX, showWeaponInHand } from './fxHelper';
 
 export class WarHarp extends BaseWeapon {
   constructor(scene: Phaser.Scene, player: Player) {
@@ -21,6 +22,15 @@ export class WarHarp extends BaseWeapon {
     const target = this.findNearestEnemy(enemies, 300 * SPRITE_SCALE);
     if (!target) return;
 
+    // Show harp in hand facing target
+    const baseAngle = Math.atan2(target.y - this.player.y, target.x - this.player.x);
+    const meleeScale = this.getMeleeScale();
+    showWeaponInHand(this.scene, this.player, baseAngle, this.id, 300);
+
+    // Strum slash FX at player position
+    const sp = this.getSpawnPoint(baseAngle);
+    playSlashFX(this.scene, sp.x, sp.y, baseAngle, 'fx_slash_double', this.getMeleeFXScale() * 1.6, 0xFFCC44, 250);
+
     const hit: Set<Enemy> = new Set();
     let current: Enemy = target;
     const chainPoints: { x: number; y: number }[] = [{ x: this.player.x, y: this.player.y }];
@@ -34,16 +44,14 @@ export class WarHarp extends BaseWeapon {
       current.takeDamage(dmg, false);
       EventBus.emit(EVENTS.ENEMY_HIT, current, dmg, enchant.id, enchant.tier, this.id);
 
-      // Stun at level 3+
       if (level >= 3) {
         current.applyFreeze(300);
       }
 
       damage *= retention;
 
-      // Find next target
       let nearest: Enemy | null = null;
-      let nearestDist = 120 * SPRITE_SCALE; // chain range
+      let nearestDist = 120 * SPRITE_SCALE;
       const children = enemies.getChildren() as Enemy[];
       for (const enemy of children) {
         if (!enemy.active || hit.has(enemy)) continue;
@@ -56,79 +64,45 @@ export class WarHarp extends BaseWeapon {
       current = nearest!;
     }
 
-    // Draw chain visual - smooth sound wave curves in golden color
+    // Draw chain visual using spark sprites along the chain path
     if (chainPoints.length >= 2) {
-      const gfx = this.scene.add.graphics();
-      gfx.setDepth(DEPTHS.EFFECTS);
-
       for (let i = 0; i < chainPoints.length - 1; i++) {
         const from = chainPoints[i];
         const to = chainPoints[i + 1];
-        this.drawSoundWave(gfx, from.x, from.y, to.x, to.y);
+        this.drawChainSprites(from.x, from.y, to.x, to.y);
       }
-
-      this.scene.tweens.add({
-        targets: gfx,
-        alpha: 0,
-        duration: 200,
-        onComplete: () => gfx.destroy(),
-      });
     }
   }
 
-  private drawSoundWave(
-    gfx: Phaser.GameObjects.Graphics,
-    x1: number, y1: number,
-    x2: number, y2: number,
-  ): void {
+  private drawChainSprites(x1: number, y1: number, x2: number, y2: number): void {
     const dx = x2 - x1;
     const dy = y2 - y1;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-    // Perpendicular direction for wave oscillation
-    const nx = -dy / dist;
-    const ny = dx / dist;
+    const angle = Math.atan2(dy, dx);
+    const steps = Math.max(3, Math.floor(dist / (20 * SPRITE_SCALE)));
 
-    const segments = 16;
-    const amplitude = 10 * SPRITE_SCALE;
-    const frequency = 3; // number of wave cycles
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const nx = -dy / dist;
+      const ny = dx / dist;
+      const wave = Math.sin(t * Math.PI * 3) * 8 * SPRITE_SCALE * (1 - t * 0.5);
+      const px = x1 + dx * t + nx * wave;
+      const py = y1 + dy * t + ny * wave;
 
-    // Outer glow
-    gfx.lineStyle(4 * SPRITE_SCALE, 0xFFDD88, 0.4);
-    gfx.beginPath();
-    gfx.moveTo(x1, y1);
-    for (let i = 1; i <= segments; i++) {
-      const t = i / segments;
-      const baseX = x1 + dx * t;
-      const baseY = y1 + dy * t;
-      const wave = Math.sin(t * Math.PI * 2 * frequency) * amplitude * (1 - t * 0.5);
-      gfx.lineTo(baseX + nx * wave, baseY + ny * wave);
+      const spark = this.scene.add.sprite(px, py, 'fx_spark', Math.floor(Math.random() * 4));
+      spark.setDepth(DEPTHS.EFFECTS);
+      spark.setScale(0.8);
+      spark.setTint(0xFFCC44);
+      spark.setAlpha(0.8 - t * 0.4);
+
+      this.scene.tweens.add({
+        targets: spark,
+        alpha: 0,
+        scaleX: 0.2,
+        scaleY: 0.2,
+        duration: 200 + t * 100,
+        onComplete: () => spark.destroy(),
+      });
     }
-    gfx.stroke();
-
-    // Primary wave
-    gfx.lineStyle(2 * SPRITE_SCALE, 0xFFCC44, 0.9);
-    gfx.beginPath();
-    gfx.moveTo(x1, y1);
-    for (let i = 1; i <= segments; i++) {
-      const t = i / segments;
-      const baseX = x1 + dx * t;
-      const baseY = y1 + dy * t;
-      const wave = Math.sin(t * Math.PI * 2 * frequency) * amplitude * (1 - t * 0.5);
-      gfx.lineTo(baseX + nx * wave, baseY + ny * wave);
-    }
-    gfx.stroke();
-
-    // Bright center line
-    gfx.lineStyle(1 * SPRITE_SCALE, 0xFFFFFF, 0.6);
-    gfx.beginPath();
-    gfx.moveTo(x1, y1);
-    for (let i = 1; i <= segments; i++) {
-      const t = i / segments;
-      const baseX = x1 + dx * t;
-      const baseY = y1 + dy * t;
-      const wave = Math.sin(t * Math.PI * 2 * frequency) * amplitude * 0.5 * (1 - t * 0.5);
-      gfx.lineTo(baseX + nx * wave, baseY + ny * wave);
-    }
-    gfx.stroke();
   }
 }

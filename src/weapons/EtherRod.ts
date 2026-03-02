@@ -43,7 +43,7 @@ export class EtherRod extends BaseWeapon {
         sp.x, sp.y,
         Math.cos(angle) * speed,
         Math.sin(angle) * speed,
-        'ether_orb',
+        'big_energyball',
         this.getDamage(),
         this.getEffectivePierce(),
         this.getEffectiveDamageRetention(),

@@ -23,7 +23,7 @@ export const PLAYER_MAX_JOBS = 3;
 
 // ─── Spawning ───────────────────────────────────────────────────────
 export const SPAWN_RING_RADIUS = 280 * SPRITE_SCALE;
-export const MAX_ENEMIES = 250;
+export const MAX_ENEMIES = 350;
 export const MAX_PROJECTILES = 200;
 
 // ─── Waves ──────────────────────────────────────────────────────────
@@ -35,12 +35,14 @@ export const KNOCKBACK_VELOCITY = 180 * SPRITE_SCALE;
 export const KNOCKBACK_DURATION = 150;
 
 // ─── XP Gems ────────────────────────────────────────────────────────
-export const GEM_SMALL_XP = 1;
-export const GEM_MEDIUM_XP = 3;
-export const GEM_LARGE_XP = 10;
-export const GEM_SMALL_CHANCE = 0.70;
-export const GEM_MEDIUM_CHANCE = 0.25;
-// Large = remaining 5%
+export const GEM_SMALL_XP = 1;      // green  — common
+export const GEM_MEDIUM_XP = 3;     // yellow — uncommon
+export const GEM_LARGE_XP = 10;     // purple — rare
+export const GEM_MEGA_XP = 30;      // red    — epic
+export const GEM_SMALL_CHANCE = 0.65;
+export const GEM_MEDIUM_CHANCE = 0.24;
+export const GEM_LARGE_CHANCE = 0.08;
+// Mega (red) = remaining 3%
 export const HEALTH_DROP_CHANCE = 0.03;
 export const HEALTH_DROP_AMOUNT = 15;
 
