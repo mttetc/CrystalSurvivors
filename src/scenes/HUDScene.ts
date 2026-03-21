@@ -413,7 +413,9 @@ export class HUDScene extends Phaser.Scene {
     this.dashSprites = [];
     this.dashFillSprites = [];
 
-    const startX = 8;
+    // Position dots after "Dash" text with spacing
+    const dashTextWidth = this.dashText.width;
+    const startX = 8 + dashTextWidth + 12;
     const y = GAME_HEIGHT - 56;
     const gap = 24;
 
@@ -421,7 +423,7 @@ export class HUDScene extends Phaser.Scene {
     const hasSphere = this.textures.exists('ui_sphere_bg');
 
     for (let i = 0; i < this.maxDashCharges; i++) {
-      const cx = startX + 10 + i * gap;
+      const cx = startX + i * gap;
 
       if (hasSphere) {
         // Background sphere

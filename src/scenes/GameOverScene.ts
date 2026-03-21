@@ -87,13 +87,25 @@ export class GameOverScene extends Phaser.Scene {
       );
     }
 
-    const playAgain = this.add.text(GAME_WIDTH / 2, btnY, 'Press ENTER to Play Again', {
+    const playAgain = this.add.text(GAME_WIDTH / 2, btnY, 'Click or ENTER to Play Again', {
       fontSize: '26px',
       fontFamily: FONT,
       color: '#FFFFFF',
       stroke: '#000000',
       strokeThickness: 4,
     }).setOrigin(0.5).setResolution(2);
+
+    // Make clickable
+    playAgain.setInteractive({ useHandCursor: true });
+    const startNewGame = () => {
+      getMusicManager(this).playGameMusic();
+      this.scene.stop(SCENES.LEVEL_UP);
+      this.scene.stop(SCENES.HUD);
+      this.scene.start(SCENES.GAME);
+    };
+    playAgain.on('pointerdown', startNewGame);
+    playAgain.on('pointerover', () => playAgain.setColor('#FFD700'));
+    playAgain.on('pointerout', () => playAgain.setColor('#FFFFFF'));
 
     this.tweens.add({
       targets: playAgain,
@@ -103,11 +115,6 @@ export class GameOverScene extends Phaser.Scene {
       repeat: -1,
     });
 
-    this.input.keyboard!.once('keydown-ENTER', () => {
-      getMusicManager(this).playGameMusic();
-      this.scene.stop(SCENES.LEVEL_UP);
-      this.scene.stop(SCENES.HUD);
-      this.scene.start(SCENES.GAME);
-    });
+    this.input.keyboard!.once('keydown-ENTER', startNewGame);
   }
 }

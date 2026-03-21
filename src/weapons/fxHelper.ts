@@ -321,7 +321,7 @@ const WEAPON_INHAND_MAP: Partial<Record<WeaponId, string>> = {
   [WeaponId.BATTLE_AXE]:      'inhand_axe',
   [WeaponId.DARK_CLAYMORE]:   'inhand_bigsword',
   [WeaponId.WAR_LANCE]:       'inhand_lance',
-  [WeaponId.IRON_FISTS]:      'inhand_ninjaku',
+  // Iron Fists: no in-hand sprite (bare fists, claw FX handles visuals)
   [WeaponId.SACRED_SHIELD]:   'inhand_hammer',
   [WeaponId.HUNTERS_BOW]:     'inhand_bow',
   [WeaponId.FIRE_ROD]:        'inhand_wand',
@@ -355,23 +355,23 @@ export function showWeaponInHand(
   let offY: number;
   let behindPlayer = false;
 
-  // In-hand sprites point "down" by default (handle at top, blade at bottom).
-  // DOWN=0, RIGHT=-π/2, LEFT=π/2, UP=π
+  // In-hand sprites point "up" by default (handle at bottom, blade at top).
+  // Add π to flip: DOWN=π, RIGHT=π/2, LEFT=-π/2, UP=0
   if (deg >= 315 || deg < 45) {
     // RIGHT
-    rot = -Math.PI / 2;
+    rot = Math.PI / 2;
     offX = 10; offY = 2;
   } else if (deg >= 45 && deg < 135) {
     // DOWN
-    rot = 0;
+    rot = Math.PI;
     offX = 4; offY = 10;
   } else if (deg >= 135 && deg < 225) {
     // LEFT
-    rot = Math.PI / 2;
+    rot = -Math.PI / 2;
     offX = -10; offY = 2;
   } else {
     // UP
-    rot = Math.PI;
+    rot = 0;
     offX = -4; offY = -6;
     behindPlayer = true;
   }

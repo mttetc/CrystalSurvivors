@@ -715,53 +715,98 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ─── Ground Tiling ─────────────────────────────────────────────────
+  // ─── Zone helpers ──────────────────────────────────────────────────
+  private getZone(wx: number, wy: number): 'village' | 'clearing' | 'forest' | 'dense_forest' {
+    const cx = WORLD_WIDTH / 2;
+    const cy = WORLD_HEIGHT / 2;
+    const dist = Math.sqrt((wx - cx) ** 2 + (wy - cy) ** 2);
+    if (dist < 300) return 'village';
+    if (dist < 800) return 'clearing';
+    if (dist < 1200) return 'forest';
+    return 'dense_forest';
+  }
+
+  /** Check if a world position is on one of the four cardinal paths from center. */
+  private isOnPath(wx: number, wy: number): boolean {
+    const cx = WORLD_WIDTH / 2;
+    const cy = WORLD_HEIGHT / 2;
+    const TILE = 16;
+    const halfWidth = TILE * SPRITE_SCALE * 1.5; // ~1.5 tiles each side of center line
+    // Vertical paths (north/south)
+    if (Math.abs(wx - cx) < halfWidth) return true;
+    // Horizontal paths (east/west)
+    if (Math.abs(wy - cy) < halfWidth) return true;
+    return false;
+  }
+
   private tileGround(): void {
-    // Build landscape using individual tiles from TilesetField (5 cols × 15 rows)
-    // Green grass block: rows 3-5 → solid center at (col 1, row 4) = frame 21
-    // Dark grass block: rows 6-8 → solid center at (col 1, row 7) = frame 36
-    // Grass center variants: frame 28, 29 (row 5 cols 3,4)
     const TILE = 16;
     const S = SPRITE_SCALE;
     const scaledTile = TILE * S;
     const tilesX = Math.ceil(WORLD_WIDTH / scaledTile);
     const tilesY = Math.ceil(WORLD_HEIGHT / scaledTile);
 
-    // Grass tile indices from TilesetField (5 cols per row)
-    const grassSolid = [21, 21, 21, 21, 21, 36, 28, 29]; // mostly green, some dark/variant
+    // Tile frame indices
+    const grassFrames = [21, 36, 28, 29];
+    const darkGrassFrames = [36, 36, 28]; // darker mix for dense forest
+    const dirtFrame = 6;
+    const hasFloorTileset = this.textures.exists('tileset_floor');
+    const floorFrames = [0, 1, 2];
 
     for (let ty = 0; ty < tilesY; ty++) {
       for (let tx = 0; tx < tilesX; tx++) {
         const wx = tx * scaledTile + scaledTile / 2;
         const wy = ty * scaledTile + scaledTile / 2;
-        const tileIdx = grassSolid[Math.floor(Math.random() * grassSolid.length)];
-        this.add.image(wx, wy, 'tileset_field', tileIdx)
+
+        // Path tiles override zone tiles
+        if (this.isOnPath(wx, wy)) {
+          this.add.image(wx, wy, 'tileset_field', dirtFrame)
+            .setScale(S)
+            .setDepth(DEPTHS.GROUND + 0.1);
+          continue;
+        }
+
+        const zone = this.getZone(wx, wy);
+        let textureKey = 'tileset_field';
+        let frameIdx: number;
+
+        switch (zone) {
+          case 'village':
+            if (hasFloorTileset) {
+              textureKey = 'tileset_floor';
+              frameIdx = floorFrames[Math.floor(Math.random() * floorFrames.length)];
+            } else {
+              frameIdx = grassFrames[Math.floor(Math.random() * grassFrames.length)];
+            }
+            break;
+
+          case 'clearing':
+            frameIdx = grassFrames[Math.floor(Math.random() * grassFrames.length)];
+            break;
+
+          case 'forest':
+            // 70% grass, 30% dirt/earth
+            if (Math.random() < 0.3) {
+              frameIdx = dirtFrame;
+            } else {
+              frameIdx = grassFrames[Math.floor(Math.random() * grassFrames.length)];
+            }
+            break;
+
+          case 'dense_forest':
+          default:
+            // Darker grass + more earth patches
+            if (Math.random() < 0.25) {
+              frameIdx = dirtFrame;
+            } else {
+              frameIdx = darkGrassFrames[Math.floor(Math.random() * darkGrassFrames.length)];
+            }
+            break;
+        }
+
+        this.add.image(wx, wy, textureKey, frameIdx)
           .setScale(S)
           .setDepth(DEPTHS.GROUND);
-      }
-    }
-
-    // Dirt paths crossing the map (using orange/sandy tiles: row 1 center = frame 6)
-    const dirtTile = 6;
-    const pathCount = 4;
-    for (let p = 0; p < pathCount; p++) {
-      const isHoriz = p % 2 === 0;
-      const pos = 200 + Math.floor(Math.random() * (isHoriz ? WORLD_HEIGHT - 400 : WORLD_WIDTH - 400));
-      const length = isHoriz ? tilesX : tilesY;
-      const pathWidth = 2 + Math.floor(Math.random() * 2); // 2-3 tiles wide
-      for (let i = 0; i < length; i++) {
-        for (let w = 0; w < pathWidth; w++) {
-          const wx = isHoriz
-            ? i * scaledTile + scaledTile / 2
-            : pos + w * scaledTile + scaledTile / 2;
-          const wy = isHoriz
-            ? pos + w * scaledTile + scaledTile / 2
-            : i * scaledTile + scaledTile / 2;
-          if (wx < WORLD_WIDTH && wy < WORLD_HEIGHT) {
-            this.add.image(wx, wy, 'tileset_field', dirtTile)
-              .setScale(S)
-              .setDepth(DEPTHS.GROUND + 0.1);
-          }
-        }
       }
     }
   }
@@ -769,64 +814,137 @@ export class GameScene extends Phaser.Scene {
   // ─── Environment Decorations ──────────────────────────────────────
   private scatterDecorations(): void {
     const S = SPRITE_SCALE;
+    const cx = WORLD_WIDTH / 2;
+    const cy = WORLD_HEIGHT / 2;
+    const PATH_CLEARANCE = 60; // min distance from path center to place decorations
 
-    // Scatter trees from TilesetNature (various tree tiles)
-    // Trees in TilesetNature are multi-tile (2x2 or 3x3). Use large single-tile elements.
-    // Small bushes: around row 5-6 of nature tileset. Single rocks: row 8-9.
-    // Nature tileset is 24 cols × 21 rows
-    const treeTiles = [0, 1, 2, 3, 4, 5]; // Top row: tree tops
-    const rockTiles = [168, 169, 192, 193]; // ~row 7-8: rocks
-    const bushTiles = [120, 121, 122, 144, 145]; // ~row 5-6: bushes/plants
+    const treeTiles = [0, 1, 2, 3, 4, 5];
+    const rockTiles = [168, 169, 192, 193];
+    const bushTiles = [120, 121, 122, 144, 145];
 
-    // Large trees (using 2x2 tile clusters from nature tileset)
-    for (let i = 0; i < 40; i++) {
-      const x = 100 + Math.random() * (WORLD_WIDTH - 200);
-      const y = 100 + Math.random() * (WORLD_HEIGHT - 200);
-      const tileIdx = treeTiles[Math.floor(Math.random() * treeTiles.length)];
-      this.add.image(x, y, 'tileset_nature', tileIdx)
-        .setScale(S * 2)
-        .setDepth(DEPTHS.GROUND + 2);
+    /** Returns true if position is too close to a path. */
+    const nearPath = (x: number, y: number): boolean => {
+      return Math.abs(x - cx) < PATH_CLEARANCE || Math.abs(y - cy) < PATH_CLEARANCE;
+    };
+
+    const distFromCenter = (x: number, y: number): number => {
+      return Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+    };
+
+    const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+    // ── Dense forest zone (dist > 1200): heavy tree coverage ──
+    const denseSpacing = 80;
+    const denseJitter = 20;
+    for (let gx = 0; gx < WORLD_WIDTH; gx += denseSpacing) {
+      for (let gy = 0; gy < WORLD_HEIGHT; gy += denseSpacing) {
+        const x = gx + (Math.random() * 2 - 1) * denseJitter;
+        const y = gy + (Math.random() * 2 - 1) * denseJitter;
+        if (x < 0 || x > WORLD_WIDTH || y < 0 || y > WORLD_HEIGHT) continue;
+        if (distFromCenter(x, y) <= 1200) continue;
+        if (nearPath(x, y)) continue;
+
+        this.add.image(x, y, 'tileset_nature', pick(treeTiles))
+          .setScale(S * 2)
+          .setDepth(DEPTHS.GROUND + 2);
+      }
     }
 
-    // Rocks
-    for (let i = 0; i < 30; i++) {
-      const x = 50 + Math.random() * (WORLD_WIDTH - 100);
-      const y = 50 + Math.random() * (WORLD_HEIGHT - 100);
-      const tileIdx = rockTiles[Math.floor(Math.random() * rockTiles.length)];
-      this.add.image(x, y, 'tileset_nature', tileIdx)
-        .setScale(S * 1.5)
-        .setDepth(DEPTHS.GROUND + 1);
+    // ── Forest zone (dist 800-1200): trees, bushes, rocks ──
+    const forestSpacing = 120;
+    const forestJitter = 30;
+    for (let gx = 0; gx < WORLD_WIDTH; gx += forestSpacing) {
+      for (let gy = 0; gy < WORLD_HEIGHT; gy += forestSpacing) {
+        const x = gx + (Math.random() * 2 - 1) * forestJitter;
+        const y = gy + (Math.random() * 2 - 1) * forestJitter;
+        if (x < 0 || x > WORLD_WIDTH || y < 0 || y > WORLD_HEIGHT) continue;
+        const d = distFromCenter(x, y);
+        if (d <= 800 || d > 1200) continue;
+        if (nearPath(x, y)) continue;
+
+        // 60% trees, 25% bushes, 15% rocks
+        const roll = Math.random();
+        if (roll < 0.6) {
+          this.add.image(x, y, 'tileset_nature', pick(treeTiles))
+            .setScale(S * 2)
+            .setDepth(DEPTHS.GROUND + 2);
+        } else if (roll < 0.85) {
+          this.add.image(x, y, 'tileset_nature', pick(bushTiles))
+            .setScale(S)
+            .setDepth(DEPTHS.GROUND + 1);
+        } else {
+          this.add.image(x, y, 'tileset_nature', pick(rockTiles))
+            .setScale(S * 1.5)
+            .setDepth(DEPTHS.GROUND + 1);
+        }
+      }
     }
 
-    // Small bushes from tileset
-    for (let i = 0; i < 50; i++) {
-      const x = 50 + Math.random() * (WORLD_WIDTH - 100);
-      const y = 50 + Math.random() * (WORLD_HEIGHT - 100);
-      const tileIdx = bushTiles[Math.floor(Math.random() * bushTiles.length)];
-      this.add.image(x, y, 'tileset_nature', tileIdx)
-        .setScale(S)
-        .setDepth(DEPTHS.GROUND + 1);
+    // ── Clearing zone (dist 300-800): sparse trees, bushes, flowers ──
+    const clearingSpacing = 250;
+    const clearingJitter = 40;
+
+    // Sparse trees
+    for (let gx = 0; gx < WORLD_WIDTH; gx += clearingSpacing) {
+      for (let gy = 0; gy < WORLD_HEIGHT; gy += clearingSpacing) {
+        const x = gx + (Math.random() * 2 - 1) * clearingJitter;
+        const y = gy + (Math.random() * 2 - 1) * clearingJitter;
+        if (x < 0 || x > WORLD_WIDTH || y < 0 || y > WORLD_HEIGHT) continue;
+        const d = distFromCenter(x, y);
+        if (d <= 300 || d > 800) continue;
+        if (nearPath(x, y)) continue;
+
+        this.add.image(x, y, 'tileset_nature', pick(treeTiles))
+          .setScale(S * 2)
+          .setDepth(DEPTHS.GROUND + 2);
+      }
     }
 
-    // Flowers and bushes from environment PNGs
+    // Bushes in clearing (env_bush)
     if (this.textures.exists('env_bush')) {
-      for (let i = 0; i < 40; i++) {
-        const x = 50 + Math.random() * (WORLD_WIDTH - 100);
-        const y = 50 + Math.random() * (WORLD_HEIGHT - 100);
+      for (let i = 0; i < 60; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const r = 300 + Math.random() * 500; // 300-800 range
+        const x = cx + Math.cos(angle) * r;
+        const y = cy + Math.sin(angle) * r;
+        if (x < 50 || x > WORLD_WIDTH - 50 || y < 50 || y > WORLD_HEIGHT - 50) continue;
+        if (nearPath(x, y)) continue;
+
         this.add.image(x, y, 'env_bush')
           .setScale(1.5)
           .setDepth(DEPTHS.GROUND + 1)
           .setAlpha(0.8 + Math.random() * 0.2);
       }
     }
+
+    // Flowers in clearing (env_flowers)
     if (this.textures.exists('env_flowers')) {
-      for (let i = 0; i < 35; i++) {
-        const x = 50 + Math.random() * (WORLD_WIDTH - 100);
-        const y = 50 + Math.random() * (WORLD_HEIGHT - 100);
+      for (let i = 0; i < 40; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const r = 300 + Math.random() * 500;
+        const x = cx + Math.cos(angle) * r;
+        const y = cy + Math.sin(angle) * r;
+        if (x < 50 || x > WORLD_WIDTH - 50 || y < 50 || y > WORLD_HEIGHT - 50) continue;
+        if (nearPath(x, y)) continue;
+
         this.add.image(x, y, 'env_flowers')
           .setDepth(DEPTHS.GROUND + 1)
           .setAlpha(0.7 + Math.random() * 0.3);
       }
+    }
+
+    // ── Village zone (dist < 300): keep open, minimal decoration ──
+    // A few small decorative rocks only
+    for (let i = 0; i < 6; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const r = 100 + Math.random() * 180;
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+      if (nearPath(x, y)) continue;
+
+      this.add.image(x, y, 'tileset_nature', pick(rockTiles))
+        .setScale(S)
+        .setDepth(DEPTHS.GROUND + 1);
     }
   }
 

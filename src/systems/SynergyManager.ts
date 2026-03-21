@@ -415,6 +415,16 @@ export class SynergyManager {
     const maxZoneScale = SPRITE_SCALE * 4;
     zone.setScale(Math.min(maxZoneScale, (radius * 2) / 32));
 
+    // Layered plant FX on top of the base zone for richer toxic visuals
+    spawnFX(this.scene, cx, cy, 'fx_plant', {
+      scale: Math.min(maxZoneScale * 0.8, (radius * 2) / 40),
+      tint: 0x44FF00,
+      alpha: 0.25,
+      duration: cloudDuration,
+      depth: DEPTHS.EFFECTS,
+      blendMode: Phaser.BlendModes.ADD,
+    });
+
     // Damage ticks every 1s for 4s
     let ticks = 0;
     this.scene.time.addEvent({
@@ -633,14 +643,14 @@ export class SynergyManager {
         const endX = cx + Math.cos(angle) * radius;
         const endY = cy + Math.sin(angle) * radius;
 
-        // Clone figure sprite (spirit)
-        const texKey = this.scene.textures.exists('fx_spirit') ? 'fx_spirit' : 'fx_circle_spark';
+        // Clone figure sprite — use player's ninja sprite for a real shadow clone
+        const playerTexKey = this.player.texture.key || 'player_ninja';
+        const texKey = this.scene.textures.exists(playerTexKey) ? playerTexKey : 'player_ninja';
         const clone = this.scene.add.sprite(cx, cy, texKey, 0);
         clone.setDepth(DEPTHS.EFFECTS + 1);
         clone.setTint(color);
-        clone.setAlpha(0.7);
-        clone.setScale(SPRITE_SCALE * 0.5);
-        clone.setRotation(angle + Math.PI / 2);
+        clone.setAlpha(0.6);
+        clone.setScale(SPRITE_SCALE);
 
         // Tween clone from start to end, spawning trail sprites each update
         this.scene.tweens.add({
@@ -715,6 +725,9 @@ export class SynergyManager {
       currentDamage *= decayRate;
     }
 
+    // Main electric burst at origin
+    playImpactFX(this.scene, cx, cy, 0, 'fx_thunder', SPRITE_SCALE * 1.2, 0xFFDD44, 350);
+
     // Visual: lightning bolts between chain targets
     let prevX = cx;
     let prevY = cy;
@@ -731,6 +744,16 @@ export class SynergyManager {
         spawnLine(this.scene, fromX, fromY, e.x, e.y, color, 250, 0.8);
         // Flash at impact point
         spawnFlash(this.scene, e.x, e.y, 10, color, 250);
+        // Thunder impact at each chain target
+        playImpactFX(this.scene, e.x, e.y, 0, 'fx_thunder', SPRITE_SCALE, 0xFFDD44, 200);
+        // Spark particles at each hit
+        spawnFX(this.scene, e.x, e.y, 'fx_spark', {
+          scale: SPRITE_SCALE * 0.6,
+          tint: 0xFFDD44,
+          duration: 200,
+          blendMode: Phaser.BlendModes.ADD,
+          scaleEnd: SPRITE_SCALE * 0.2,
+        });
       });
     }
 
@@ -784,6 +807,30 @@ export class SynergyManager {
         this.scene.tweens.add({
           targets: particle, y: py - 20, alpha: 0,
           duration: 500 + Math.random() * 300, ease: 'Quad.easeOut',
+        });
+      });
+    }
+
+    // Rising green plant particles for divine blessing flavor
+    for (let i = 0; i < 4; i++) {
+      const pAngle = Math.random() * Math.PI * 2;
+      const pDist = Math.random() * 20;
+      const plantX = cx + Math.cos(pAngle) * pDist;
+      const plantY = cy + Math.sin(pAngle) * pDist;
+      const pDelay = 50 + Math.random() * 250;
+      this.scene.time.delayedCall(pDelay, () => {
+        const plantFx = spawnFX(this.scene, plantX, plantY, 'fx_plant', {
+          scale: SPRITE_SCALE * 0.4,
+          tint: 0x44FF88,
+          alpha: 0.6,
+          duration: 600 + Math.random() * 300,
+          depth: DEPTHS.EFFECTS + 1,
+          blendMode: Phaser.BlendModes.ADD,
+          fadeOut: false,
+        });
+        this.scene.tweens.add({
+          targets: plantFx, y: plantY - 25 * SPRITE_SCALE, alpha: 0,
+          duration: 600 + Math.random() * 300, ease: 'Quad.easeOut',
         });
       });
     }

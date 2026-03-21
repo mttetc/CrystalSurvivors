@@ -187,13 +187,21 @@ export class TitleScene extends Phaser.Scene {
       btnBg.setAlpha(0.9);
     }
 
-    const prompt = this.add.text(GAME_WIDTH / 2, promptY, 'Press ENTER to Start', {
+    const prompt = this.add.text(GAME_WIDTH / 2, promptY, 'Click or Press ENTER to Start', {
       fontSize: '26px',
       fontFamily: FONT,
       color: '#FFFFFF',
       stroke: '#000000',
       strokeThickness: 5,
     }).setOrigin(0.5).setResolution(2);
+
+    // Make prompt clickable
+    prompt.setInteractive({ useHandCursor: true });
+    prompt.on('pointerdown', () => {
+      this.scene.start(SCENES.CHAR_SELECT);
+    });
+    prompt.on('pointerover', () => prompt.setColor('#FFD700'));
+    prompt.on('pointerout', () => prompt.setColor('#FFFFFF'));
 
     this.tweens.add({
       targets: prompt,

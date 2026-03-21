@@ -216,9 +216,15 @@ export const ITEM_MISC: Record<string, ImageDef> = {
 // TILESETS  (spritesheets 16x16)
 // ══════════════════════════════════════════════════════════════════════════════
 export const TILESETS: Record<string, ImageDef> = {
-  tileset_field:   'assets/tilesets/field.png',
-  tileset_nature:  'assets/tilesets/nature.png',
-  tileset_element: 'assets/tilesets/element.png',
+  tileset_field:          'assets/tilesets/field.png',
+  tileset_nature:         'assets/tilesets/nature.png',
+  tileset_element:        'assets/tilesets/element.png',
+  tileset_house:          'assets/tilesets/house.png',
+  tileset_relief:         'assets/tilesets/relief.png',
+  tileset_relief_detail:  'assets/tilesets/relief_detail.png',
+  tileset_water:          'assets/tilesets/water.png',
+  tileset_floor:          'assets/tilesets/floor.png',
+  tileset_grass:          'assets/tilesets/grass.png',
 };
 
 // ══════════════════════════════════════════════════════════════════════════════

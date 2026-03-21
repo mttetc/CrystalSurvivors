@@ -129,6 +129,27 @@ export class CharSelectScene extends Phaser.Scene {
         stroke: '#000000',
         strokeThickness: 4,
       }).setOrigin(0.5).setResolution(2);
+
+      // Clickable hit zone for each card
+      const hitZone = this.add.rectangle(cx, cy, CARD_W, CARD_H, 0x000000, 0)
+        .setInteractive({ useHandCursor: true });
+      const cardIndex = i;
+      hitZone.on('pointerdown', () => {
+        if (!this.inputEnabled) return;
+        if (this.selectedIndex === cardIndex) {
+          this.confirmSelection();
+        } else {
+          this.selectedIndex = cardIndex;
+          this.drawSelector();
+          this.updateInfo();
+        }
+      });
+      hitZone.on('pointerover', () => {
+        if (!this.inputEnabled) return;
+        this.selectedIndex = cardIndex;
+        this.drawSelector();
+        this.updateInfo();
+      });
     }
 
     // Selection highlight

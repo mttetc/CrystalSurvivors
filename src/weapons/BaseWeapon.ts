@@ -99,7 +99,7 @@ export abstract class BaseWeapon {
 
   /** Offset spawn point away from player center in the given direction */
   protected getSpawnPoint(angle: number): { x: number; y: number } {
-    const offset = 12 * SPRITE_SCALE;
+    const offset = 6 * SPRITE_SCALE;
     return {
       x: this.player.x + Math.cos(angle) * offset,
       y: this.player.y + Math.sin(angle) * offset,

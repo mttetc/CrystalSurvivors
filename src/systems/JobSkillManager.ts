@@ -4,7 +4,7 @@ import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { JOB_SKILL_DEFS, MASTERY_SKILL_DEFS } from '../data/jobs';
 import { EventBus } from './EventBus';
-import { spawnFX, spawnCircleZone, spawnFlash, spawnRing, spawnLine, spawnParticleBurst } from '../weapons/fxHelper';
+import { spawnFX, spawnCircleZone, spawnFlash, spawnRing, spawnLine, spawnParticleBurst, playImpactFX, playSlashFX } from '../weapons/fxHelper';
 
 // ─── Skill category classification ──────────────────────────────────────────
 
@@ -547,23 +547,30 @@ export class JobSkillManager {
     switch (skillId) {
       case JobSkillId.CHI_BURST:
         color = 0xFF8C00;
-        this.drawExpandingRing(cx, cy, 5, radius, color, 350);
-        this.drawExpandingRing(cx, cy, 3, radius * 0.6, 0xFFCC44, 250);
+        // Use explosion sprite for a real burst visual
+        spawnFX(this.scene, cx, cy, 'fx_explosion', {
+          scale: (radius * 2) / 40,
+          tint: 0xFF8C00,
+          alpha: 0.85,
+          duration: 400,
+          scaleEnd: (radius * 2.5) / 40,
+        });
+        spawnFX(this.scene, cx, cy, 'fx_explosion', {
+          scale: (radius * 1.2) / 40,
+          tint: 0xFFCC44,
+          alpha: 0.6,
+          duration: 300,
+          blendMode: Phaser.BlendModes.ADD,
+          scaleEnd: (radius * 0.5) / 40,
+        });
         this.drawImpactParticles(cx, cy, 0xFFAA00, 8, 60, 300);
-        // Additive orange glow on the burst
-        this.drawAdditiveGlow(cx, cy, radius * 0.7, 0xFF8C00, 0.35, 350);
         break;
 
       case JobSkillId.HOLY:
         color = 0xFFFFCC;
-        this.drawPulse(cx, cy, radius, color, 0.8, 400);
-        // Bright flash
-        this.drawPulse(cx, cy, radius * 0.5, 0xFFFFFF, 1.0, 200);
-        this.drawExpandingRing(cx, cy, 5, radius * 0.8, 0xFFFFFF, 300);
+        playImpactFX(this.scene, cx, cy, 0, 'fx_explosion', (radius * 2) / 40, 0xFFFFCC, 400);
+        spawnFX(this.scene, cx, cy, 'fx_circle_white', { scale: (radius * 2) / 32, tint: 0xFFFFFF, alpha: 0.6, duration: 300, blendMode: Phaser.BlendModes.ADD, scaleEnd: (radius * 2.5) / 32 });
         this.drawImpactParticles(cx, cy, 0xFFFF88, 10, 70, 350);
-        // Bright white additive glow flash
-        this.drawAdditiveGlow(cx, cy, radius * 0.8, 0xFFFFFF, 0.5, 400);
-        this.drawAdditiveGlow(cx, cy, radius * 0.4, 0xFFFFCC, 0.6, 200);
         break;
 
       case JobSkillId.METEOR: {
@@ -573,80 +580,60 @@ export class JobSkillManager {
         cx = px + Math.cos(angle) * dist;
         cy = py + Math.sin(angle) * dist;
         color = 0xFF3300;
-        // Impact effect - dual rings
-        this.drawExpandingRing(cx, cy, 5, radius, color, 400);
-        this.drawExpandingRing(cx, cy, 3, radius * 0.6, 0xFF8800, 300);
-        this.drawPulse(cx, cy, radius * 0.7, 0xFF6600, 0.8, 300);
-        this.drawImpactParticles(cx, cy, 0xFF4400, 10, 90, 350);
-        // Ground scorch flash
-        this.drawPulse(cx, cy, radius * 0.4, 0xFFAA00, 1.0, 150);
-        // Additive orange glow at impact
-        this.drawAdditiveGlow(cx, cy, radius * 0.8, 0xFF4400, 0.4, 400);
+        playImpactFX(this.scene, cx, cy, 0, 'fx_explosion', (radius * 2) / 40, 0xFF3300, 400);
+        spawnFX(this.scene, cx, cy, 'fx_flame', { scale: (radius * 1.5) / 40, tint: 0xFF6600, alpha: 0.8, duration: 350, scaleEnd: (radius * 0.5) / 40 });
+        this.drawImpactParticles(cx, cy, 0xFF4400, 8, 80, 400);
         break;
       }
 
       case JobSkillId.GUST:
         color = 0xAAFFAA;
-        this.drawExpandingRing(cx, cy, 10, radius, color, 400);
-        this.drawExpandingRing(cx, cy, 5, radius * 0.7, 0xCCFFCC, 300);
-        this.drawImpactParticles(cx, cy, 0x88FF88, 8, 100, 350);
+        spawnFX(this.scene, cx, cy, 'fx_plant', { scale: (radius * 2) / 30, tint: 0x44FF44, alpha: 0.8, duration: 350, scaleEnd: (radius * 2.5) / 30 });
+        spawnFX(this.scene, cx, cy, 'fx_plant', { scale: (radius * 1.2) / 30, tint: 0x88FF88, alpha: 0.5, duration: 250, blendMode: Phaser.BlendModes.ADD, scaleEnd: (radius * 0.4) / 30 });
+        this.drawImpactParticles(cx, cy, 0x44FF44, 6, 60, 300);
         break;
 
       case JobSkillId.QUAKE:
         color = 0x8B4513;
-        this.drawPulse(cx, cy, radius, color, 0.7, 350);
-        // Ground crack visual - dual ring
-        this.drawExpandingRing(cx, cy, radius * 0.3, radius, 0x654321, 300);
-        this.drawExpandingRing(cx, cy, 5, radius * 0.5, 0xAA7744, 250);
-        this.drawImpactParticles(cx, cy, 0xAA6633, 8, 50, 300);
-        // Camera micro-shake for ground impact feel
-        // screen shake removed
+        playImpactFX(this.scene, cx, cy, 0, 'fx_rock_spike', (radius * 2) / 48, 0xBB8844, 400);
+        spawnFX(this.scene, cx, cy, 'fx_rock', { scale: (radius * 1.5) / 30, tint: 0x996633, alpha: 0.8, duration: 350, scaleEnd: (radius * 0.5) / 30 });
+        this.drawImpactParticles(cx, cy, 0x886633, 8, 60, 350);
         break;
 
       case JobSkillId.RAMUH:
         color = 0xFFDD44;
-        // Lightning bolt from sky
-        this.drawExpandingRing(cx, cy, 5, radius, 0xFFDD44, 300);
-        this.drawPulse(cx, cy, radius * 0.6, 0xFFFFFF, 1.0, 150);
-        this.drawImpactParticles(cx, cy, 0xFFFF88, 10, 80, 300);
-        this.drawAdditiveGlow(cx, cy, radius * 0.5, 0xFFFFFF, 0.6, 200);
-        // screen shake removed
+        playImpactFX(this.scene, cx, cy, 0, 'fx_thunder', (radius * 2) / 32, 0xFFDD44, 350);
+        spawnFX(this.scene, cx, cy, 'fx_spark', { scale: (radius * 1.5) / 27, tint: 0xFFFF88, alpha: 0.7, duration: 300, blendMode: Phaser.BlendModes.ADD, scaleEnd: (radius * 0.4) / 27 });
+        this.drawImpactParticles(cx, cy, 0xFFDD44, 8, 70, 300);
         break;
 
       case JobSkillId.TITAN:
         color = 0x8B6633;
-        this.drawPulse(cx, cy, radius, 0xAA7744, 0.8, 400);
-        this.drawExpandingRing(cx, cy, radius * 0.2, radius, 0x8B4513, 350);
-        this.drawExpandingRing(cx, cy, 5, radius * 0.6, 0xBB9944, 300);
-        this.drawImpactParticles(cx, cy, 0xAA7744, 12, 60, 350);
-        // screen shake removed
+        playImpactFX(this.scene, cx, cy, 0, 'fx_rock_spike', (radius * 2.5) / 48, 0xAA7744, 450);
+        spawnFX(this.scene, cx, cy, 'fx_rock', { scale: (radius * 2) / 30, tint: 0x886633, alpha: 0.8, duration: 400, scaleEnd: (radius * 0.8) / 30 });
+        this.drawImpactParticles(cx, cy, 0x996633, 10, 80, 400);
         break;
 
       case JobSkillId.LEVIATHAN:
         color = 0x4488FF;
-        this.drawExpandingRing(cx, cy, 10, radius, 0x4488FF, 500);
-        this.drawExpandingRing(cx, cy, 5, radius * 0.8, 0x88CCFF, 400);
-        this.drawPulse(cx, cy, radius, 0x2266CC, 0.6, 400);
-        this.drawImpactParticles(cx, cy, 0x88CCFF, 12, 100, 400);
+        playImpactFX(this.scene, cx, cy, 0, 'fx_water_pillar', (radius * 2) / 27, 0x4488FF, 400);
+        spawnFX(this.scene, cx, cy, 'fx_water', { scale: (radius * 2) / 40, tint: 0x2266CC, alpha: 0.8, duration: 400, scaleEnd: (radius * 2.5) / 40 });
+        this.drawImpactParticles(cx, cy, 0x4488FF, 8, 70, 350);
         break;
 
       case JobSkillId.ODIN: {
         color = 0x8844AA;
-        // Dark purple slash line
-        this.drawExpandingRing(cx, cy, 5, radius, 0x8844AA, 300);
-        this.drawPulse(cx, cy, radius * 0.4, 0xCCCCFF, 1.0, 150);
-        this.drawImpactParticles(cx, cy, 0xAA66CC, 8, 90, 300);
-        this.drawAdditiveGlow(cx, cy, radius * 0.3, 0xCCCCFF, 0.5, 200);
+        playSlashFX(this.scene, cx, cy, Math.random() * Math.PI * 2, 'fx_slash_double', (radius * 2) / 32, 0x8844AA, 350);
+        spawnFX(this.scene, cx, cy, 'fx_spirit', { scale: (radius * 1.5) / 32, tint: 0x8844AA, alpha: 0.7, duration: 350, scaleEnd: (radius * 0.5) / 32 });
+        this.drawImpactParticles(cx, cy, 0xAA66CC, 8, 70, 300);
         break;
       }
 
       case JobSkillId.DIABOLOS: {
         color = 0x7733BB;
-        // Dark gravity sphere
-        this.drawPulse(cx, cy, radius, 0x440088, 0.8, 500);
-        this.drawExpandingRing(cx, cy, radius, 5, 0x8844CC, 400); // Imploding ring
-        this.drawImpactParticles(cx, cy, 0x6600CC, 10, 60, 400);
-        this.drawAdditiveGlow(cx, cy, radius * 0.6, 0x440088, 0.5, 500);
+        spawnFX(this.scene, cx, cy, 'fx_spirit_double', { scale: (radius * 2) / 32, tint: 0x440088, alpha: 0.8, duration: 400, scaleEnd: (radius * 0.3) / 32 });
+        spawnFX(this.scene, cx, cy, 'fx_circle_spark', { scale: (radius * 2.5) / 32, tint: 0x220044, alpha: 0.5, duration: 500, scaleEnd: (radius * 0.2) / 32 });
+        this.drawImpactParticles(cx, cy, 0x660099, 6, 50, 400);
         break;
       }
 
@@ -659,25 +646,104 @@ export class JobSkillManager {
           const sx = cx + Math.cos(angle) * radius * 0.6;
           const sy = cy + Math.sin(angle) * radius * 0.6;
           this.scene.time.delayedCall(s * 80, () => {
-            this.drawPulse(sx, sy, 25, 0xFFDD44, 0.9, 200);
+            playSlashFX(this.scene, sx, sy, Math.random() * Math.PI * 2, 'fx_cut', SPRITE_SCALE * 1.5, 0xFFDD44, 200);
             this.drawImpactParticles(sx, sy, 0xFFCC44, 3, 30, 200);
           });
         }
-        this.drawExpandingRing(cx, cy, 5, radius, 0xFF1144, 600);
-        // screen shake removed
+        playImpactFX(this.scene, cx, cy, 0, 'fx_explosion', (radius * 2) / 40, 0xFFDD44, 500);
         break;
       }
 
+      // ─── Mastery AoE Skills ─────────────────────────────────────────────
+
+      case MasterySkillId.SOUL_EATER:
+        color = 0x440088;
+        spawnFX(this.scene, cx, cy, 'fx_spirit_double', { scale: (radius * 2) / 32, tint: 0x440088, alpha: 0.8, duration: 400, scaleEnd: (radius * 0.4) / 32 });
+        playImpactFX(this.scene, cx, cy, 0, 'fx_explosion', (radius * 1.5) / 40, 0x330066, 350);
+        this.drawImpactParticles(cx, cy, 0x660099, 8, 60, 350);
+        break;
+
+      case MasterySkillId.INNER_BEAST:
+        color = 0xCC2222;
+        playSlashFX(this.scene, cx, cy, Math.random() * Math.PI * 2, 'fx_slash_curved', (radius * 2) / 32, 0xCC2222, 350);
+        spawnFX(this.scene, cx, cy, 'fx_explosion', { scale: (radius * 1.2) / 40, tint: 0xFF4444, alpha: 0.7, duration: 300, scaleEnd: (radius * 0.4) / 40 });
+        this.drawImpactParticles(cx, cy, 0xFF4444, 8, 60, 300);
+        break;
+
+      case MasterySkillId.FELL_CLEAVE:
+        color = 0xDD3333;
+        playSlashFX(this.scene, cx, cy, Math.random() * Math.PI * 2, 'fx_slash_double_curved', (radius * 2.5) / 32, 0xDD3333, 400);
+        spawnFX(this.scene, cx, cy, 'fx_explosion', { scale: (radius * 1.5) / 40, tint: 0xFF2222, alpha: 0.8, duration: 350, scaleEnd: (radius * 0.5) / 40 });
+        this.drawImpactParticles(cx, cy, 0xFF4444, 10, 80, 350);
+        break;
+
+      case MasterySkillId.FLARE:
+        color = 0xFF4400;
+        playImpactFX(this.scene, cx, cy, 0, 'fx_explosion', (radius * 2.5) / 40, 0xFF4400, 450);
+        spawnFX(this.scene, cx, cy, 'fx_flame', { scale: (radius * 2) / 40, tint: 0xFF6600, alpha: 0.8, duration: 400, scaleEnd: (radius * 0.6) / 40 });
+        this.drawImpactParticles(cx, cy, 0xFF6600, 10, 90, 400);
+        break;
+
+      case MasterySkillId.DREADWYRM:
+        color = 0x440066;
+        spawnFX(this.scene, cx, cy, 'fx_spirit_double', { scale: (radius * 2) / 32, tint: 0x440066, alpha: 0.8, duration: 450, scaleEnd: (radius * 0.3) / 32 });
+        playImpactFX(this.scene, cx, cy, 0, 'fx_explosion', (radius * 1.8) / 40, 0x330055, 400);
+        this.drawImpactParticles(cx, cy, 0x660099, 10, 70, 400);
+        break;
+
+      case MasterySkillId.ERUPTION:
+        color = 0xFF3300;
+        playImpactFX(this.scene, cx, cy, 0, 'fx_explosion', (radius * 2) / 40, 0xFF3300, 400);
+        spawnFX(this.scene, cx, cy, 'fx_flame', { scale: (radius * 1.8) / 40, tint: 0xFF5500, alpha: 0.8, duration: 380, scaleEnd: (radius * 0.5) / 40 });
+        this.drawImpactParticles(cx, cy, 0xFF4400, 8, 70, 350);
+        break;
+
+      case MasterySkillId.LANDSLIDE:
+        color = 0x8B4513;
+        playImpactFX(this.scene, cx, cy, 0, 'fx_rock_spike', (radius * 2) / 48, 0xAA7744, 400);
+        spawnFX(this.scene, cx, cy, 'fx_rock', { scale: (radius * 1.8) / 30, tint: 0x886633, alpha: 0.8, duration: 380, scaleEnd: (radius * 0.6) / 30 });
+        this.drawImpactParticles(cx, cy, 0x996633, 8, 70, 350);
+        break;
+
+      case MasterySkillId.STARDIVER:
+        color = 0x4488FF;
+        playImpactFX(this.scene, cx, cy, 0, 'fx_explosion', (radius * 2.5) / 40, 0x4488FF, 450);
+        spawnFX(this.scene, cx, cy, 'fx_circle_white', { scale: (radius * 2) / 32, tint: 0x6699FF, alpha: 0.7, duration: 400, blendMode: Phaser.BlendModes.ADD, scaleEnd: (radius * 2.5) / 32 });
+        this.drawImpactParticles(cx, cy, 0x4488FF, 10, 80, 400);
+        break;
+
+      case MasterySkillId.FINALE:
+        color = 0xFFFFCC;
+        playImpactFX(this.scene, cx, cy, 0, 'fx_explosion', (radius * 2) / 40, 0xFFFFCC, 400);
+        spawnFX(this.scene, cx, cy, 'fx_circle_white', { scale: (radius * 2) / 32, tint: 0xFFFFFF, alpha: 0.7, duration: 350, blendMode: Phaser.BlendModes.ADD, scaleEnd: (radius * 2.5) / 32 });
+        this.drawImpactParticles(cx, cy, 0xFFFF88, 8, 70, 350);
+        break;
+
+      case MasterySkillId.COMET: {
+        // Random position near player for each comet
+        const cometAngle = Math.random() * Math.PI * 2;
+        const cometDist = Math.random() * 100 + 20;
+        cx = px + Math.cos(cometAngle) * cometDist;
+        cy = py + Math.sin(cometAngle) * cometDist;
+        color = 0x8855CC;
+        playImpactFX(this.scene, cx, cy, 0, 'fx_explosion', (radius * 2) / 40, 0x8855CC, 400);
+        spawnFX(this.scene, cx, cy, 'fx_flame', { scale: (radius * 1.5) / 40, tint: 0x6633AA, alpha: 0.8, duration: 350, scaleEnd: (radius * 0.4) / 40 });
+        this.drawImpactParticles(cx, cy, 0x8855CC, 8, 70, 350);
+        break;
+      }
+
+      case MasterySkillId.MIDARE_SETSUGEKKA:
+        color = 0xCCEEFF;
+        playSlashFX(this.scene, cx, cy, Math.random() * Math.PI * 2, 'fx_slash_double_curved', (radius * 2) / 32, 0xCCEEFF, 300);
+        spawnFX(this.scene, cx, cy, 'fx_ice', { scale: (radius * 1.5) / 32, tint: 0x88CCFF, alpha: 0.7, duration: 300, scaleEnd: (radius * 0.4) / 32 });
+        this.drawImpactParticles(cx, cy, 0x88CCFF, 8, 60, 300);
+        break;
+
       case MasterySkillId.EDEN:
         color = 0xFFFFFF;
-        // Massive white expanding ring
-        this.drawExpandingRing(cx, cy, 10, radius, 0xFFFFFF, 600);
-        this.drawExpandingRing(cx, cy, 5, radius * 0.7, 0xFFDD88, 500);
-        this.drawPulse(cx, cy, radius, 0xFFFFFF, 0.6, 500);
-        this.drawImpactParticles(cx, cy, 0xFFFFAA, 16, 120, 500);
-        this.drawAdditiveGlow(cx, cy, radius, 0xFFFFFF, 0.4, 600);
-        this.drawAdditiveGlow(cx, cy, radius * 0.5, 0xFFDD88, 0.5, 400);
-        // screen shake removed
+        playImpactFX(this.scene, cx, cy, 0, 'fx_explosion', (radius * 3) / 40, 0xFFFFFF, 500);
+        spawnFX(this.scene, cx, cy, 'fx_circle_white', { scale: (radius * 3) / 32, tint: 0xFFFFFF, alpha: 0.8, duration: 500, blendMode: Phaser.BlendModes.ADD, scaleEnd: (radius * 4) / 32 });
+        this.drawImpactParticles(cx, cy, 0xFFFFFF, 12, 100, 500);
         break;
     }
 

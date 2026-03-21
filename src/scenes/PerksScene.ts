@@ -317,50 +317,50 @@ export class PerksScene extends Phaser.Scene {
     this.scrollContainer.add(line);
 
     const text = this.add.text(colX, y + 6, title, {
+      fontSize: '28px',
+      fontFamily: 'NinjaFont, "Trebuchet MS", Verdana, sans-serif',
+      color: color,
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 5,
+    }).setResolution(2);
+    this.scrollContainer.add(text);
+
+    return y + 38;
+  }
+
+  private addIconLine(y: number, iconKey: string, content: string, color: string, _fontSize: string, colX: number, colW: number): number {
+    const iconOffset = 24;
+    if (this.textures.exists(iconKey)) {
+      const icon = this.add.image(colX + 10, y + 10, iconKey);
+      icon.setScale(1.2);
+      icon.setOrigin(0.5, 0.5);
+      this.scrollContainer.add(icon);
+    }
+    const text = this.add.text(colX + iconOffset, y, content, {
       fontSize: '22px',
       fontFamily: 'NinjaFont, "Trebuchet MS", Verdana, sans-serif',
       color: color,
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 4,
-    }).setResolution(2);
-    this.scrollContainer.add(text);
-
-    return y + 32;
-  }
-
-  private addIconLine(y: number, iconKey: string, content: string, color: string, fontSize: string, colX: number, colW: number): number {
-    const iconOffset = 20;
-    if (this.textures.exists(iconKey)) {
-      const icon = this.add.image(colX + 8, y + 8, iconKey);
-      icon.setScale(1);
-      icon.setOrigin(0.5, 0.5);
-      this.scrollContainer.add(icon);
-    }
-    const text = this.add.text(colX + iconOffset, y, content, {
-      fontSize: fontSize,
-      fontFamily: 'NinjaFont, "Trebuchet MS", Verdana, sans-serif',
-      color: color,
-      fontStyle: 'bold',
-      stroke: '#000000',
-      strokeThickness: 3,
       wordWrap: { width: colW - iconOffset },
     }).setResolution(2);
     this.scrollContainer.add(text);
-    return y + Math.max(text.height, 16) + 2;
+    return y + Math.max(text.height, 20) + 4;
   }
 
-  private addLine(y: number, content: string, color: string, fontSize: string, colX: number, colW: number): number {
+  private addLine(y: number, content: string, color: string, _fontSize: string, colX: number, colW: number): number {
     const text = this.add.text(colX, y, content, {
-      fontSize: fontSize,
+      fontSize: '20px',
       fontFamily: 'NinjaFont, "Trebuchet MS", Verdana, sans-serif',
       color: color,
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 3,
       wordWrap: { width: colW },
     }).setResolution(2);
     this.scrollContainer.add(text);
-    return y + text.height + 2;
+    return y + text.height + 4;
   }
 
   private addWeaponLine(y: number, w: WeaponInstance, colX: number, colW: number): number {
