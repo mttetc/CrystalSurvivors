@@ -7,7 +7,7 @@ import {
   FX_SLASH, FX_ELEMENTAL, FX_MAGIC, FX_SMOKE,
   PARTICLES,
   ITEM_WEAPONS, ITEM_MISC, WEAPON_INHAND,
-  TILESETS,
+  TILESETS, TILESETS_ANIMATED,
   PICKUP_IMAGES, PICKUP_SHEETS,
   ENVIRONMENT,
   UI_BARS, UI_THEME, UI_RECEPTACLE, UI_DIALOG,
@@ -84,6 +84,11 @@ export class BootScene extends Phaser.Scene {
     // Tilesets (16x16 spritesheets)
     for (const [key, path] of Object.entries(TILESETS)) {
       this.load.spritesheet(key, path, { frameWidth: 16, frameHeight: 16 });
+    }
+    // Animated tilesets (16x16 spritesheets, except quicksand 32x32)
+    for (const [key, path] of Object.entries(TILESETS_ANIMATED)) {
+      const size = key === 'anim_quicksand' ? 32 : 16;
+      this.load.spritesheet(key, path, { frameWidth: size, frameHeight: size });
     }
 
     // Pickups
