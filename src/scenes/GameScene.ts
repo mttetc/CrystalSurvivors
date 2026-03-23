@@ -27,6 +27,7 @@ import { WaveBanner } from '../ui/WaveBanner';
 import { SFXManager } from '../systems/SFXManager';
 import { getMusicManager } from './TitleScene';
 import { ENEMY_DEFS } from '../data/enemies';
+import { MapLoader } from '../systems/MapLoader';
 
 const MAX_CHESTS = 8;
 const CHEST_SPAWN_INTERVAL = 45000; // spawn a chest every 45s
@@ -66,6 +67,8 @@ export class GameScene extends Phaser.Scene {
   private chestSpawnTimer = 0;
   private pendingStartJob: string | null = null;
   private isProcessingBomberExplosion = false;
+  private collisionGroup: Phaser.Physics.Arcade.StaticGroup | null = null;
+  private customMapData: import('../editor/types').MapFile | null = null;
 
   constructor() {
     super(SCENES.GAME);
@@ -81,14 +84,37 @@ export class GameScene extends Phaser.Scene {
     // Register shutdown handler (Phaser doesn't auto-call shutdown() method)
     this.events.once('shutdown', this.onShutdown, this);
 
+    // Check for custom map
+    const customMapKey = this.registry.get('customMap') as string | undefined;
+    let worldW = WORLD_WIDTH;
+    let worldH = WORLD_HEIGHT;
+    let spawnX = WORLD_WIDTH / 2;
+    let spawnY = WORLD_HEIGHT / 2;
+
+    if (customMapKey && this.cache.json.has(customMapKey)) {
+      this.customMapData = this.cache.json.get(customMapKey);
+      const worldSize = MapLoader.getWorldSize(this.customMapData!);
+      worldW = worldSize.width;
+      worldH = worldSize.height;
+      const spawn = MapLoader.getSpawnPoint(this.customMapData!);
+      spawnX = spawn.x;
+      spawnY = spawn.y;
+    }
+
     // World bounds
-    this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    this.physics.world.setBounds(0, 0, worldW, worldH);
 
-    // Tiled ground using grass tileset
-    this.tileGround();
+    // Render map
+    if (this.customMapData) {
+      MapLoader.renderGround(this, this.customMapData);
+      MapLoader.renderDecorations(this, this.customMapData);
+      this.collisionGroup = MapLoader.createCollision(this, this.customMapData);
+    } else {
+      this.tileGround();
+    }
 
-    // Player at center
-    this.player = new Player(this, WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
+    // Player at spawn
+    this.player = new Player(this, spawnX, spawnY);
 
     // Apply starting class from character selection
     const data = this.scene.settings.data as any;
@@ -103,7 +129,7 @@ export class GameScene extends Phaser.Scene {
 
     // Camera
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-    this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    this.cameras.main.setBounds(0, 0, worldW, worldH);
     this.cameras.main.setBackgroundColor('#3a7a2a');
     this.cameras.main.setZoom(1.5);
 
@@ -224,8 +250,16 @@ export class GameScene extends Phaser.Scene {
     this.damageNumbers = new DamageNumbers(this);
     this.waveBanner = new WaveBanner(this);
 
-    // Scatter environment decorations
-    this.scatterDecorations();
+    // Scatter environment decorations (only for procedural maps)
+    if (!this.customMapData) {
+      this.scatterDecorations();
+    }
+
+    // Custom map collision
+    if (this.collisionGroup) {
+      this.physics.add.collider(this.player, this.collisionGroup);
+      this.physics.add.collider(this.enemyGroup, this.collisionGroup);
+    }
 
     // Events
     EventBus.on(EVENTS.LEVEL_UP, this.onLevelUp, this);

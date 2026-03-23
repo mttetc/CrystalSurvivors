@@ -123,9 +123,16 @@ export class BootScene extends Phaser.Scene {
     loadAudio(this.load, MUSIC);
     loadAudio(this.load, JINGLES);
     loadAudio(this.load, SFX);
+
+    // Custom map (if present in public/maps/custom.json)
+    this.load.json('customMap', 'maps/custom.json');
   }
 
   create(): void {
+    // If a custom map was loaded, register it for GameScene
+    if (this.cache.json.has('customMap')) {
+      this.registry.set('customMap', 'customMap');
+    }
     this.scene.start(SCENES.TITLE);
   }
 }
